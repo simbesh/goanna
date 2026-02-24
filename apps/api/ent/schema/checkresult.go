@@ -1,0 +1,43 @@
+package schema
+
+import (
+	"time"
+
+	"entgo.io/ent"
+	"entgo.io/ent/schema/edge"
+	"entgo.io/ent/schema/field"
+)
+
+// CheckResult holds the schema definition for the CheckResult entity.
+type CheckResult struct {
+	ent.Schema
+}
+
+// Fields of the CheckResult.
+func (CheckResult) Fields() []ent.Field {
+	return []ent.Field{
+		field.String("status").
+			Default("unknown"),
+		field.Int("status_code").
+			Optional().
+			Nillable(),
+		field.Int("response_time_ms").
+			Optional().
+			Nillable(),
+		field.String("error_message").
+			Optional().
+			Nillable(),
+		field.Time("checked_at").
+			Default(time.Now),
+	}
+}
+
+// Edges of the CheckResult.
+func (CheckResult) Edges() []ent.Edge {
+	return []ent.Edge{
+		edge.From("endpoint", Endpoint.Type).
+			Ref("check_results").
+			Unique().
+			Required(),
+	}
+}

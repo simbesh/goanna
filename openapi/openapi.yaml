@@ -1,0 +1,138 @@
+openapi: 3.0.3
+info:
+  title: Goanna Monitoring API
+  version: 0.1.0
+  description: API contract for endpoint monitoring and notifications.
+servers:
+  - url: http://localhost:8080
+paths:
+  /healthz:
+    get:
+      operationId: getHealth
+      summary: Health check
+      responses:
+        '200':
+          description: API is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /v1/endpoints:
+    get:
+      operationId: listEndpoints
+      summary: List monitored endpoints
+      responses:
+        '200':
+          description: Current endpoints
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Endpoint'
+
+    post:
+      operationId: createEndpoint
+      summary: Create monitored endpoint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateEndpointRequest'
+      responses:
+        '201':
+          description: Endpoint created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Endpoint'
+        '400':
+          description: Invalid request body
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          example: ok
+
+    Endpoint:
+      type: object
+      required:
+        - id
+        - name
+        - url
+        - method
+        - intervalSeconds
+        - timeoutSeconds
+        - expectedStatus
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        url:
+          type: string
+          format: uri
+        method:
+          type: string
+          example: GET
+        intervalSeconds:
+          type: integer
+          format: int32
+          minimum: 1
+        timeoutSeconds:
+          type: integer
+          format: int32
+          minimum: 1
+        expectedStatus:
+          type: integer
+          format: int32
+          minimum: 100
+          maximum: 599
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateEndpointRequest:
+      type: object
+      required:
+        - name
+        - url
+      properties:
+        name:
+          type: string
+        url:
+          type: string
+          format: uri
+        method:
+          type: string
+          default: GET
+        intervalSeconds:
+          type: integer
+          format: int32
+          minimum: 1
+          default: 60
+        timeoutSeconds:
+          type: integer
+          format: int32
+          minimum: 1
+          default: 10
+        expectedStatus:
+          type: integer
+          format: int32
+          minimum: 100
+          maximum: 599
+          default: 200

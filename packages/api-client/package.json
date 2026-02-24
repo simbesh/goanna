@@ -1,0 +1,17 @@
+{
+  "name": "@goanna/api-client",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "generate": "openapi --input ../../openapi/openapi.yaml --output src/generated --client fetch --useOptions --exportServices true --exportModels true --exportCore true",
+    "check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "openapi-typescript-codegen": "^0.29.0",
+    "typescript": "^5.9.2"
+  }
+}
