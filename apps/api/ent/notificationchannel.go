@@ -20,13 +20,17 @@ type NotificationChannel struct {
 	// Name holds the value of the "name" field.
 	Name string `json:"name,omitempty"`
 	// Kind holds the value of the "kind" field.
-	Kind string `json:"kind,omitempty"`
-	// Target holds the value of the "target" field.
-	Target string `json:"target,omitempty"`
+	Kind notificationchannel.Kind `json:"kind,omitempty"`
+	// BotToken holds the value of the "bot_token" field.
+	BotToken string `json:"bot_token,omitempty"`
+	// ChatID holds the value of the "chat_id" field.
+	ChatID string `json:"chat_id,omitempty"`
 	// Enabled holds the value of the "enabled" field.
 	Enabled bool `json:"enabled,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
+	// UpdatedAt holds the value of the "updated_at" field.
+	UpdatedAt time.Time `json:"updated_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the NotificationChannelQuery when eager-loading is set.
 	Edges        NotificationChannelEdges `json:"edges"`
@@ -60,9 +64,9 @@ func (*NotificationChannel) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case notificationchannel.FieldID:
 			values[i] = new(sql.NullInt64)
-		case notificationchannel.FieldName, notificationchannel.FieldKind, notificationchannel.FieldTarget:
+		case notificationchannel.FieldName, notificationchannel.FieldKind, notificationchannel.FieldBotToken, notificationchannel.FieldChatID:
 			values[i] = new(sql.NullString)
-		case notificationchannel.FieldCreatedAt:
+		case notificationchannel.FieldCreatedAt, notificationchannel.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -95,13 +99,19 @@ func (_m *NotificationChannel) assignValues(columns []string, values []any) erro
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field kind", values[i])
 			} else if value.Valid {
-				_m.Kind = value.String
+				_m.Kind = notificationchannel.Kind(value.String)
 			}
-		case notificationchannel.FieldTarget:
+		case notificationchannel.FieldBotToken:
 			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field target", values[i])
+				return fmt.Errorf("unexpected type %T for field bot_token", values[i])
 			} else if value.Valid {
-				_m.Target = value.String
+				_m.BotToken = value.String
+			}
+		case notificationchannel.FieldChatID:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field chat_id", values[i])
+			} else if value.Valid {
+				_m.ChatID = value.String
 			}
 		case notificationchannel.FieldEnabled:
 			if value, ok := values[i].(*sql.NullBool); !ok {
@@ -114,6 +124,12 @@ func (_m *NotificationChannel) assignValues(columns []string, values []any) erro
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
 			} else if value.Valid {
 				_m.CreatedAt = value.Time
+			}
+		case notificationchannel.FieldUpdatedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
+			} else if value.Valid {
+				_m.UpdatedAt = value.Time
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
@@ -160,16 +176,22 @@ func (_m *NotificationChannel) String() string {
 	builder.WriteString(_m.Name)
 	builder.WriteString(", ")
 	builder.WriteString("kind=")
-	builder.WriteString(_m.Kind)
+	builder.WriteString(fmt.Sprintf("%v", _m.Kind))
 	builder.WriteString(", ")
-	builder.WriteString("target=")
-	builder.WriteString(_m.Target)
+	builder.WriteString("bot_token=")
+	builder.WriteString(_m.BotToken)
+	builder.WriteString(", ")
+	builder.WriteString("chat_id=")
+	builder.WriteString(_m.ChatID)
 	builder.WriteString(", ")
 	builder.WriteString("enabled=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Enabled))
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("updated_at=")
+	builder.WriteString(_m.UpdatedAt.Format(time.ANSIC))
 	builder.WriteByte(')')
 	return builder.String()
 }

@@ -5,7 +5,7 @@ package ent
 import (
 	"context"
 	"fmt"
-	"goanna/apps/api/ent/endpoint"
+	"goanna/apps/api/ent/monitor"
 	"goanna/apps/api/ent/notificationchannel"
 	"goanna/apps/api/ent/notificationevent"
 	"goanna/apps/api/ent/predicate"
@@ -20,13 +20,13 @@ import (
 // NotificationEventQuery is the builder for querying NotificationEvent entities.
 type NotificationEventQuery struct {
 	config
-	ctx          *QueryContext
-	order        []notificationevent.OrderOption
-	inters       []Interceptor
-	predicates   []predicate.NotificationEvent
-	withEndpoint *EndpointQuery
-	withChannel  *NotificationChannelQuery
-	withFKs      bool
+	ctx         *QueryContext
+	order       []notificationevent.OrderOption
+	inters      []Interceptor
+	predicates  []predicate.NotificationEvent
+	withMonitor *MonitorQuery
+	withChannel *NotificationChannelQuery
+	withFKs     bool
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -63,9 +63,9 @@ func (_q *NotificationEventQuery) Order(o ...notificationevent.OrderOption) *Not
 	return _q
 }
 
-// QueryEndpoint chains the current query on the "endpoint" edge.
-func (_q *NotificationEventQuery) QueryEndpoint() *EndpointQuery {
-	query := (&EndpointClient{config: _q.config}).Query()
+// QueryMonitor chains the current query on the "monitor" edge.
+func (_q *NotificationEventQuery) QueryMonitor() *MonitorQuery {
+	query := (&MonitorClient{config: _q.config}).Query()
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
 		if err := _q.prepareQuery(ctx); err != nil {
 			return nil, err
@@ -76,8 +76,8 @@ func (_q *NotificationEventQuery) QueryEndpoint() *EndpointQuery {
 		}
 		step := sqlgraph.NewStep(
 			sqlgraph.From(notificationevent.Table, notificationevent.FieldID, selector),
-			sqlgraph.To(endpoint.Table, endpoint.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, notificationevent.EndpointTable, notificationevent.EndpointColumn),
+			sqlgraph.To(monitor.Table, monitor.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, notificationevent.MonitorTable, notificationevent.MonitorColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -294,27 +294,27 @@ func (_q *NotificationEventQuery) Clone() *NotificationEventQuery {
 		return nil
 	}
 	return &NotificationEventQuery{
-		config:       _q.config,
-		ctx:          _q.ctx.Clone(),
-		order:        append([]notificationevent.OrderOption{}, _q.order...),
-		inters:       append([]Interceptor{}, _q.inters...),
-		predicates:   append([]predicate.NotificationEvent{}, _q.predicates...),
-		withEndpoint: _q.withEndpoint.Clone(),
-		withChannel:  _q.withChannel.Clone(),
+		config:      _q.config,
+		ctx:         _q.ctx.Clone(),
+		order:       append([]notificationevent.OrderOption{}, _q.order...),
+		inters:      append([]Interceptor{}, _q.inters...),
+		predicates:  append([]predicate.NotificationEvent{}, _q.predicates...),
+		withMonitor: _q.withMonitor.Clone(),
+		withChannel: _q.withChannel.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
 	}
 }
 
-// WithEndpoint tells the query-builder to eager-load the nodes that are connected to
-// the "endpoint" edge. The optional arguments are used to configure the query builder of the edge.
-func (_q *NotificationEventQuery) WithEndpoint(opts ...func(*EndpointQuery)) *NotificationEventQuery {
-	query := (&EndpointClient{config: _q.config}).Query()
+// WithMonitor tells the query-builder to eager-load the nodes that are connected to
+// the "monitor" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *NotificationEventQuery) WithMonitor(opts ...func(*MonitorQuery)) *NotificationEventQuery {
+	query := (&MonitorClient{config: _q.config}).Query()
 	for _, opt := range opts {
 		opt(query)
 	}
-	_q.withEndpoint = query
+	_q.withMonitor = query
 	return _q
 }
 
@@ -409,11 +409,11 @@ func (_q *NotificationEventQuery) sqlAll(ctx context.Context, hooks ...queryHook
 		withFKs     = _q.withFKs
 		_spec       = _q.querySpec()
 		loadedTypes = [2]bool{
-			_q.withEndpoint != nil,
+			_q.withMonitor != nil,
 			_q.withChannel != nil,
 		}
 	)
-	if _q.withEndpoint != nil || _q.withChannel != nil {
+	if _q.withMonitor != nil || _q.withChannel != nil {
 		withFKs = true
 	}
 	if withFKs {
@@ -437,9 +437,9 @@ func (_q *NotificationEventQuery) sqlAll(ctx context.Context, hooks ...queryHook
 	if len(nodes) == 0 {
 		return nodes, nil
 	}
-	if query := _q.withEndpoint; query != nil {
-		if err := _q.loadEndpoint(ctx, query, nodes, nil,
-			func(n *NotificationEvent, e *Endpoint) { n.Edges.Endpoint = e }); err != nil {
+	if query := _q.withMonitor; query != nil {
+		if err := _q.loadMonitor(ctx, query, nodes, nil,
+			func(n *NotificationEvent, e *Monitor) { n.Edges.Monitor = e }); err != nil {
 			return nil, err
 		}
 	}
@@ -452,14 +452,14 @@ func (_q *NotificationEventQuery) sqlAll(ctx context.Context, hooks ...queryHook
 	return nodes, nil
 }
 
-func (_q *NotificationEventQuery) loadEndpoint(ctx context.Context, query *EndpointQuery, nodes []*NotificationEvent, init func(*NotificationEvent), assign func(*NotificationEvent, *Endpoint)) error {
+func (_q *NotificationEventQuery) loadMonitor(ctx context.Context, query *MonitorQuery, nodes []*NotificationEvent, init func(*NotificationEvent), assign func(*NotificationEvent, *Monitor)) error {
 	ids := make([]int, 0, len(nodes))
 	nodeids := make(map[int][]*NotificationEvent)
 	for i := range nodes {
-		if nodes[i].endpoint_notification_events == nil {
+		if nodes[i].monitor_notification_events == nil {
 			continue
 		}
-		fk := *nodes[i].endpoint_notification_events
+		fk := *nodes[i].monitor_notification_events
 		if _, ok := nodeids[fk]; !ok {
 			ids = append(ids, fk)
 		}
@@ -468,7 +468,7 @@ func (_q *NotificationEventQuery) loadEndpoint(ctx context.Context, query *Endpo
 	if len(ids) == 0 {
 		return nil
 	}
-	query.Where(endpoint.IDIn(ids...))
+	query.Where(monitor.IDIn(ids...))
 	neighbors, err := query.All(ctx)
 	if err != nil {
 		return err
@@ -476,7 +476,7 @@ func (_q *NotificationEventQuery) loadEndpoint(ctx context.Context, query *Endpo
 	for _, n := range neighbors {
 		nodes, ok := nodeids[n.ID]
 		if !ok {
-			return fmt.Errorf(`unexpected foreign-key "endpoint_notification_events" returned %v`, n.ID)
+			return fmt.Errorf(`unexpected foreign-key "monitor_notification_events" returned %v`, n.ID)
 		}
 		for i := range nodes {
 			assign(nodes[i], n)

@@ -250,21 +250,21 @@ func SentAtLTE(v time.Time) predicate.NotificationEvent {
 	return predicate.NotificationEvent(sql.FieldLTE(FieldSentAt, v))
 }
 
-// HasEndpoint applies the HasEdge predicate on the "endpoint" edge.
-func HasEndpoint() predicate.NotificationEvent {
+// HasMonitor applies the HasEdge predicate on the "monitor" edge.
+func HasMonitor() predicate.NotificationEvent {
 	return predicate.NotificationEvent(func(s *sql.Selector) {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, EndpointTable, EndpointColumn),
+			sqlgraph.Edge(sqlgraph.M2O, true, MonitorTable, MonitorColumn),
 		)
 		sqlgraph.HasNeighbors(s, step)
 	})
 }
 
-// HasEndpointWith applies the HasEdge predicate on the "endpoint" edge with a given conditions (other predicates).
-func HasEndpointWith(preds ...predicate.Endpoint) predicate.NotificationEvent {
+// HasMonitorWith applies the HasEdge predicate on the "monitor" edge with a given conditions (other predicates).
+func HasMonitorWith(preds ...predicate.Monitor) predicate.NotificationEvent {
 	return predicate.NotificationEvent(func(s *sql.Selector) {
-		step := newEndpointStep()
+		step := newMonitorStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

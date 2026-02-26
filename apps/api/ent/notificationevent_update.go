@@ -6,7 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"goanna/apps/api/ent/endpoint"
+	"goanna/apps/api/ent/monitor"
 	"goanna/apps/api/ent/notificationchannel"
 	"goanna/apps/api/ent/notificationevent"
 	"goanna/apps/api/ent/predicate"
@@ -78,15 +78,15 @@ func (_u *NotificationEventUpdate) SetNillableSentAt(v *time.Time) *Notification
 	return _u
 }
 
-// SetEndpointID sets the "endpoint" edge to the Endpoint entity by ID.
-func (_u *NotificationEventUpdate) SetEndpointID(id int) *NotificationEventUpdate {
-	_u.mutation.SetEndpointID(id)
+// SetMonitorID sets the "monitor" edge to the Monitor entity by ID.
+func (_u *NotificationEventUpdate) SetMonitorID(id int) *NotificationEventUpdate {
+	_u.mutation.SetMonitorID(id)
 	return _u
 }
 
-// SetEndpoint sets the "endpoint" edge to the Endpoint entity.
-func (_u *NotificationEventUpdate) SetEndpoint(v *Endpoint) *NotificationEventUpdate {
-	return _u.SetEndpointID(v.ID)
+// SetMonitor sets the "monitor" edge to the Monitor entity.
+func (_u *NotificationEventUpdate) SetMonitor(v *Monitor) *NotificationEventUpdate {
+	return _u.SetMonitorID(v.ID)
 }
 
 // SetChannelID sets the "channel" edge to the NotificationChannel entity by ID.
@@ -105,9 +105,9 @@ func (_u *NotificationEventUpdate) Mutation() *NotificationEventMutation {
 	return _u.mutation
 }
 
-// ClearEndpoint clears the "endpoint" edge to the Endpoint entity.
-func (_u *NotificationEventUpdate) ClearEndpoint() *NotificationEventUpdate {
-	_u.mutation.ClearEndpoint()
+// ClearMonitor clears the "monitor" edge to the Monitor entity.
+func (_u *NotificationEventUpdate) ClearMonitor() *NotificationEventUpdate {
+	_u.mutation.ClearMonitor()
 	return _u
 }
 
@@ -146,8 +146,8 @@ func (_u *NotificationEventUpdate) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *NotificationEventUpdate) check() error {
-	if _u.mutation.EndpointCleared() && len(_u.mutation.EndpointIDs()) > 0 {
-		return errors.New(`ent: clearing a required unique edge "NotificationEvent.endpoint"`)
+	if _u.mutation.MonitorCleared() && len(_u.mutation.MonitorIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "NotificationEvent.monitor"`)
 	}
 	if _u.mutation.ChannelCleared() && len(_u.mutation.ChannelIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "NotificationEvent.channel"`)
@@ -179,28 +179,28 @@ func (_u *NotificationEventUpdate) sqlSave(ctx context.Context) (_node int, err 
 	if value, ok := _u.mutation.SentAt(); ok {
 		_spec.SetField(notificationevent.FieldSentAt, field.TypeTime, value)
 	}
-	if _u.mutation.EndpointCleared() {
+	if _u.mutation.MonitorCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
-			Table:   notificationevent.EndpointTable,
-			Columns: []string{notificationevent.EndpointColumn},
+			Table:   notificationevent.MonitorTable,
+			Columns: []string{notificationevent.MonitorColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(endpoint.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(monitor.FieldID, field.TypeInt),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := _u.mutation.EndpointIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.MonitorIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
-			Table:   notificationevent.EndpointTable,
-			Columns: []string{notificationevent.EndpointColumn},
+			Table:   notificationevent.MonitorTable,
+			Columns: []string{notificationevent.MonitorColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(endpoint.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(monitor.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -305,15 +305,15 @@ func (_u *NotificationEventUpdateOne) SetNillableSentAt(v *time.Time) *Notificat
 	return _u
 }
 
-// SetEndpointID sets the "endpoint" edge to the Endpoint entity by ID.
-func (_u *NotificationEventUpdateOne) SetEndpointID(id int) *NotificationEventUpdateOne {
-	_u.mutation.SetEndpointID(id)
+// SetMonitorID sets the "monitor" edge to the Monitor entity by ID.
+func (_u *NotificationEventUpdateOne) SetMonitorID(id int) *NotificationEventUpdateOne {
+	_u.mutation.SetMonitorID(id)
 	return _u
 }
 
-// SetEndpoint sets the "endpoint" edge to the Endpoint entity.
-func (_u *NotificationEventUpdateOne) SetEndpoint(v *Endpoint) *NotificationEventUpdateOne {
-	return _u.SetEndpointID(v.ID)
+// SetMonitor sets the "monitor" edge to the Monitor entity.
+func (_u *NotificationEventUpdateOne) SetMonitor(v *Monitor) *NotificationEventUpdateOne {
+	return _u.SetMonitorID(v.ID)
 }
 
 // SetChannelID sets the "channel" edge to the NotificationChannel entity by ID.
@@ -332,9 +332,9 @@ func (_u *NotificationEventUpdateOne) Mutation() *NotificationEventMutation {
 	return _u.mutation
 }
 
-// ClearEndpoint clears the "endpoint" edge to the Endpoint entity.
-func (_u *NotificationEventUpdateOne) ClearEndpoint() *NotificationEventUpdateOne {
-	_u.mutation.ClearEndpoint()
+// ClearMonitor clears the "monitor" edge to the Monitor entity.
+func (_u *NotificationEventUpdateOne) ClearMonitor() *NotificationEventUpdateOne {
+	_u.mutation.ClearMonitor()
 	return _u
 }
 
@@ -386,8 +386,8 @@ func (_u *NotificationEventUpdateOne) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *NotificationEventUpdateOne) check() error {
-	if _u.mutation.EndpointCleared() && len(_u.mutation.EndpointIDs()) > 0 {
-		return errors.New(`ent: clearing a required unique edge "NotificationEvent.endpoint"`)
+	if _u.mutation.MonitorCleared() && len(_u.mutation.MonitorIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "NotificationEvent.monitor"`)
 	}
 	if _u.mutation.ChannelCleared() && len(_u.mutation.ChannelIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "NotificationEvent.channel"`)
@@ -436,28 +436,28 @@ func (_u *NotificationEventUpdateOne) sqlSave(ctx context.Context) (_node *Notif
 	if value, ok := _u.mutation.SentAt(); ok {
 		_spec.SetField(notificationevent.FieldSentAt, field.TypeTime, value)
 	}
-	if _u.mutation.EndpointCleared() {
+	if _u.mutation.MonitorCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
-			Table:   notificationevent.EndpointTable,
-			Columns: []string{notificationevent.EndpointColumn},
+			Table:   notificationevent.MonitorTable,
+			Columns: []string{notificationevent.MonitorColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(endpoint.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(monitor.FieldID, field.TypeInt),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := _u.mutation.EndpointIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.MonitorIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
-			Table:   notificationevent.EndpointTable,
-			Columns: []string{notificationevent.EndpointColumn},
+			Table:   notificationevent.MonitorTable,
+			Columns: []string{notificationevent.MonitorColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(endpoint.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(monitor.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

@@ -14,12 +14,16 @@ type Tx struct {
 	config
 	// CheckResult is the client for interacting with the CheckResult builders.
 	CheckResult *CheckResultClient
-	// Endpoint is the client for interacting with the Endpoint builders.
-	Endpoint *EndpointClient
+	// Monitor is the client for interacting with the Monitor builders.
+	Monitor *MonitorClient
+	// MonitorRuntime is the client for interacting with the MonitorRuntime builders.
+	MonitorRuntime *MonitorRuntimeClient
 	// NotificationChannel is the client for interacting with the NotificationChannel builders.
 	NotificationChannel *NotificationChannelClient
 	// NotificationEvent is the client for interacting with the NotificationEvent builders.
 	NotificationEvent *NotificationEventClient
+	// SystemConfig is the client for interacting with the SystemConfig builders.
+	SystemConfig *SystemConfigClient
 
 	// lazily loaded.
 	client     *Client
@@ -152,9 +156,11 @@ func (tx *Tx) Client() *Client {
 
 func (tx *Tx) init() {
 	tx.CheckResult = NewCheckResultClient(tx.config)
-	tx.Endpoint = NewEndpointClient(tx.config)
+	tx.Monitor = NewMonitorClient(tx.config)
+	tx.MonitorRuntime = NewMonitorRuntimeClient(tx.config)
 	tx.NotificationChannel = NewNotificationChannelClient(tx.config)
 	tx.NotificationEvent = NewNotificationEventClient(tx.config)
+	tx.SystemConfig = NewSystemConfigClient(tx.config)
 }
 
 // txDriver wraps the given dialect.Tx with a nop dialect.Driver implementation.

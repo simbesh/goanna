@@ -1,17 +1,3 @@
-# @goanna/web
+# TanStack Start + shadcn/ui
 
-TanStack Start frontend scaffold with Tailwind and shadcn/ui.
-
-## Commands
-
-```bash
-bun run dev
-bun run build
-bun run test
-```
-
-## Add shadcn components
-
-```bash
-bunx --bun shadcn@latest add button
-```
+This is a template for a new TanStack Start project with React, TypeScript, and shadcn/ui.

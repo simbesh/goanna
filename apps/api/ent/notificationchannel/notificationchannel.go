@@ -3,6 +3,7 @@
 package notificationchannel
 
 import (
+	"fmt"
 	"time"
 
 	"entgo.io/ent/dialect/sql"
@@ -18,12 +19,16 @@ const (
 	FieldName = "name"
 	// FieldKind holds the string denoting the kind field in the database.
 	FieldKind = "kind"
-	// FieldTarget holds the string denoting the target field in the database.
-	FieldTarget = "target"
+	// FieldBotToken holds the string denoting the bot_token field in the database.
+	FieldBotToken = "bot_token"
+	// FieldChatID holds the string denoting the chat_id field in the database.
+	FieldChatID = "chat_id"
 	// FieldEnabled holds the string denoting the enabled field in the database.
 	FieldEnabled = "enabled"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
+	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
+	FieldUpdatedAt = "updated_at"
 	// EdgeNotificationEvents holds the string denoting the notification_events edge name in mutations.
 	EdgeNotificationEvents = "notification_events"
 	// Table holds the table name of the notificationchannel in the database.
@@ -42,9 +47,11 @@ var Columns = []string{
 	FieldID,
 	FieldName,
 	FieldKind,
-	FieldTarget,
+	FieldBotToken,
+	FieldChatID,
 	FieldEnabled,
 	FieldCreatedAt,
+	FieldUpdatedAt,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -58,17 +65,46 @@ func ValidColumn(column string) bool {
 }
 
 var (
-	// NameValidator is a validator for the "name" field. It is called by the builders before save.
-	NameValidator func(string) error
-	// KindValidator is a validator for the "kind" field. It is called by the builders before save.
-	KindValidator func(string) error
-	// TargetValidator is a validator for the "target" field. It is called by the builders before save.
-	TargetValidator func(string) error
+	// DefaultName holds the default value on creation for the "name" field.
+	DefaultName string
+	// BotTokenValidator is a validator for the "bot_token" field. It is called by the builders before save.
+	BotTokenValidator func(string) error
+	// ChatIDValidator is a validator for the "chat_id" field. It is called by the builders before save.
+	ChatIDValidator func(string) error
 	// DefaultEnabled holds the default value on creation for the "enabled" field.
 	DefaultEnabled bool
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
+	// DefaultUpdatedAt holds the default value on creation for the "updated_at" field.
+	DefaultUpdatedAt func() time.Time
+	// UpdateDefaultUpdatedAt holds the default value on update for the "updated_at" field.
+	UpdateDefaultUpdatedAt func() time.Time
 )
+
+// Kind defines the type for the "kind" enum field.
+type Kind string
+
+// KindTelegram is the default value of the Kind enum.
+const DefaultKind = KindTelegram
+
+// Kind values.
+const (
+	KindTelegram Kind = "telegram"
+)
+
+func (k Kind) String() string {
+	return string(k)
+}
+
+// KindValidator is a validator for the "kind" field enum values. It is called by the builders before save.
+func KindValidator(k Kind) error {
+	switch k {
+	case KindTelegram:
+		return nil
+	default:
+		return fmt.Errorf("notificationchannel: invalid enum value for kind field: %q", k)
+	}
+}
 
 // OrderOption defines the ordering options for the NotificationChannel queries.
 type OrderOption func(*sql.Selector)
@@ -88,9 +124,14 @@ func ByKind(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldKind, opts...).ToFunc()
 }
 
-// ByTarget orders the results by the target field.
-func ByTarget(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldTarget, opts...).ToFunc()
+// ByBotToken orders the results by the bot_token field.
+func ByBotToken(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldBotToken, opts...).ToFunc()
+}
+
+// ByChatID orders the results by the chat_id field.
+func ByChatID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldChatID, opts...).ToFunc()
 }
 
 // ByEnabled orders the results by the enabled field.
@@ -101,6 +142,11 @@ func ByEnabled(opts ...sql.OrderTermOption) OrderOption {
 // ByCreatedAt orders the results by the created_at field.
 func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldCreatedAt, opts...).ToFunc()
+}
+
+// ByUpdatedAt orders the results by the updated_at field.
+func ByUpdatedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUpdatedAt, opts...).ToFunc()
 }
 
 // ByNotificationEventsCount orders the results by notification_events count.

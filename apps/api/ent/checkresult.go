@@ -5,7 +5,7 @@ package ent
 import (
 	"fmt"
 	"goanna/apps/api/ent/checkresult"
-	"goanna/apps/api/ent/endpoint"
+	"goanna/apps/api/ent/monitor"
 	"strings"
 	"time"
 
@@ -26,33 +26,45 @@ type CheckResult struct {
 	ResponseTimeMs *int `json:"response_time_ms,omitempty"`
 	// ErrorMessage holds the value of the "error_message" field.
 	ErrorMessage *string `json:"error_message,omitempty"`
+	// SelectionType holds the value of the "selection_type" field.
+	SelectionType *string `json:"selection_type,omitempty"`
+	// SelectionValue holds the value of the "selection_value" field.
+	SelectionValue *string `json:"selection_value,omitempty"`
+	// DiffChanged holds the value of the "diff_changed" field.
+	DiffChanged bool `json:"diff_changed,omitempty"`
+	// DiffKind holds the value of the "diff_kind" field.
+	DiffKind *string `json:"diff_kind,omitempty"`
+	// DiffSummary holds the value of the "diff_summary" field.
+	DiffSummary *string `json:"diff_summary,omitempty"`
+	// DiffDetails holds the value of the "diff_details" field.
+	DiffDetails *string `json:"diff_details,omitempty"`
 	// CheckedAt holds the value of the "checked_at" field.
 	CheckedAt time.Time `json:"checked_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the CheckResultQuery when eager-loading is set.
-	Edges                  CheckResultEdges `json:"edges"`
-	endpoint_check_results *int
-	selectValues           sql.SelectValues
+	Edges                 CheckResultEdges `json:"edges"`
+	monitor_check_results *int
+	selectValues          sql.SelectValues
 }
 
 // CheckResultEdges holds the relations/edges for other nodes in the graph.
 type CheckResultEdges struct {
-	// Endpoint holds the value of the endpoint edge.
-	Endpoint *Endpoint `json:"endpoint,omitempty"`
+	// Monitor holds the value of the monitor edge.
+	Monitor *Monitor `json:"monitor,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
 	loadedTypes [1]bool
 }
 
-// EndpointOrErr returns the Endpoint value or an error if the edge
+// MonitorOrErr returns the Monitor value or an error if the edge
 // was not loaded in eager-loading, or loaded but was not found.
-func (e CheckResultEdges) EndpointOrErr() (*Endpoint, error) {
-	if e.Endpoint != nil {
-		return e.Endpoint, nil
+func (e CheckResultEdges) MonitorOrErr() (*Monitor, error) {
+	if e.Monitor != nil {
+		return e.Monitor, nil
 	} else if e.loadedTypes[0] {
-		return nil, &NotFoundError{label: endpoint.Label}
+		return nil, &NotFoundError{label: monitor.Label}
 	}
-	return nil, &NotLoadedError{edge: "endpoint"}
+	return nil, &NotLoadedError{edge: "monitor"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -60,13 +72,15 @@ func (*CheckResult) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
+		case checkresult.FieldDiffChanged:
+			values[i] = new(sql.NullBool)
 		case checkresult.FieldID, checkresult.FieldStatusCode, checkresult.FieldResponseTimeMs:
 			values[i] = new(sql.NullInt64)
-		case checkresult.FieldStatus, checkresult.FieldErrorMessage:
+		case checkresult.FieldStatus, checkresult.FieldErrorMessage, checkresult.FieldSelectionType, checkresult.FieldSelectionValue, checkresult.FieldDiffKind, checkresult.FieldDiffSummary, checkresult.FieldDiffDetails:
 			values[i] = new(sql.NullString)
 		case checkresult.FieldCheckedAt:
 			values[i] = new(sql.NullTime)
-		case checkresult.ForeignKeys[0]: // endpoint_check_results
+		case checkresult.ForeignKeys[0]: // monitor_check_results
 			values[i] = new(sql.NullInt64)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -116,6 +130,47 @@ func (_m *CheckResult) assignValues(columns []string, values []any) error {
 				_m.ErrorMessage = new(string)
 				*_m.ErrorMessage = value.String
 			}
+		case checkresult.FieldSelectionType:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field selection_type", values[i])
+			} else if value.Valid {
+				_m.SelectionType = new(string)
+				*_m.SelectionType = value.String
+			}
+		case checkresult.FieldSelectionValue:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field selection_value", values[i])
+			} else if value.Valid {
+				_m.SelectionValue = new(string)
+				*_m.SelectionValue = value.String
+			}
+		case checkresult.FieldDiffChanged:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field diff_changed", values[i])
+			} else if value.Valid {
+				_m.DiffChanged = value.Bool
+			}
+		case checkresult.FieldDiffKind:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field diff_kind", values[i])
+			} else if value.Valid {
+				_m.DiffKind = new(string)
+				*_m.DiffKind = value.String
+			}
+		case checkresult.FieldDiffSummary:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field diff_summary", values[i])
+			} else if value.Valid {
+				_m.DiffSummary = new(string)
+				*_m.DiffSummary = value.String
+			}
+		case checkresult.FieldDiffDetails:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field diff_details", values[i])
+			} else if value.Valid {
+				_m.DiffDetails = new(string)
+				*_m.DiffDetails = value.String
+			}
 		case checkresult.FieldCheckedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field checked_at", values[i])
@@ -124,10 +179,10 @@ func (_m *CheckResult) assignValues(columns []string, values []any) error {
 			}
 		case checkresult.ForeignKeys[0]:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for edge-field endpoint_check_results", value)
+				return fmt.Errorf("unexpected type %T for edge-field monitor_check_results", value)
 			} else if value.Valid {
-				_m.endpoint_check_results = new(int)
-				*_m.endpoint_check_results = int(value.Int64)
+				_m.monitor_check_results = new(int)
+				*_m.monitor_check_results = int(value.Int64)
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
@@ -142,9 +197,9 @@ func (_m *CheckResult) Value(name string) (ent.Value, error) {
 	return _m.selectValues.Get(name)
 }
 
-// QueryEndpoint queries the "endpoint" edge of the CheckResult entity.
-func (_m *CheckResult) QueryEndpoint() *EndpointQuery {
-	return NewCheckResultClient(_m.config).QueryEndpoint(_m)
+// QueryMonitor queries the "monitor" edge of the CheckResult entity.
+func (_m *CheckResult) QueryMonitor() *MonitorQuery {
+	return NewCheckResultClient(_m.config).QueryMonitor(_m)
 }
 
 // Update returns a builder for updating this CheckResult.
@@ -185,6 +240,34 @@ func (_m *CheckResult) String() string {
 	builder.WriteString(", ")
 	if v := _m.ErrorMessage; v != nil {
 		builder.WriteString("error_message=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.SelectionType; v != nil {
+		builder.WriteString("selection_type=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.SelectionValue; v != nil {
+		builder.WriteString("selection_value=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	builder.WriteString("diff_changed=")
+	builder.WriteString(fmt.Sprintf("%v", _m.DiffChanged))
+	builder.WriteString(", ")
+	if v := _m.DiffKind; v != nil {
+		builder.WriteString("diff_kind=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.DiffSummary; v != nil {
+		builder.WriteString("diff_summary=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.DiffDetails; v != nil {
+		builder.WriteString("diff_details=")
 		builder.WriteString(*v)
 	}
 	builder.WriteString(", ")

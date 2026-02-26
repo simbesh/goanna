@@ -4,10 +4,12 @@ package ent
 
 import (
 	"goanna/apps/api/ent/checkresult"
-	"goanna/apps/api/ent/endpoint"
+	"goanna/apps/api/ent/monitor"
+	"goanna/apps/api/ent/monitorruntime"
 	"goanna/apps/api/ent/notificationchannel"
 	"goanna/apps/api/ent/notificationevent"
 	"goanna/apps/api/ent/schema"
+	"goanna/apps/api/ent/systemconfig"
 	"time"
 )
 
@@ -21,74 +23,102 @@ func init() {
 	checkresultDescStatus := checkresultFields[0].Descriptor()
 	// checkresult.DefaultStatus holds the default value on creation for the status field.
 	checkresult.DefaultStatus = checkresultDescStatus.Default.(string)
+	// checkresultDescDiffChanged is the schema descriptor for diff_changed field.
+	checkresultDescDiffChanged := checkresultFields[6].Descriptor()
+	// checkresult.DefaultDiffChanged holds the default value on creation for the diff_changed field.
+	checkresult.DefaultDiffChanged = checkresultDescDiffChanged.Default.(bool)
 	// checkresultDescCheckedAt is the schema descriptor for checked_at field.
-	checkresultDescCheckedAt := checkresultFields[4].Descriptor()
+	checkresultDescCheckedAt := checkresultFields[10].Descriptor()
 	// checkresult.DefaultCheckedAt holds the default value on creation for the checked_at field.
 	checkresult.DefaultCheckedAt = checkresultDescCheckedAt.Default.(func() time.Time)
-	endpointFields := schema.Endpoint{}.Fields()
-	_ = endpointFields
-	// endpointDescName is the schema descriptor for name field.
-	endpointDescName := endpointFields[0].Descriptor()
-	// endpoint.NameValidator is a validator for the "name" field. It is called by the builders before save.
-	endpoint.NameValidator = endpointDescName.Validators[0].(func(string) error)
-	// endpointDescURL is the schema descriptor for url field.
-	endpointDescURL := endpointFields[1].Descriptor()
-	// endpoint.URLValidator is a validator for the "url" field. It is called by the builders before save.
-	endpoint.URLValidator = endpointDescURL.Validators[0].(func(string) error)
-	// endpointDescMethod is the schema descriptor for method field.
-	endpointDescMethod := endpointFields[2].Descriptor()
-	// endpoint.DefaultMethod holds the default value on creation for the method field.
-	endpoint.DefaultMethod = endpointDescMethod.Default.(string)
-	// endpointDescIntervalSeconds is the schema descriptor for interval_seconds field.
-	endpointDescIntervalSeconds := endpointFields[3].Descriptor()
-	// endpoint.DefaultIntervalSeconds holds the default value on creation for the interval_seconds field.
-	endpoint.DefaultIntervalSeconds = endpointDescIntervalSeconds.Default.(int)
-	// endpoint.IntervalSecondsValidator is a validator for the "interval_seconds" field. It is called by the builders before save.
-	endpoint.IntervalSecondsValidator = endpointDescIntervalSeconds.Validators[0].(func(int) error)
-	// endpointDescTimeoutSeconds is the schema descriptor for timeout_seconds field.
-	endpointDescTimeoutSeconds := endpointFields[4].Descriptor()
-	// endpoint.DefaultTimeoutSeconds holds the default value on creation for the timeout_seconds field.
-	endpoint.DefaultTimeoutSeconds = endpointDescTimeoutSeconds.Default.(int)
-	// endpoint.TimeoutSecondsValidator is a validator for the "timeout_seconds" field. It is called by the builders before save.
-	endpoint.TimeoutSecondsValidator = endpointDescTimeoutSeconds.Validators[0].(func(int) error)
-	// endpointDescExpectedStatus is the schema descriptor for expected_status field.
-	endpointDescExpectedStatus := endpointFields[5].Descriptor()
-	// endpoint.DefaultExpectedStatus holds the default value on creation for the expected_status field.
-	endpoint.DefaultExpectedStatus = endpointDescExpectedStatus.Default.(int)
-	// endpoint.ExpectedStatusValidator is a validator for the "expected_status" field. It is called by the builders before save.
-	endpoint.ExpectedStatusValidator = endpointDescExpectedStatus.Validators[0].(func(int) error)
-	// endpointDescCreatedAt is the schema descriptor for created_at field.
-	endpointDescCreatedAt := endpointFields[6].Descriptor()
-	// endpoint.DefaultCreatedAt holds the default value on creation for the created_at field.
-	endpoint.DefaultCreatedAt = endpointDescCreatedAt.Default.(func() time.Time)
-	// endpointDescUpdatedAt is the schema descriptor for updated_at field.
-	endpointDescUpdatedAt := endpointFields[7].Descriptor()
-	// endpoint.DefaultUpdatedAt holds the default value on creation for the updated_at field.
-	endpoint.DefaultUpdatedAt = endpointDescUpdatedAt.Default.(func() time.Time)
-	// endpoint.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
-	endpoint.UpdateDefaultUpdatedAt = endpointDescUpdatedAt.UpdateDefault.(func() time.Time)
+	monitorFields := schema.Monitor{}.Fields()
+	_ = monitorFields
+	// monitorDescMethod is the schema descriptor for method field.
+	monitorDescMethod := monitorFields[1].Descriptor()
+	// monitor.DefaultMethod holds the default value on creation for the method field.
+	monitor.DefaultMethod = monitorDescMethod.Default.(string)
+	// monitorDescURL is the schema descriptor for url field.
+	monitorDescURL := monitorFields[2].Descriptor()
+	// monitor.URLValidator is a validator for the "url" field. It is called by the builders before save.
+	monitor.URLValidator = monitorDescURL.Validators[0].(func(string) error)
+	// monitorDescCron is the schema descriptor for cron field.
+	monitorDescCron := monitorFields[11].Descriptor()
+	// monitor.CronValidator is a validator for the "cron" field. It is called by the builders before save.
+	monitor.CronValidator = monitorDescCron.Validators[0].(func(string) error)
+	// monitorDescEnabled is the schema descriptor for enabled field.
+	monitorDescEnabled := monitorFields[12].Descriptor()
+	// monitor.DefaultEnabled holds the default value on creation for the enabled field.
+	monitor.DefaultEnabled = monitorDescEnabled.Default.(bool)
+	// monitorDescCreatedAt is the schema descriptor for created_at field.
+	monitorDescCreatedAt := monitorFields[13].Descriptor()
+	// monitor.DefaultCreatedAt holds the default value on creation for the created_at field.
+	monitor.DefaultCreatedAt = monitorDescCreatedAt.Default.(func() time.Time)
+	// monitorDescUpdatedAt is the schema descriptor for updated_at field.
+	monitorDescUpdatedAt := monitorFields[14].Descriptor()
+	// monitor.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	monitor.DefaultUpdatedAt = monitorDescUpdatedAt.Default.(func() time.Time)
+	// monitor.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	monitor.UpdateDefaultUpdatedAt = monitorDescUpdatedAt.UpdateDefault.(func() time.Time)
+	monitorruntimeFields := schema.MonitorRuntime{}.Fields()
+	_ = monitorruntimeFields
+	// monitorruntimeDescCheckCount is the schema descriptor for check_count field.
+	monitorruntimeDescCheckCount := monitorruntimeFields[1].Descriptor()
+	// monitorruntime.DefaultCheckCount holds the default value on creation for the check_count field.
+	monitorruntime.DefaultCheckCount = monitorruntimeDescCheckCount.Default.(int64)
+	// monitorruntimeDescSuccessCount is the schema descriptor for success_count field.
+	monitorruntimeDescSuccessCount := monitorruntimeFields[2].Descriptor()
+	// monitorruntime.DefaultSuccessCount holds the default value on creation for the success_count field.
+	monitorruntime.DefaultSuccessCount = monitorruntimeDescSuccessCount.Default.(int64)
+	// monitorruntimeDescErrorCount is the schema descriptor for error_count field.
+	monitorruntimeDescErrorCount := monitorruntimeFields[3].Descriptor()
+	// monitorruntime.DefaultErrorCount holds the default value on creation for the error_count field.
+	monitorruntime.DefaultErrorCount = monitorruntimeDescErrorCount.Default.(int64)
+	// monitorruntimeDescRetryCount is the schema descriptor for retry_count field.
+	monitorruntimeDescRetryCount := monitorruntimeFields[4].Descriptor()
+	// monitorruntime.DefaultRetryCount holds the default value on creation for the retry_count field.
+	monitorruntime.DefaultRetryCount = monitorruntimeDescRetryCount.Default.(int64)
+	// monitorruntimeDescConsecutiveSuccesses is the schema descriptor for consecutive_successes field.
+	monitorruntimeDescConsecutiveSuccesses := monitorruntimeFields[5].Descriptor()
+	// monitorruntime.DefaultConsecutiveSuccesses holds the default value on creation for the consecutive_successes field.
+	monitorruntime.DefaultConsecutiveSuccesses = monitorruntimeDescConsecutiveSuccesses.Default.(int64)
+	// monitorruntimeDescConsecutiveErrors is the schema descriptor for consecutive_errors field.
+	monitorruntimeDescConsecutiveErrors := monitorruntimeFields[6].Descriptor()
+	// monitorruntime.DefaultConsecutiveErrors holds the default value on creation for the consecutive_errors field.
+	monitorruntime.DefaultConsecutiveErrors = monitorruntimeDescConsecutiveErrors.Default.(int64)
+	// monitorruntimeDescUpdatedAt is the schema descriptor for updated_at field.
+	monitorruntimeDescUpdatedAt := monitorruntimeFields[14].Descriptor()
+	// monitorruntime.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	monitorruntime.DefaultUpdatedAt = monitorruntimeDescUpdatedAt.Default.(func() time.Time)
+	// monitorruntime.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	monitorruntime.UpdateDefaultUpdatedAt = monitorruntimeDescUpdatedAt.UpdateDefault.(func() time.Time)
 	notificationchannelFields := schema.NotificationChannel{}.Fields()
 	_ = notificationchannelFields
 	// notificationchannelDescName is the schema descriptor for name field.
 	notificationchannelDescName := notificationchannelFields[0].Descriptor()
-	// notificationchannel.NameValidator is a validator for the "name" field. It is called by the builders before save.
-	notificationchannel.NameValidator = notificationchannelDescName.Validators[0].(func(string) error)
-	// notificationchannelDescKind is the schema descriptor for kind field.
-	notificationchannelDescKind := notificationchannelFields[1].Descriptor()
-	// notificationchannel.KindValidator is a validator for the "kind" field. It is called by the builders before save.
-	notificationchannel.KindValidator = notificationchannelDescKind.Validators[0].(func(string) error)
-	// notificationchannelDescTarget is the schema descriptor for target field.
-	notificationchannelDescTarget := notificationchannelFields[2].Descriptor()
-	// notificationchannel.TargetValidator is a validator for the "target" field. It is called by the builders before save.
-	notificationchannel.TargetValidator = notificationchannelDescTarget.Validators[0].(func(string) error)
+	// notificationchannel.DefaultName holds the default value on creation for the name field.
+	notificationchannel.DefaultName = notificationchannelDescName.Default.(string)
+	// notificationchannelDescBotToken is the schema descriptor for bot_token field.
+	notificationchannelDescBotToken := notificationchannelFields[2].Descriptor()
+	// notificationchannel.BotTokenValidator is a validator for the "bot_token" field. It is called by the builders before save.
+	notificationchannel.BotTokenValidator = notificationchannelDescBotToken.Validators[0].(func(string) error)
+	// notificationchannelDescChatID is the schema descriptor for chat_id field.
+	notificationchannelDescChatID := notificationchannelFields[3].Descriptor()
+	// notificationchannel.ChatIDValidator is a validator for the "chat_id" field. It is called by the builders before save.
+	notificationchannel.ChatIDValidator = notificationchannelDescChatID.Validators[0].(func(string) error)
 	// notificationchannelDescEnabled is the schema descriptor for enabled field.
-	notificationchannelDescEnabled := notificationchannelFields[3].Descriptor()
+	notificationchannelDescEnabled := notificationchannelFields[4].Descriptor()
 	// notificationchannel.DefaultEnabled holds the default value on creation for the enabled field.
 	notificationchannel.DefaultEnabled = notificationchannelDescEnabled.Default.(bool)
 	// notificationchannelDescCreatedAt is the schema descriptor for created_at field.
-	notificationchannelDescCreatedAt := notificationchannelFields[4].Descriptor()
+	notificationchannelDescCreatedAt := notificationchannelFields[5].Descriptor()
 	// notificationchannel.DefaultCreatedAt holds the default value on creation for the created_at field.
 	notificationchannel.DefaultCreatedAt = notificationchannelDescCreatedAt.Default.(func() time.Time)
+	// notificationchannelDescUpdatedAt is the schema descriptor for updated_at field.
+	notificationchannelDescUpdatedAt := notificationchannelFields[6].Descriptor()
+	// notificationchannel.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	notificationchannel.DefaultUpdatedAt = notificationchannelDescUpdatedAt.Default.(func() time.Time)
+	// notificationchannel.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	notificationchannel.UpdateDefaultUpdatedAt = notificationchannelDescUpdatedAt.UpdateDefault.(func() time.Time)
 	notificationeventFields := schema.NotificationEvent{}.Fields()
 	_ = notificationeventFields
 	// notificationeventDescStatus is the schema descriptor for status field.
@@ -99,4 +129,22 @@ func init() {
 	notificationeventDescSentAt := notificationeventFields[2].Descriptor()
 	// notificationevent.DefaultSentAt holds the default value on creation for the sent_at field.
 	notificationevent.DefaultSentAt = notificationeventDescSentAt.Default.(func() time.Time)
+	systemconfigFields := schema.SystemConfig{}.Fields()
+	_ = systemconfigFields
+	// systemconfigDescKey is the schema descriptor for key field.
+	systemconfigDescKey := systemconfigFields[0].Descriptor()
+	// systemconfig.DefaultKey holds the default value on creation for the key field.
+	systemconfig.DefaultKey = systemconfigDescKey.Default.(string)
+	// systemconfigDescChecksHistoryLimit is the schema descriptor for checks_history_limit field.
+	systemconfigDescChecksHistoryLimit := systemconfigFields[1].Descriptor()
+	// systemconfig.DefaultChecksHistoryLimit holds the default value on creation for the checks_history_limit field.
+	systemconfig.DefaultChecksHistoryLimit = systemconfigDescChecksHistoryLimit.Default.(int)
+	// systemconfig.ChecksHistoryLimitValidator is a validator for the "checks_history_limit" field. It is called by the builders before save.
+	systemconfig.ChecksHistoryLimitValidator = systemconfigDescChecksHistoryLimit.Validators[0].(func(int) error)
+	// systemconfigDescUpdatedAt is the schema descriptor for updated_at field.
+	systemconfigDescUpdatedAt := systemconfigFields[3].Descriptor()
+	// systemconfig.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	systemconfig.DefaultUpdatedAt = systemconfigDescUpdatedAt.Default.(func() time.Time)
+	// systemconfig.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	systemconfig.UpdateDefaultUpdatedAt = systemconfigDescUpdatedAt.UpdateDefault.(func() time.Time)
 }

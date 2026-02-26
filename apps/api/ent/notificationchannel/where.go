@@ -60,14 +60,14 @@ func Name(v string) predicate.NotificationChannel {
 	return predicate.NotificationChannel(sql.FieldEQ(FieldName, v))
 }
 
-// Kind applies equality check predicate on the "kind" field. It's identical to KindEQ.
-func Kind(v string) predicate.NotificationChannel {
-	return predicate.NotificationChannel(sql.FieldEQ(FieldKind, v))
+// BotToken applies equality check predicate on the "bot_token" field. It's identical to BotTokenEQ.
+func BotToken(v string) predicate.NotificationChannel {
+	return predicate.NotificationChannel(sql.FieldEQ(FieldBotToken, v))
 }
 
-// Target applies equality check predicate on the "target" field. It's identical to TargetEQ.
-func Target(v string) predicate.NotificationChannel {
-	return predicate.NotificationChannel(sql.FieldEQ(FieldTarget, v))
+// ChatID applies equality check predicate on the "chat_id" field. It's identical to ChatIDEQ.
+func ChatID(v string) predicate.NotificationChannel {
+	return predicate.NotificationChannel(sql.FieldEQ(FieldChatID, v))
 }
 
 // Enabled applies equality check predicate on the "enabled" field. It's identical to EnabledEQ.
@@ -78,6 +78,11 @@ func Enabled(v bool) predicate.NotificationChannel {
 // CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
 func CreatedAt(v time.Time) predicate.NotificationChannel {
 	return predicate.NotificationChannel(sql.FieldEQ(FieldCreatedAt, v))
+}
+
+// UpdatedAt applies equality check predicate on the "updated_at" field. It's identical to UpdatedAtEQ.
+func UpdatedAt(v time.Time) predicate.NotificationChannel {
+	return predicate.NotificationChannel(sql.FieldEQ(FieldUpdatedAt, v))
 }
 
 // NameEQ applies the EQ predicate on the "name" field.
@@ -146,133 +151,153 @@ func NameContainsFold(v string) predicate.NotificationChannel {
 }
 
 // KindEQ applies the EQ predicate on the "kind" field.
-func KindEQ(v string) predicate.NotificationChannel {
+func KindEQ(v Kind) predicate.NotificationChannel {
 	return predicate.NotificationChannel(sql.FieldEQ(FieldKind, v))
 }
 
 // KindNEQ applies the NEQ predicate on the "kind" field.
-func KindNEQ(v string) predicate.NotificationChannel {
+func KindNEQ(v Kind) predicate.NotificationChannel {
 	return predicate.NotificationChannel(sql.FieldNEQ(FieldKind, v))
 }
 
 // KindIn applies the In predicate on the "kind" field.
-func KindIn(vs ...string) predicate.NotificationChannel {
+func KindIn(vs ...Kind) predicate.NotificationChannel {
 	return predicate.NotificationChannel(sql.FieldIn(FieldKind, vs...))
 }
 
 // KindNotIn applies the NotIn predicate on the "kind" field.
-func KindNotIn(vs ...string) predicate.NotificationChannel {
+func KindNotIn(vs ...Kind) predicate.NotificationChannel {
 	return predicate.NotificationChannel(sql.FieldNotIn(FieldKind, vs...))
 }
 
-// KindGT applies the GT predicate on the "kind" field.
-func KindGT(v string) predicate.NotificationChannel {
-	return predicate.NotificationChannel(sql.FieldGT(FieldKind, v))
+// BotTokenEQ applies the EQ predicate on the "bot_token" field.
+func BotTokenEQ(v string) predicate.NotificationChannel {
+	return predicate.NotificationChannel(sql.FieldEQ(FieldBotToken, v))
 }
 
-// KindGTE applies the GTE predicate on the "kind" field.
-func KindGTE(v string) predicate.NotificationChannel {
-	return predicate.NotificationChannel(sql.FieldGTE(FieldKind, v))
+// BotTokenNEQ applies the NEQ predicate on the "bot_token" field.
+func BotTokenNEQ(v string) predicate.NotificationChannel {
+	return predicate.NotificationChannel(sql.FieldNEQ(FieldBotToken, v))
 }
 
-// KindLT applies the LT predicate on the "kind" field.
-func KindLT(v string) predicate.NotificationChannel {
-	return predicate.NotificationChannel(sql.FieldLT(FieldKind, v))
+// BotTokenIn applies the In predicate on the "bot_token" field.
+func BotTokenIn(vs ...string) predicate.NotificationChannel {
+	return predicate.NotificationChannel(sql.FieldIn(FieldBotToken, vs...))
 }
 
-// KindLTE applies the LTE predicate on the "kind" field.
-func KindLTE(v string) predicate.NotificationChannel {
-	return predicate.NotificationChannel(sql.FieldLTE(FieldKind, v))
+// BotTokenNotIn applies the NotIn predicate on the "bot_token" field.
+func BotTokenNotIn(vs ...string) predicate.NotificationChannel {
+	return predicate.NotificationChannel(sql.FieldNotIn(FieldBotToken, vs...))
 }
 
-// KindContains applies the Contains predicate on the "kind" field.
-func KindContains(v string) predicate.NotificationChannel {
-	return predicate.NotificationChannel(sql.FieldContains(FieldKind, v))
+// BotTokenGT applies the GT predicate on the "bot_token" field.
+func BotTokenGT(v string) predicate.NotificationChannel {
+	return predicate.NotificationChannel(sql.FieldGT(FieldBotToken, v))
 }
 
-// KindHasPrefix applies the HasPrefix predicate on the "kind" field.
-func KindHasPrefix(v string) predicate.NotificationChannel {
-	return predicate.NotificationChannel(sql.FieldHasPrefix(FieldKind, v))
+// BotTokenGTE applies the GTE predicate on the "bot_token" field.
+func BotTokenGTE(v string) predicate.NotificationChannel {
+	return predicate.NotificationChannel(sql.FieldGTE(FieldBotToken, v))
 }
 
-// KindHasSuffix applies the HasSuffix predicate on the "kind" field.
-func KindHasSuffix(v string) predicate.NotificationChannel {
-	return predicate.NotificationChannel(sql.FieldHasSuffix(FieldKind, v))
+// BotTokenLT applies the LT predicate on the "bot_token" field.
+func BotTokenLT(v string) predicate.NotificationChannel {
+	return predicate.NotificationChannel(sql.FieldLT(FieldBotToken, v))
 }
 
-// KindEqualFold applies the EqualFold predicate on the "kind" field.
-func KindEqualFold(v string) predicate.NotificationChannel {
-	return predicate.NotificationChannel(sql.FieldEqualFold(FieldKind, v))
+// BotTokenLTE applies the LTE predicate on the "bot_token" field.
+func BotTokenLTE(v string) predicate.NotificationChannel {
+	return predicate.NotificationChannel(sql.FieldLTE(FieldBotToken, v))
 }
 
-// KindContainsFold applies the ContainsFold predicate on the "kind" field.
-func KindContainsFold(v string) predicate.NotificationChannel {
-	return predicate.NotificationChannel(sql.FieldContainsFold(FieldKind, v))
+// BotTokenContains applies the Contains predicate on the "bot_token" field.
+func BotTokenContains(v string) predicate.NotificationChannel {
+	return predicate.NotificationChannel(sql.FieldContains(FieldBotToken, v))
 }
 
-// TargetEQ applies the EQ predicate on the "target" field.
-func TargetEQ(v string) predicate.NotificationChannel {
-	return predicate.NotificationChannel(sql.FieldEQ(FieldTarget, v))
+// BotTokenHasPrefix applies the HasPrefix predicate on the "bot_token" field.
+func BotTokenHasPrefix(v string) predicate.NotificationChannel {
+	return predicate.NotificationChannel(sql.FieldHasPrefix(FieldBotToken, v))
 }
 
-// TargetNEQ applies the NEQ predicate on the "target" field.
-func TargetNEQ(v string) predicate.NotificationChannel {
-	return predicate.NotificationChannel(sql.FieldNEQ(FieldTarget, v))
+// BotTokenHasSuffix applies the HasSuffix predicate on the "bot_token" field.
+func BotTokenHasSuffix(v string) predicate.NotificationChannel {
+	return predicate.NotificationChannel(sql.FieldHasSuffix(FieldBotToken, v))
 }
 
-// TargetIn applies the In predicate on the "target" field.
-func TargetIn(vs ...string) predicate.NotificationChannel {
-	return predicate.NotificationChannel(sql.FieldIn(FieldTarget, vs...))
+// BotTokenEqualFold applies the EqualFold predicate on the "bot_token" field.
+func BotTokenEqualFold(v string) predicate.NotificationChannel {
+	return predicate.NotificationChannel(sql.FieldEqualFold(FieldBotToken, v))
 }
 
-// TargetNotIn applies the NotIn predicate on the "target" field.
-func TargetNotIn(vs ...string) predicate.NotificationChannel {
-	return predicate.NotificationChannel(sql.FieldNotIn(FieldTarget, vs...))
+// BotTokenContainsFold applies the ContainsFold predicate on the "bot_token" field.
+func BotTokenContainsFold(v string) predicate.NotificationChannel {
+	return predicate.NotificationChannel(sql.FieldContainsFold(FieldBotToken, v))
 }
 
-// TargetGT applies the GT predicate on the "target" field.
-func TargetGT(v string) predicate.NotificationChannel {
-	return predicate.NotificationChannel(sql.FieldGT(FieldTarget, v))
+// ChatIDEQ applies the EQ predicate on the "chat_id" field.
+func ChatIDEQ(v string) predicate.NotificationChannel {
+	return predicate.NotificationChannel(sql.FieldEQ(FieldChatID, v))
 }
 
-// TargetGTE applies the GTE predicate on the "target" field.
-func TargetGTE(v string) predicate.NotificationChannel {
-	return predicate.NotificationChannel(sql.FieldGTE(FieldTarget, v))
+// ChatIDNEQ applies the NEQ predicate on the "chat_id" field.
+func ChatIDNEQ(v string) predicate.NotificationChannel {
+	return predicate.NotificationChannel(sql.FieldNEQ(FieldChatID, v))
 }
 
-// TargetLT applies the LT predicate on the "target" field.
-func TargetLT(v string) predicate.NotificationChannel {
-	return predicate.NotificationChannel(sql.FieldLT(FieldTarget, v))
+// ChatIDIn applies the In predicate on the "chat_id" field.
+func ChatIDIn(vs ...string) predicate.NotificationChannel {
+	return predicate.NotificationChannel(sql.FieldIn(FieldChatID, vs...))
 }
 
-// TargetLTE applies the LTE predicate on the "target" field.
-func TargetLTE(v string) predicate.NotificationChannel {
-	return predicate.NotificationChannel(sql.FieldLTE(FieldTarget, v))
+// ChatIDNotIn applies the NotIn predicate on the "chat_id" field.
+func ChatIDNotIn(vs ...string) predicate.NotificationChannel {
+	return predicate.NotificationChannel(sql.FieldNotIn(FieldChatID, vs...))
 }
 
-// TargetContains applies the Contains predicate on the "target" field.
-func TargetContains(v string) predicate.NotificationChannel {
-	return predicate.NotificationChannel(sql.FieldContains(FieldTarget, v))
+// ChatIDGT applies the GT predicate on the "chat_id" field.
+func ChatIDGT(v string) predicate.NotificationChannel {
+	return predicate.NotificationChannel(sql.FieldGT(FieldChatID, v))
 }
 
-// TargetHasPrefix applies the HasPrefix predicate on the "target" field.
-func TargetHasPrefix(v string) predicate.NotificationChannel {
-	return predicate.NotificationChannel(sql.FieldHasPrefix(FieldTarget, v))
+// ChatIDGTE applies the GTE predicate on the "chat_id" field.
+func ChatIDGTE(v string) predicate.NotificationChannel {
+	return predicate.NotificationChannel(sql.FieldGTE(FieldChatID, v))
 }
 
-// TargetHasSuffix applies the HasSuffix predicate on the "target" field.
-func TargetHasSuffix(v string) predicate.NotificationChannel {
-	return predicate.NotificationChannel(sql.FieldHasSuffix(FieldTarget, v))
+// ChatIDLT applies the LT predicate on the "chat_id" field.
+func ChatIDLT(v string) predicate.NotificationChannel {
+	return predicate.NotificationChannel(sql.FieldLT(FieldChatID, v))
 }
 
-// TargetEqualFold applies the EqualFold predicate on the "target" field.
-func TargetEqualFold(v string) predicate.NotificationChannel {
-	return predicate.NotificationChannel(sql.FieldEqualFold(FieldTarget, v))
+// ChatIDLTE applies the LTE predicate on the "chat_id" field.
+func ChatIDLTE(v string) predicate.NotificationChannel {
+	return predicate.NotificationChannel(sql.FieldLTE(FieldChatID, v))
 }
 
-// TargetContainsFold applies the ContainsFold predicate on the "target" field.
-func TargetContainsFold(v string) predicate.NotificationChannel {
-	return predicate.NotificationChannel(sql.FieldContainsFold(FieldTarget, v))
+// ChatIDContains applies the Contains predicate on the "chat_id" field.
+func ChatIDContains(v string) predicate.NotificationChannel {
+	return predicate.NotificationChannel(sql.FieldContains(FieldChatID, v))
+}
+
+// ChatIDHasPrefix applies the HasPrefix predicate on the "chat_id" field.
+func ChatIDHasPrefix(v string) predicate.NotificationChannel {
+	return predicate.NotificationChannel(sql.FieldHasPrefix(FieldChatID, v))
+}
+
+// ChatIDHasSuffix applies the HasSuffix predicate on the "chat_id" field.
+func ChatIDHasSuffix(v string) predicate.NotificationChannel {
+	return predicate.NotificationChannel(sql.FieldHasSuffix(FieldChatID, v))
+}
+
+// ChatIDEqualFold applies the EqualFold predicate on the "chat_id" field.
+func ChatIDEqualFold(v string) predicate.NotificationChannel {
+	return predicate.NotificationChannel(sql.FieldEqualFold(FieldChatID, v))
+}
+
+// ChatIDContainsFold applies the ContainsFold predicate on the "chat_id" field.
+func ChatIDContainsFold(v string) predicate.NotificationChannel {
+	return predicate.NotificationChannel(sql.FieldContainsFold(FieldChatID, v))
 }
 
 // EnabledEQ applies the EQ predicate on the "enabled" field.
@@ -323,6 +348,46 @@ func CreatedAtLT(v time.Time) predicate.NotificationChannel {
 // CreatedAtLTE applies the LTE predicate on the "created_at" field.
 func CreatedAtLTE(v time.Time) predicate.NotificationChannel {
 	return predicate.NotificationChannel(sql.FieldLTE(FieldCreatedAt, v))
+}
+
+// UpdatedAtEQ applies the EQ predicate on the "updated_at" field.
+func UpdatedAtEQ(v time.Time) predicate.NotificationChannel {
+	return predicate.NotificationChannel(sql.FieldEQ(FieldUpdatedAt, v))
+}
+
+// UpdatedAtNEQ applies the NEQ predicate on the "updated_at" field.
+func UpdatedAtNEQ(v time.Time) predicate.NotificationChannel {
+	return predicate.NotificationChannel(sql.FieldNEQ(FieldUpdatedAt, v))
+}
+
+// UpdatedAtIn applies the In predicate on the "updated_at" field.
+func UpdatedAtIn(vs ...time.Time) predicate.NotificationChannel {
+	return predicate.NotificationChannel(sql.FieldIn(FieldUpdatedAt, vs...))
+}
+
+// UpdatedAtNotIn applies the NotIn predicate on the "updated_at" field.
+func UpdatedAtNotIn(vs ...time.Time) predicate.NotificationChannel {
+	return predicate.NotificationChannel(sql.FieldNotIn(FieldUpdatedAt, vs...))
+}
+
+// UpdatedAtGT applies the GT predicate on the "updated_at" field.
+func UpdatedAtGT(v time.Time) predicate.NotificationChannel {
+	return predicate.NotificationChannel(sql.FieldGT(FieldUpdatedAt, v))
+}
+
+// UpdatedAtGTE applies the GTE predicate on the "updated_at" field.
+func UpdatedAtGTE(v time.Time) predicate.NotificationChannel {
+	return predicate.NotificationChannel(sql.FieldGTE(FieldUpdatedAt, v))
+}
+
+// UpdatedAtLT applies the LT predicate on the "updated_at" field.
+func UpdatedAtLT(v time.Time) predicate.NotificationChannel {
+	return predicate.NotificationChannel(sql.FieldLT(FieldUpdatedAt, v))
+}
+
+// UpdatedAtLTE applies the LTE predicate on the "updated_at" field.
+func UpdatedAtLTE(v time.Time) predicate.NotificationChannel {
+	return predicate.NotificationChannel(sql.FieldLTE(FieldUpdatedAt, v))
 }
 
 // HasNotificationEvents applies the HasEdge predicate on the "notification_events" edge.

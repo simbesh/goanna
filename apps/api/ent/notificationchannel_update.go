@@ -9,6 +9,7 @@ import (
 	"goanna/apps/api/ent/notificationchannel"
 	"goanna/apps/api/ent/notificationevent"
 	"goanna/apps/api/ent/predicate"
+	"time"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -43,29 +44,43 @@ func (_u *NotificationChannelUpdate) SetNillableName(v *string) *NotificationCha
 }
 
 // SetKind sets the "kind" field.
-func (_u *NotificationChannelUpdate) SetKind(v string) *NotificationChannelUpdate {
+func (_u *NotificationChannelUpdate) SetKind(v notificationchannel.Kind) *NotificationChannelUpdate {
 	_u.mutation.SetKind(v)
 	return _u
 }
 
 // SetNillableKind sets the "kind" field if the given value is not nil.
-func (_u *NotificationChannelUpdate) SetNillableKind(v *string) *NotificationChannelUpdate {
+func (_u *NotificationChannelUpdate) SetNillableKind(v *notificationchannel.Kind) *NotificationChannelUpdate {
 	if v != nil {
 		_u.SetKind(*v)
 	}
 	return _u
 }
 
-// SetTarget sets the "target" field.
-func (_u *NotificationChannelUpdate) SetTarget(v string) *NotificationChannelUpdate {
-	_u.mutation.SetTarget(v)
+// SetBotToken sets the "bot_token" field.
+func (_u *NotificationChannelUpdate) SetBotToken(v string) *NotificationChannelUpdate {
+	_u.mutation.SetBotToken(v)
 	return _u
 }
 
-// SetNillableTarget sets the "target" field if the given value is not nil.
-func (_u *NotificationChannelUpdate) SetNillableTarget(v *string) *NotificationChannelUpdate {
+// SetNillableBotToken sets the "bot_token" field if the given value is not nil.
+func (_u *NotificationChannelUpdate) SetNillableBotToken(v *string) *NotificationChannelUpdate {
 	if v != nil {
-		_u.SetTarget(*v)
+		_u.SetBotToken(*v)
+	}
+	return _u
+}
+
+// SetChatID sets the "chat_id" field.
+func (_u *NotificationChannelUpdate) SetChatID(v string) *NotificationChannelUpdate {
+	_u.mutation.SetChatID(v)
+	return _u
+}
+
+// SetNillableChatID sets the "chat_id" field if the given value is not nil.
+func (_u *NotificationChannelUpdate) SetNillableChatID(v *string) *NotificationChannelUpdate {
+	if v != nil {
+		_u.SetChatID(*v)
 	}
 	return _u
 }
@@ -81,6 +96,12 @@ func (_u *NotificationChannelUpdate) SetNillableEnabled(v *bool) *NotificationCh
 	if v != nil {
 		_u.SetEnabled(*v)
 	}
+	return _u
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (_u *NotificationChannelUpdate) SetUpdatedAt(v time.Time) *NotificationChannelUpdate {
+	_u.mutation.SetUpdatedAt(v)
 	return _u
 }
 
@@ -127,6 +148,7 @@ func (_u *NotificationChannelUpdate) RemoveNotificationEvents(v ...*Notification
 
 // Save executes the query and returns the number of nodes affected by the update operation.
 func (_u *NotificationChannelUpdate) Save(ctx context.Context) (int, error) {
+	_u.defaults()
 	return withHooks(ctx, _u.sqlSave, _u.mutation, _u.hooks)
 }
 
@@ -152,21 +174,29 @@ func (_u *NotificationChannelUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// defaults sets the default values of the builder before save.
+func (_u *NotificationChannelUpdate) defaults() {
+	if _, ok := _u.mutation.UpdatedAt(); !ok {
+		v := notificationchannel.UpdateDefaultUpdatedAt()
+		_u.mutation.SetUpdatedAt(v)
+	}
+}
+
 // check runs all checks and user-defined validators on the builder.
 func (_u *NotificationChannelUpdate) check() error {
-	if v, ok := _u.mutation.Name(); ok {
-		if err := notificationchannel.NameValidator(v); err != nil {
-			return &ValidationError{Name: "name", err: fmt.Errorf(`ent: validator failed for field "NotificationChannel.name": %w`, err)}
-		}
-	}
 	if v, ok := _u.mutation.Kind(); ok {
 		if err := notificationchannel.KindValidator(v); err != nil {
 			return &ValidationError{Name: "kind", err: fmt.Errorf(`ent: validator failed for field "NotificationChannel.kind": %w`, err)}
 		}
 	}
-	if v, ok := _u.mutation.Target(); ok {
-		if err := notificationchannel.TargetValidator(v); err != nil {
-			return &ValidationError{Name: "target", err: fmt.Errorf(`ent: validator failed for field "NotificationChannel.target": %w`, err)}
+	if v, ok := _u.mutation.BotToken(); ok {
+		if err := notificationchannel.BotTokenValidator(v); err != nil {
+			return &ValidationError{Name: "bot_token", err: fmt.Errorf(`ent: validator failed for field "NotificationChannel.bot_token": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.ChatID(); ok {
+		if err := notificationchannel.ChatIDValidator(v); err != nil {
+			return &ValidationError{Name: "chat_id", err: fmt.Errorf(`ent: validator failed for field "NotificationChannel.chat_id": %w`, err)}
 		}
 	}
 	return nil
@@ -188,13 +218,19 @@ func (_u *NotificationChannelUpdate) sqlSave(ctx context.Context) (_node int, er
 		_spec.SetField(notificationchannel.FieldName, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.Kind(); ok {
-		_spec.SetField(notificationchannel.FieldKind, field.TypeString, value)
+		_spec.SetField(notificationchannel.FieldKind, field.TypeEnum, value)
 	}
-	if value, ok := _u.mutation.Target(); ok {
-		_spec.SetField(notificationchannel.FieldTarget, field.TypeString, value)
+	if value, ok := _u.mutation.BotToken(); ok {
+		_spec.SetField(notificationchannel.FieldBotToken, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.ChatID(); ok {
+		_spec.SetField(notificationchannel.FieldChatID, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.Enabled(); ok {
 		_spec.SetField(notificationchannel.FieldEnabled, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.UpdatedAt(); ok {
+		_spec.SetField(notificationchannel.FieldUpdatedAt, field.TypeTime, value)
 	}
 	if _u.mutation.NotificationEventsCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -276,29 +312,43 @@ func (_u *NotificationChannelUpdateOne) SetNillableName(v *string) *Notification
 }
 
 // SetKind sets the "kind" field.
-func (_u *NotificationChannelUpdateOne) SetKind(v string) *NotificationChannelUpdateOne {
+func (_u *NotificationChannelUpdateOne) SetKind(v notificationchannel.Kind) *NotificationChannelUpdateOne {
 	_u.mutation.SetKind(v)
 	return _u
 }
 
 // SetNillableKind sets the "kind" field if the given value is not nil.
-func (_u *NotificationChannelUpdateOne) SetNillableKind(v *string) *NotificationChannelUpdateOne {
+func (_u *NotificationChannelUpdateOne) SetNillableKind(v *notificationchannel.Kind) *NotificationChannelUpdateOne {
 	if v != nil {
 		_u.SetKind(*v)
 	}
 	return _u
 }
 
-// SetTarget sets the "target" field.
-func (_u *NotificationChannelUpdateOne) SetTarget(v string) *NotificationChannelUpdateOne {
-	_u.mutation.SetTarget(v)
+// SetBotToken sets the "bot_token" field.
+func (_u *NotificationChannelUpdateOne) SetBotToken(v string) *NotificationChannelUpdateOne {
+	_u.mutation.SetBotToken(v)
 	return _u
 }
 
-// SetNillableTarget sets the "target" field if the given value is not nil.
-func (_u *NotificationChannelUpdateOne) SetNillableTarget(v *string) *NotificationChannelUpdateOne {
+// SetNillableBotToken sets the "bot_token" field if the given value is not nil.
+func (_u *NotificationChannelUpdateOne) SetNillableBotToken(v *string) *NotificationChannelUpdateOne {
 	if v != nil {
-		_u.SetTarget(*v)
+		_u.SetBotToken(*v)
+	}
+	return _u
+}
+
+// SetChatID sets the "chat_id" field.
+func (_u *NotificationChannelUpdateOne) SetChatID(v string) *NotificationChannelUpdateOne {
+	_u.mutation.SetChatID(v)
+	return _u
+}
+
+// SetNillableChatID sets the "chat_id" field if the given value is not nil.
+func (_u *NotificationChannelUpdateOne) SetNillableChatID(v *string) *NotificationChannelUpdateOne {
+	if v != nil {
+		_u.SetChatID(*v)
 	}
 	return _u
 }
@@ -314,6 +364,12 @@ func (_u *NotificationChannelUpdateOne) SetNillableEnabled(v *bool) *Notificatio
 	if v != nil {
 		_u.SetEnabled(*v)
 	}
+	return _u
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (_u *NotificationChannelUpdateOne) SetUpdatedAt(v time.Time) *NotificationChannelUpdateOne {
+	_u.mutation.SetUpdatedAt(v)
 	return _u
 }
 
@@ -373,6 +429,7 @@ func (_u *NotificationChannelUpdateOne) Select(field string, fields ...string) *
 
 // Save executes the query and returns the updated NotificationChannel entity.
 func (_u *NotificationChannelUpdateOne) Save(ctx context.Context) (*NotificationChannel, error) {
+	_u.defaults()
 	return withHooks(ctx, _u.sqlSave, _u.mutation, _u.hooks)
 }
 
@@ -398,21 +455,29 @@ func (_u *NotificationChannelUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
+// defaults sets the default values of the builder before save.
+func (_u *NotificationChannelUpdateOne) defaults() {
+	if _, ok := _u.mutation.UpdatedAt(); !ok {
+		v := notificationchannel.UpdateDefaultUpdatedAt()
+		_u.mutation.SetUpdatedAt(v)
+	}
+}
+
 // check runs all checks and user-defined validators on the builder.
 func (_u *NotificationChannelUpdateOne) check() error {
-	if v, ok := _u.mutation.Name(); ok {
-		if err := notificationchannel.NameValidator(v); err != nil {
-			return &ValidationError{Name: "name", err: fmt.Errorf(`ent: validator failed for field "NotificationChannel.name": %w`, err)}
-		}
-	}
 	if v, ok := _u.mutation.Kind(); ok {
 		if err := notificationchannel.KindValidator(v); err != nil {
 			return &ValidationError{Name: "kind", err: fmt.Errorf(`ent: validator failed for field "NotificationChannel.kind": %w`, err)}
 		}
 	}
-	if v, ok := _u.mutation.Target(); ok {
-		if err := notificationchannel.TargetValidator(v); err != nil {
-			return &ValidationError{Name: "target", err: fmt.Errorf(`ent: validator failed for field "NotificationChannel.target": %w`, err)}
+	if v, ok := _u.mutation.BotToken(); ok {
+		if err := notificationchannel.BotTokenValidator(v); err != nil {
+			return &ValidationError{Name: "bot_token", err: fmt.Errorf(`ent: validator failed for field "NotificationChannel.bot_token": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.ChatID(); ok {
+		if err := notificationchannel.ChatIDValidator(v); err != nil {
+			return &ValidationError{Name: "chat_id", err: fmt.Errorf(`ent: validator failed for field "NotificationChannel.chat_id": %w`, err)}
 		}
 	}
 	return nil
@@ -451,13 +516,19 @@ func (_u *NotificationChannelUpdateOne) sqlSave(ctx context.Context) (_node *Not
 		_spec.SetField(notificationchannel.FieldName, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.Kind(); ok {
-		_spec.SetField(notificationchannel.FieldKind, field.TypeString, value)
+		_spec.SetField(notificationchannel.FieldKind, field.TypeEnum, value)
 	}
-	if value, ok := _u.mutation.Target(); ok {
-		_spec.SetField(notificationchannel.FieldTarget, field.TypeString, value)
+	if value, ok := _u.mutation.BotToken(); ok {
+		_spec.SetField(notificationchannel.FieldBotToken, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.ChatID(); ok {
+		_spec.SetField(notificationchannel.FieldChatID, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.Enabled(); ok {
 		_spec.SetField(notificationchannel.FieldEnabled, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.UpdatedAt(); ok {
+		_spec.SetField(notificationchannel.FieldUpdatedAt, field.TypeTime, value)
 	}
 	if _u.mutation.NotificationEventsCleared() {
 		edge := &sqlgraph.EdgeSpec{

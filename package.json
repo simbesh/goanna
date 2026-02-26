@@ -10,7 +10,7 @@
     "dev:web": "bun run --cwd apps/web dev",
     "build:web": "bun run --cwd apps/web build",
     "test:web": "bun run --cwd apps/web test",
-    "dev:api": "go run ./apps/api/cmd/server -dsn file:./apps/api/data/goanna.db?_fk=1",
+    "dev:api": "go run ./apps/api/cmd/server",
     "gen:ent": "go generate ./apps/api/ent",
     "gen:api:go": "go generate ./apps/api/internal/api/gen",
     "gen:api:ts": "bun run --cwd packages/api-client generate",

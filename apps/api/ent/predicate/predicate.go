@@ -9,11 +9,17 @@ import (
 // CheckResult is the predicate function for checkresult builders.
 type CheckResult func(*sql.Selector)
 
-// Endpoint is the predicate function for endpoint builders.
-type Endpoint func(*sql.Selector)
+// Monitor is the predicate function for monitor builders.
+type Monitor func(*sql.Selector)
+
+// MonitorRuntime is the predicate function for monitorruntime builders.
+type MonitorRuntime func(*sql.Selector)
 
 // NotificationChannel is the predicate function for notificationchannel builders.
 type NotificationChannel func(*sql.Selector)
 
 // NotificationEvent is the predicate function for notificationevent builders.
 type NotificationEvent func(*sql.Selector)
+
+// SystemConfig is the predicate function for systemconfig builders.
+type SystemConfig func(*sql.Selector)

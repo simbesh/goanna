@@ -22,19 +22,31 @@ const (
 	FieldResponseTimeMs = "response_time_ms"
 	// FieldErrorMessage holds the string denoting the error_message field in the database.
 	FieldErrorMessage = "error_message"
+	// FieldSelectionType holds the string denoting the selection_type field in the database.
+	FieldSelectionType = "selection_type"
+	// FieldSelectionValue holds the string denoting the selection_value field in the database.
+	FieldSelectionValue = "selection_value"
+	// FieldDiffChanged holds the string denoting the diff_changed field in the database.
+	FieldDiffChanged = "diff_changed"
+	// FieldDiffKind holds the string denoting the diff_kind field in the database.
+	FieldDiffKind = "diff_kind"
+	// FieldDiffSummary holds the string denoting the diff_summary field in the database.
+	FieldDiffSummary = "diff_summary"
+	// FieldDiffDetails holds the string denoting the diff_details field in the database.
+	FieldDiffDetails = "diff_details"
 	// FieldCheckedAt holds the string denoting the checked_at field in the database.
 	FieldCheckedAt = "checked_at"
-	// EdgeEndpoint holds the string denoting the endpoint edge name in mutations.
-	EdgeEndpoint = "endpoint"
+	// EdgeMonitor holds the string denoting the monitor edge name in mutations.
+	EdgeMonitor = "monitor"
 	// Table holds the table name of the checkresult in the database.
 	Table = "check_results"
-	// EndpointTable is the table that holds the endpoint relation/edge.
-	EndpointTable = "check_results"
-	// EndpointInverseTable is the table name for the Endpoint entity.
-	// It exists in this package in order to avoid circular dependency with the "endpoint" package.
-	EndpointInverseTable = "endpoints"
-	// EndpointColumn is the table column denoting the endpoint relation/edge.
-	EndpointColumn = "endpoint_check_results"
+	// MonitorTable is the table that holds the monitor relation/edge.
+	MonitorTable = "check_results"
+	// MonitorInverseTable is the table name for the Monitor entity.
+	// It exists in this package in order to avoid circular dependency with the "monitor" package.
+	MonitorInverseTable = "monitors"
+	// MonitorColumn is the table column denoting the monitor relation/edge.
+	MonitorColumn = "monitor_check_results"
 )
 
 // Columns holds all SQL columns for checkresult fields.
@@ -44,13 +56,19 @@ var Columns = []string{
 	FieldStatusCode,
 	FieldResponseTimeMs,
 	FieldErrorMessage,
+	FieldSelectionType,
+	FieldSelectionValue,
+	FieldDiffChanged,
+	FieldDiffKind,
+	FieldDiffSummary,
+	FieldDiffDetails,
 	FieldCheckedAt,
 }
 
 // ForeignKeys holds the SQL foreign-keys that are owned by the "check_results"
 // table and are not defined as standalone fields in the schema.
 var ForeignKeys = []string{
-	"endpoint_check_results",
+	"monitor_check_results",
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -71,6 +89,8 @@ func ValidColumn(column string) bool {
 var (
 	// DefaultStatus holds the default value on creation for the "status" field.
 	DefaultStatus string
+	// DefaultDiffChanged holds the default value on creation for the "diff_changed" field.
+	DefaultDiffChanged bool
 	// DefaultCheckedAt holds the default value on creation for the "checked_at" field.
 	DefaultCheckedAt func() time.Time
 )
@@ -103,21 +123,51 @@ func ByErrorMessage(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldErrorMessage, opts...).ToFunc()
 }
 
+// BySelectionType orders the results by the selection_type field.
+func BySelectionType(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSelectionType, opts...).ToFunc()
+}
+
+// BySelectionValue orders the results by the selection_value field.
+func BySelectionValue(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSelectionValue, opts...).ToFunc()
+}
+
+// ByDiffChanged orders the results by the diff_changed field.
+func ByDiffChanged(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDiffChanged, opts...).ToFunc()
+}
+
+// ByDiffKind orders the results by the diff_kind field.
+func ByDiffKind(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDiffKind, opts...).ToFunc()
+}
+
+// ByDiffSummary orders the results by the diff_summary field.
+func ByDiffSummary(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDiffSummary, opts...).ToFunc()
+}
+
+// ByDiffDetails orders the results by the diff_details field.
+func ByDiffDetails(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDiffDetails, opts...).ToFunc()
+}
+
 // ByCheckedAt orders the results by the checked_at field.
 func ByCheckedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldCheckedAt, opts...).ToFunc()
 }
 
-// ByEndpointField orders the results by endpoint field.
-func ByEndpointField(field string, opts ...sql.OrderTermOption) OrderOption {
+// ByMonitorField orders the results by monitor field.
+func ByMonitorField(field string, opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborTerms(s, newEndpointStep(), sql.OrderByField(field, opts...))
+		sqlgraph.OrderByNeighborTerms(s, newMonitorStep(), sql.OrderByField(field, opts...))
 	}
 }
-func newEndpointStep() *sqlgraph.Step {
+func newMonitorStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(EndpointInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.M2O, true, EndpointTable, EndpointColumn),
+		sqlgraph.To(MonitorInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2O, true, MonitorTable, MonitorColumn),
 	)
 }

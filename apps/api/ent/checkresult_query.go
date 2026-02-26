@@ -6,7 +6,7 @@ import (
 	"context"
 	"fmt"
 	"goanna/apps/api/ent/checkresult"
-	"goanna/apps/api/ent/endpoint"
+	"goanna/apps/api/ent/monitor"
 	"goanna/apps/api/ent/predicate"
 	"math"
 
@@ -19,12 +19,12 @@ import (
 // CheckResultQuery is the builder for querying CheckResult entities.
 type CheckResultQuery struct {
 	config
-	ctx          *QueryContext
-	order        []checkresult.OrderOption
-	inters       []Interceptor
-	predicates   []predicate.CheckResult
-	withEndpoint *EndpointQuery
-	withFKs      bool
+	ctx         *QueryContext
+	order       []checkresult.OrderOption
+	inters      []Interceptor
+	predicates  []predicate.CheckResult
+	withMonitor *MonitorQuery
+	withFKs     bool
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -61,9 +61,9 @@ func (_q *CheckResultQuery) Order(o ...checkresult.OrderOption) *CheckResultQuer
 	return _q
 }
 
-// QueryEndpoint chains the current query on the "endpoint" edge.
-func (_q *CheckResultQuery) QueryEndpoint() *EndpointQuery {
-	query := (&EndpointClient{config: _q.config}).Query()
+// QueryMonitor chains the current query on the "monitor" edge.
+func (_q *CheckResultQuery) QueryMonitor() *MonitorQuery {
+	query := (&MonitorClient{config: _q.config}).Query()
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
 		if err := _q.prepareQuery(ctx); err != nil {
 			return nil, err
@@ -74,8 +74,8 @@ func (_q *CheckResultQuery) QueryEndpoint() *EndpointQuery {
 		}
 		step := sqlgraph.NewStep(
 			sqlgraph.From(checkresult.Table, checkresult.FieldID, selector),
-			sqlgraph.To(endpoint.Table, endpoint.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, checkresult.EndpointTable, checkresult.EndpointColumn),
+			sqlgraph.To(monitor.Table, monitor.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, checkresult.MonitorTable, checkresult.MonitorColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -270,26 +270,26 @@ func (_q *CheckResultQuery) Clone() *CheckResultQuery {
 		return nil
 	}
 	return &CheckResultQuery{
-		config:       _q.config,
-		ctx:          _q.ctx.Clone(),
-		order:        append([]checkresult.OrderOption{}, _q.order...),
-		inters:       append([]Interceptor{}, _q.inters...),
-		predicates:   append([]predicate.CheckResult{}, _q.predicates...),
-		withEndpoint: _q.withEndpoint.Clone(),
+		config:      _q.config,
+		ctx:         _q.ctx.Clone(),
+		order:       append([]checkresult.OrderOption{}, _q.order...),
+		inters:      append([]Interceptor{}, _q.inters...),
+		predicates:  append([]predicate.CheckResult{}, _q.predicates...),
+		withMonitor: _q.withMonitor.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
 	}
 }
 
-// WithEndpoint tells the query-builder to eager-load the nodes that are connected to
-// the "endpoint" edge. The optional arguments are used to configure the query builder of the edge.
-func (_q *CheckResultQuery) WithEndpoint(opts ...func(*EndpointQuery)) *CheckResultQuery {
-	query := (&EndpointClient{config: _q.config}).Query()
+// WithMonitor tells the query-builder to eager-load the nodes that are connected to
+// the "monitor" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *CheckResultQuery) WithMonitor(opts ...func(*MonitorQuery)) *CheckResultQuery {
+	query := (&MonitorClient{config: _q.config}).Query()
 	for _, opt := range opts {
 		opt(query)
 	}
-	_q.withEndpoint = query
+	_q.withMonitor = query
 	return _q
 }
 
@@ -373,10 +373,10 @@ func (_q *CheckResultQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*
 		withFKs     = _q.withFKs
 		_spec       = _q.querySpec()
 		loadedTypes = [1]bool{
-			_q.withEndpoint != nil,
+			_q.withMonitor != nil,
 		}
 	)
-	if _q.withEndpoint != nil {
+	if _q.withMonitor != nil {
 		withFKs = true
 	}
 	if withFKs {
@@ -400,23 +400,23 @@ func (_q *CheckResultQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*
 	if len(nodes) == 0 {
 		return nodes, nil
 	}
-	if query := _q.withEndpoint; query != nil {
-		if err := _q.loadEndpoint(ctx, query, nodes, nil,
-			func(n *CheckResult, e *Endpoint) { n.Edges.Endpoint = e }); err != nil {
+	if query := _q.withMonitor; query != nil {
+		if err := _q.loadMonitor(ctx, query, nodes, nil,
+			func(n *CheckResult, e *Monitor) { n.Edges.Monitor = e }); err != nil {
 			return nil, err
 		}
 	}
 	return nodes, nil
 }
 
-func (_q *CheckResultQuery) loadEndpoint(ctx context.Context, query *EndpointQuery, nodes []*CheckResult, init func(*CheckResult), assign func(*CheckResult, *Endpoint)) error {
+func (_q *CheckResultQuery) loadMonitor(ctx context.Context, query *MonitorQuery, nodes []*CheckResult, init func(*CheckResult), assign func(*CheckResult, *Monitor)) error {
 	ids := make([]int, 0, len(nodes))
 	nodeids := make(map[int][]*CheckResult)
 	for i := range nodes {
-		if nodes[i].endpoint_check_results == nil {
+		if nodes[i].monitor_check_results == nil {
 			continue
 		}
-		fk := *nodes[i].endpoint_check_results
+		fk := *nodes[i].monitor_check_results
 		if _, ok := nodeids[fk]; !ok {
 			ids = append(ids, fk)
 		}
@@ -425,7 +425,7 @@ func (_q *CheckResultQuery) loadEndpoint(ctx context.Context, query *EndpointQue
 	if len(ids) == 0 {
 		return nil
 	}
-	query.Where(endpoint.IDIn(ids...))
+	query.Where(monitor.IDIn(ids...))
 	neighbors, err := query.All(ctx)
 	if err != nil {
 		return err
@@ -433,7 +433,7 @@ func (_q *CheckResultQuery) loadEndpoint(ctx context.Context, query *EndpointQue
 	for _, n := range neighbors {
 		nodes, ok := nodeids[n.ID]
 		if !ok {
-			return fmt.Errorf(`unexpected foreign-key "endpoint_check_results" returned %v`, n.ID)
+			return fmt.Errorf(`unexpected foreign-key "monitor_check_results" returned %v`, n.ID)
 		}
 		for i := range nodes {
 			assign(nodes[i], n)

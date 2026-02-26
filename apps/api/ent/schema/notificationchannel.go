@@ -6,6 +6,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
+	"entgo.io/ent/schema/index"
 )
 
 // NotificationChannel holds the schema definition for the NotificationChannel entity.
@@ -17,17 +18,29 @@ type NotificationChannel struct {
 func (NotificationChannel) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("name").
-			NotEmpty().
-			Unique(),
-		field.String("kind").
+			Default("Telegram"),
+		field.Enum("kind").
+			Values("telegram").
+			Default("telegram"),
+		field.String("bot_token").
 			NotEmpty(),
-		field.String("target").
+		field.String("chat_id").
 			NotEmpty(),
 		field.Bool("enabled").
 			Default(true),
 		field.Time("created_at").
 			Default(time.Now).
 			Immutable(),
+		field.Time("updated_at").
+			Default(time.Now).
+			UpdateDefault(time.Now),
+	}
+}
+
+// Indexes of the NotificationChannel.
+func (NotificationChannel) Indexes() []ent.Index {
+	return []ent.Index{
+		index.Fields("kind").Unique(),
 	}
 }
 

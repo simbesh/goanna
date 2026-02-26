@@ -4,7 +4,7 @@ package ent
 
 import (
 	"fmt"
-	"goanna/apps/api/ent/endpoint"
+	"goanna/apps/api/ent/monitor"
 	"goanna/apps/api/ent/notificationchannel"
 	"goanna/apps/api/ent/notificationevent"
 	"strings"
@@ -28,15 +28,15 @@ type NotificationEvent struct {
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the NotificationEventQuery when eager-loading is set.
 	Edges                                    NotificationEventEdges `json:"edges"`
-	endpoint_notification_events             *int
+	monitor_notification_events              *int
 	notification_channel_notification_events *int
 	selectValues                             sql.SelectValues
 }
 
 // NotificationEventEdges holds the relations/edges for other nodes in the graph.
 type NotificationEventEdges struct {
-	// Endpoint holds the value of the endpoint edge.
-	Endpoint *Endpoint `json:"endpoint,omitempty"`
+	// Monitor holds the value of the monitor edge.
+	Monitor *Monitor `json:"monitor,omitempty"`
 	// Channel holds the value of the channel edge.
 	Channel *NotificationChannel `json:"channel,omitempty"`
 	// loadedTypes holds the information for reporting if a
@@ -44,15 +44,15 @@ type NotificationEventEdges struct {
 	loadedTypes [2]bool
 }
 
-// EndpointOrErr returns the Endpoint value or an error if the edge
+// MonitorOrErr returns the Monitor value or an error if the edge
 // was not loaded in eager-loading, or loaded but was not found.
-func (e NotificationEventEdges) EndpointOrErr() (*Endpoint, error) {
-	if e.Endpoint != nil {
-		return e.Endpoint, nil
+func (e NotificationEventEdges) MonitorOrErr() (*Monitor, error) {
+	if e.Monitor != nil {
+		return e.Monitor, nil
 	} else if e.loadedTypes[0] {
-		return nil, &NotFoundError{label: endpoint.Label}
+		return nil, &NotFoundError{label: monitor.Label}
 	}
-	return nil, &NotLoadedError{edge: "endpoint"}
+	return nil, &NotLoadedError{edge: "monitor"}
 }
 
 // ChannelOrErr returns the Channel value or an error if the edge
@@ -77,7 +77,7 @@ func (*NotificationEvent) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullString)
 		case notificationevent.FieldSentAt:
 			values[i] = new(sql.NullTime)
-		case notificationevent.ForeignKeys[0]: // endpoint_notification_events
+		case notificationevent.ForeignKeys[0]: // monitor_notification_events
 			values[i] = new(sql.NullInt64)
 		case notificationevent.ForeignKeys[1]: // notification_channel_notification_events
 			values[i] = new(sql.NullInt64)
@@ -123,10 +123,10 @@ func (_m *NotificationEvent) assignValues(columns []string, values []any) error 
 			}
 		case notificationevent.ForeignKeys[0]:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for edge-field endpoint_notification_events", value)
+				return fmt.Errorf("unexpected type %T for edge-field monitor_notification_events", value)
 			} else if value.Valid {
-				_m.endpoint_notification_events = new(int)
-				*_m.endpoint_notification_events = int(value.Int64)
+				_m.monitor_notification_events = new(int)
+				*_m.monitor_notification_events = int(value.Int64)
 			}
 		case notificationevent.ForeignKeys[1]:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -148,9 +148,9 @@ func (_m *NotificationEvent) Value(name string) (ent.Value, error) {
 	return _m.selectValues.Get(name)
 }
 
-// QueryEndpoint queries the "endpoint" edge of the NotificationEvent entity.
-func (_m *NotificationEvent) QueryEndpoint() *EndpointQuery {
-	return NewNotificationEventClient(_m.config).QueryEndpoint(_m)
+// QueryMonitor queries the "monitor" edge of the NotificationEvent entity.
+func (_m *NotificationEvent) QueryMonitor() *MonitorQuery {
+	return NewNotificationEventClient(_m.config).QueryMonitor(_m)
 }
 
 // QueryChannel queries the "channel" edge of the NotificationEvent entity.

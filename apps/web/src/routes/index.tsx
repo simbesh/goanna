@@ -1,118 +1,254 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { sileo } from 'sileo'
+import type {
+  MonitorCheck as MonitorCheckRecord,
+  Monitor as MonitorRecord,
+} from '@goanna/api-client'
+
 import {
-  Zap,
-  Server,
-  Route as RouteIcon,
-  Shield,
-  Waves,
-  Sparkles,
-} from 'lucide-react'
+  ConfiguredMonitorsCard,
+  ConfiguredMonitorsTableCard,
+} from '@/components/monitors/configured-monitors-card'
+import { CreateEditMonitorCard } from '@/components/monitors/create-edit-monitor-card'
+import { DefaultService, deleteMonitor, triggerMonitor } from '@/lib/api'
 
-export const Route = createFileRoute('/')({ component: App })
+export const Route = createFileRoute('/')({
+  component: MonitorsPage,
+})
 
-function App() {
-  const features = [
-    {
-      icon: <Zap className="w-12 h-12 text-cyan-400" />,
-      title: 'Powerful Server Functions',
-      description:
-        'Write server-side code that seamlessly integrates with your client components. Type-safe, secure, and simple.',
+function MonitorsPage() {
+  const [monitors, setMonitors] = useState<Array<MonitorRecord>>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [expandedMonitorId, setExpandedMonitorId] = useState<number | null>(
+    null,
+  )
+  const [checksByMonitor, setChecksByMonitor] = useState<
+    Partial<Record<number, Array<MonitorCheckRecord>>>
+  >({})
+  const [checksErrors, setChecksErrors] = useState<Record<number, string>>({})
+  const [loadingChecksFor, setLoadingChecksFor] = useState<number | null>(null)
+  const [editingMonitorId, setEditingMonitorId] = useState<number | null>(null)
+  const [triggeringMonitorId, setTriggeringMonitorId] = useState<number | null>(
+    null,
+  )
+  const [deletingMonitorId, setDeletingMonitorId] = useState<number | null>(null)
+
+  const loadMonitors = useCallback(async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const data = await DefaultService.listMonitors()
+      setMonitors(data)
+    } catch (caughtError) {
+      const message = getErrorMessage(
+        caughtError,
+        'Failed to load monitors from API.',
+      )
+      setError(message)
+      sileo.error({ title: message })
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void loadMonitors()
+  }, [loadMonitors])
+
+  const loadMonitorChecks = useCallback(async (monitorId: number) => {
+    setLoadingChecksFor(monitorId)
+    setChecksErrors((current) => ({ ...current, [monitorId]: '' }))
+    try {
+      const checks = await DefaultService.listMonitorChecks({
+        monitorId,
+        limit: 20,
+      })
+      setChecksByMonitor((current) => ({
+        ...current,
+        [monitorId]: checks,
+      }))
+    } catch (caughtError) {
+      const message = getErrorMessage(
+        caughtError,
+        'Failed to load recent checks.',
+      )
+      setChecksErrors((current) => ({
+        ...current,
+        [monitorId]: message,
+      }))
+      sileo.error({ title: message })
+    } finally {
+      setLoadingChecksFor(null)
+    }
+  }, [])
+
+  const toggleMonitorChecks = useCallback(
+    async (monitorId: number) => {
+      if (expandedMonitorId === monitorId) {
+        setExpandedMonitorId(null)
+        return
+      }
+
+      setExpandedMonitorId(monitorId)
+
+      if (checksByMonitor[monitorId]) {
+        return
+      }
+
+      await loadMonitorChecks(monitorId)
     },
-    {
-      icon: <Server className="w-12 h-12 text-cyan-400" />,
-      title: 'Flexible Server Side Rendering',
-      description:
-        'Full-document SSR, streaming, and progressive enhancement out of the box. Control exactly what renders where.',
+    [checksByMonitor, expandedMonitorId, loadMonitorChecks],
+  )
+
+  const editingMonitor = useMemo(
+    () =>
+      monitors.find((monitor) =>
+        editingMonitorId === null ? false : monitor.id === editingMonitorId,
+      ) ?? null,
+    [editingMonitorId, monitors],
+  )
+
+  const onEditMonitor = useCallback((monitor: MonitorRecord) => {
+    setEditingMonitorId(monitor.id)
+  }, [])
+
+  const onCancelEdit = useCallback(() => {
+    setEditingMonitorId(null)
+  }, [])
+
+  const onTriggerMonitor = useCallback(
+    async (monitor: MonitorRecord) => {
+      setTriggeringMonitorId(monitor.id)
+      setError('')
+      try {
+        await triggerMonitor(monitor.id)
+        await loadMonitors()
+
+        if (expandedMonitorId === monitor.id) {
+          await loadMonitorChecks(monitor.id)
+        }
+      } catch (caughtError) {
+        const message = getErrorMessage(
+          caughtError,
+          'Failed to trigger monitor.',
+        )
+        setError(message)
+        sileo.error({ title: message })
+      } finally {
+        setTriggeringMonitorId(null)
+      }
     },
-    {
-      icon: <RouteIcon className="w-12 h-12 text-cyan-400" />,
-      title: 'API Routes',
-      description:
-        'Build type-safe API endpoints alongside your application. No separate backend needed.',
+    [expandedMonitorId, loadMonitorChecks, loadMonitors],
+  )
+
+  const onDeleteMonitor = useCallback(
+    async (monitor: MonitorRecord) => {
+      const shouldDelete = globalThis.confirm(
+        `Delete monitor for ${monitor.url}? This cannot be undone.`,
+      )
+      if (!shouldDelete) {
+        return
+      }
+
+      setDeletingMonitorId(monitor.id)
+      setError('')
+      try {
+        await deleteMonitor(monitor.id)
+
+        setExpandedMonitorId((current) =>
+          current === monitor.id ? null : current,
+        )
+        setEditingMonitorId((current) =>
+          current === monitor.id ? null : current,
+        )
+        setChecksByMonitor((current) => {
+          const next = { ...current }
+          delete next[monitor.id]
+          return next
+        })
+        setChecksErrors((current) => {
+          const next = { ...current }
+          delete next[monitor.id]
+          return next
+        })
+
+        await loadMonitors()
+      } catch (caughtError) {
+        const message = getErrorMessage(caughtError, 'Failed to delete monitor.')
+        setError(message)
+        sileo.error({ title: message })
+      } finally {
+        setDeletingMonitorId(null)
+      }
     },
-    {
-      icon: <Shield className="w-12 h-12 text-cyan-400" />,
-      title: 'Strongly Typed Everything',
-      description:
-        'End-to-end type safety from server to client. Catch errors before they reach production.',
-    },
-    {
-      icon: <Waves className="w-12 h-12 text-cyan-400" />,
-      title: 'Full Streaming Support',
-      description:
-        'Stream data from server to client progressively. Perfect for AI applications and real-time updates.',
-    },
-    {
-      icon: <Sparkles className="w-12 h-12 text-cyan-400" />,
-      title: 'Next Generation Ready',
-      description:
-        'Built from the ground up for modern web applications. Deploy anywhere JavaScript runs.',
-    },
-  ]
+    [loadMonitors],
+  )
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
-      <section className="relative py-20 px-6 text-center overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 via-blue-500/10 to-purple-500/10"></div>
-        <div className="relative max-w-5xl mx-auto">
-          <div className="flex items-center justify-center gap-6 mb-6">
-            <img
-              src="/tanstack-circle-logo.png"
-              alt="TanStack Logo"
-              className="w-24 h-24 md:w-32 md:h-32"
-            />
-            <h1 className="text-6xl md:text-7xl font-black text-white [letter-spacing:-0.08em]">
-              <span className="text-gray-300">TANSTACK</span>{' '}
-              <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
-                START
-              </span>
-            </h1>
-          </div>
-          <p className="text-2xl md:text-3xl text-gray-300 mb-4 font-light">
-            The framework for next generation AI applications
-          </p>
-          <p className="text-lg text-gray-400 max-w-3xl mx-auto mb-8">
-            Full-stack framework powered by TanStack Router for React and Solid.
-            Build modern applications with server functions, streaming, and type
-            safety.
-          </p>
-          <div className="flex flex-col items-center gap-4">
-            <a
-              href="https://tanstack.com/start"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-8 py-3 bg-cyan-500 hover:bg-cyan-600 text-white font-semibold rounded-lg transition-colors shadow-lg shadow-cyan-500/50"
-            >
-              Documentation
-            </a>
-            <p className="text-gray-400 text-sm mt-2">
-              Begin your TanStack Start journey by editing{' '}
-              <code className="px-2 py-1 bg-slate-700 rounded text-cyan-400">
-                /src/routes/index.tsx
-              </code>
-            </p>
-          </div>
-        </div>
-      </section>
+    <div className="space-y-4">
+      {error ? <p className="text-sm text-red-300">{error}</p> : null}
 
-      <section className="py-16 px-6 max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {features.map((feature, index) => (
-            <div
-              key={index}
-              className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-6 hover:border-cyan-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-cyan-500/10"
-            >
-              <div className="mb-4">{feature.icon}</div>
-              <h3 className="text-xl font-semibold text-white mb-3">
-                {feature.title}
-              </h3>
-              <p className="text-gray-400 leading-relaxed">
-                {feature.description}
-              </p>
-            </div>
-          ))}
-        </div>
-      </section>
+      <ConfiguredMonitorsTableCard
+        checksByMonitor={checksByMonitor}
+        checksErrors={checksErrors}
+        editingMonitorId={editingMonitorId}
+        loading={loading}
+        loadingChecksFor={loadingChecksFor}
+        monitors={monitors}
+        onDeleteMonitor={onDeleteMonitor}
+        onEditMonitor={onEditMonitor}
+        onRefreshChecks={loadMonitorChecks}
+        onTriggerMonitor={onTriggerMonitor}
+        deletingMonitorId={deletingMonitorId}
+        triggeringMonitorId={triggeringMonitorId}
+      />
+
+      <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
+        <CreateEditMonitorCard
+          editingMonitor={editingMonitor}
+          onCancelEdit={onCancelEdit}
+          onSaved={loadMonitors}
+        />
+
+        <ConfiguredMonitorsCard
+          checksByMonitor={checksByMonitor}
+          checksErrors={checksErrors}
+          editingMonitorId={editingMonitorId}
+          expandedMonitorId={expandedMonitorId}
+          loading={loading}
+          loadingChecksFor={loadingChecksFor}
+          monitors={monitors}
+          onEditMonitor={onEditMonitor}
+          onRefreshChecks={loadMonitorChecks}
+          onToggleChecks={toggleMonitorChecks}
+          onDeleteMonitor={onDeleteMonitor}
+          onTriggerMonitor={onTriggerMonitor}
+          deletingMonitorId={deletingMonitorId}
+          triggeringMonitorId={triggeringMonitorId}
+        />
+      </div>
     </div>
   )
+}
+
+function getErrorMessage(caughtError: unknown, fallback: string): string {
+  if (
+    caughtError &&
+    typeof caughtError === 'object' &&
+    'body' in caughtError &&
+    typeof caughtError.body === 'object' &&
+    caughtError.body &&
+    'error' in caughtError.body &&
+    typeof caughtError.body.error === 'string'
+  ) {
+    return caughtError.body.error
+  }
+
+  if (caughtError instanceof Error && caughtError.message.trim() !== '') {
+    return caughtError.message
+  }
+
+  return fallback
 }

@@ -12,9 +12,11 @@ import (
 	"goanna/apps/api/ent/migrate"
 
 	"goanna/apps/api/ent/checkresult"
-	"goanna/apps/api/ent/endpoint"
+	"goanna/apps/api/ent/monitor"
+	"goanna/apps/api/ent/monitorruntime"
 	"goanna/apps/api/ent/notificationchannel"
 	"goanna/apps/api/ent/notificationevent"
+	"goanna/apps/api/ent/systemconfig"
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect"
@@ -29,12 +31,16 @@ type Client struct {
 	Schema *migrate.Schema
 	// CheckResult is the client for interacting with the CheckResult builders.
 	CheckResult *CheckResultClient
-	// Endpoint is the client for interacting with the Endpoint builders.
-	Endpoint *EndpointClient
+	// Monitor is the client for interacting with the Monitor builders.
+	Monitor *MonitorClient
+	// MonitorRuntime is the client for interacting with the MonitorRuntime builders.
+	MonitorRuntime *MonitorRuntimeClient
 	// NotificationChannel is the client for interacting with the NotificationChannel builders.
 	NotificationChannel *NotificationChannelClient
 	// NotificationEvent is the client for interacting with the NotificationEvent builders.
 	NotificationEvent *NotificationEventClient
+	// SystemConfig is the client for interacting with the SystemConfig builders.
+	SystemConfig *SystemConfigClient
 }
 
 // NewClient creates a new client configured with the given options.
@@ -47,9 +53,11 @@ func NewClient(opts ...Option) *Client {
 func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
 	c.CheckResult = NewCheckResultClient(c.config)
-	c.Endpoint = NewEndpointClient(c.config)
+	c.Monitor = NewMonitorClient(c.config)
+	c.MonitorRuntime = NewMonitorRuntimeClient(c.config)
 	c.NotificationChannel = NewNotificationChannelClient(c.config)
 	c.NotificationEvent = NewNotificationEventClient(c.config)
+	c.SystemConfig = NewSystemConfigClient(c.config)
 }
 
 type (
@@ -143,9 +151,11 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		ctx:                 ctx,
 		config:              cfg,
 		CheckResult:         NewCheckResultClient(cfg),
-		Endpoint:            NewEndpointClient(cfg),
+		Monitor:             NewMonitorClient(cfg),
+		MonitorRuntime:      NewMonitorRuntimeClient(cfg),
 		NotificationChannel: NewNotificationChannelClient(cfg),
 		NotificationEvent:   NewNotificationEventClient(cfg),
+		SystemConfig:        NewSystemConfigClient(cfg),
 	}, nil
 }
 
@@ -166,9 +176,11 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		ctx:                 ctx,
 		config:              cfg,
 		CheckResult:         NewCheckResultClient(cfg),
-		Endpoint:            NewEndpointClient(cfg),
+		Monitor:             NewMonitorClient(cfg),
+		MonitorRuntime:      NewMonitorRuntimeClient(cfg),
 		NotificationChannel: NewNotificationChannelClient(cfg),
 		NotificationEvent:   NewNotificationEventClient(cfg),
+		SystemConfig:        NewSystemConfigClient(cfg),
 	}, nil
 }
 
@@ -197,19 +209,23 @@ func (c *Client) Close() error {
 // Use adds the mutation hooks to all the entity clients.
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
-	c.CheckResult.Use(hooks...)
-	c.Endpoint.Use(hooks...)
-	c.NotificationChannel.Use(hooks...)
-	c.NotificationEvent.Use(hooks...)
+	for _, n := range []interface{ Use(...Hook) }{
+		c.CheckResult, c.Monitor, c.MonitorRuntime, c.NotificationChannel,
+		c.NotificationEvent, c.SystemConfig,
+	} {
+		n.Use(hooks...)
+	}
 }
 
 // Intercept adds the query interceptors to all the entity clients.
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
-	c.CheckResult.Intercept(interceptors...)
-	c.Endpoint.Intercept(interceptors...)
-	c.NotificationChannel.Intercept(interceptors...)
-	c.NotificationEvent.Intercept(interceptors...)
+	for _, n := range []interface{ Intercept(...Interceptor) }{
+		c.CheckResult, c.Monitor, c.MonitorRuntime, c.NotificationChannel,
+		c.NotificationEvent, c.SystemConfig,
+	} {
+		n.Intercept(interceptors...)
+	}
 }
 
 // Mutate implements the ent.Mutator interface.
@@ -217,12 +233,16 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 	switch m := m.(type) {
 	case *CheckResultMutation:
 		return c.CheckResult.mutate(ctx, m)
-	case *EndpointMutation:
-		return c.Endpoint.mutate(ctx, m)
+	case *MonitorMutation:
+		return c.Monitor.mutate(ctx, m)
+	case *MonitorRuntimeMutation:
+		return c.MonitorRuntime.mutate(ctx, m)
 	case *NotificationChannelMutation:
 		return c.NotificationChannel.mutate(ctx, m)
 	case *NotificationEventMutation:
 		return c.NotificationEvent.mutate(ctx, m)
+	case *SystemConfigMutation:
+		return c.SystemConfig.mutate(ctx, m)
 	default:
 		return nil, fmt.Errorf("ent: unknown mutation type %T", m)
 	}
@@ -336,15 +356,15 @@ func (c *CheckResultClient) GetX(ctx context.Context, id int) *CheckResult {
 	return obj
 }
 
-// QueryEndpoint queries the endpoint edge of a CheckResult.
-func (c *CheckResultClient) QueryEndpoint(_m *CheckResult) *EndpointQuery {
-	query := (&EndpointClient{config: c.config}).Query()
+// QueryMonitor queries the monitor edge of a CheckResult.
+func (c *CheckResultClient) QueryMonitor(_m *CheckResult) *MonitorQuery {
+	query := (&MonitorClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
 		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(checkresult.Table, checkresult.FieldID, id),
-			sqlgraph.To(endpoint.Table, endpoint.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, checkresult.EndpointTable, checkresult.EndpointColumn),
+			sqlgraph.To(monitor.Table, monitor.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, checkresult.MonitorTable, checkresult.MonitorColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
@@ -377,107 +397,107 @@ func (c *CheckResultClient) mutate(ctx context.Context, m *CheckResultMutation) 
 	}
 }
 
-// EndpointClient is a client for the Endpoint schema.
-type EndpointClient struct {
+// MonitorClient is a client for the Monitor schema.
+type MonitorClient struct {
 	config
 }
 
-// NewEndpointClient returns a client for the Endpoint from the given config.
-func NewEndpointClient(c config) *EndpointClient {
-	return &EndpointClient{config: c}
+// NewMonitorClient returns a client for the Monitor from the given config.
+func NewMonitorClient(c config) *MonitorClient {
+	return &MonitorClient{config: c}
 }
 
 // Use adds a list of mutation hooks to the hooks stack.
-// A call to `Use(f, g, h)` equals to `endpoint.Hooks(f(g(h())))`.
-func (c *EndpointClient) Use(hooks ...Hook) {
-	c.hooks.Endpoint = append(c.hooks.Endpoint, hooks...)
+// A call to `Use(f, g, h)` equals to `monitor.Hooks(f(g(h())))`.
+func (c *MonitorClient) Use(hooks ...Hook) {
+	c.hooks.Monitor = append(c.hooks.Monitor, hooks...)
 }
 
 // Intercept adds a list of query interceptors to the interceptors stack.
-// A call to `Intercept(f, g, h)` equals to `endpoint.Intercept(f(g(h())))`.
-func (c *EndpointClient) Intercept(interceptors ...Interceptor) {
-	c.inters.Endpoint = append(c.inters.Endpoint, interceptors...)
+// A call to `Intercept(f, g, h)` equals to `monitor.Intercept(f(g(h())))`.
+func (c *MonitorClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Monitor = append(c.inters.Monitor, interceptors...)
 }
 
-// Create returns a builder for creating a Endpoint entity.
-func (c *EndpointClient) Create() *EndpointCreate {
-	mutation := newEndpointMutation(c.config, OpCreate)
-	return &EndpointCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+// Create returns a builder for creating a Monitor entity.
+func (c *MonitorClient) Create() *MonitorCreate {
+	mutation := newMonitorMutation(c.config, OpCreate)
+	return &MonitorCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
-// CreateBulk returns a builder for creating a bulk of Endpoint entities.
-func (c *EndpointClient) CreateBulk(builders ...*EndpointCreate) *EndpointCreateBulk {
-	return &EndpointCreateBulk{config: c.config, builders: builders}
+// CreateBulk returns a builder for creating a bulk of Monitor entities.
+func (c *MonitorClient) CreateBulk(builders ...*MonitorCreate) *MonitorCreateBulk {
+	return &MonitorCreateBulk{config: c.config, builders: builders}
 }
 
 // MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
 // a builder and applies setFunc on it.
-func (c *EndpointClient) MapCreateBulk(slice any, setFunc func(*EndpointCreate, int)) *EndpointCreateBulk {
+func (c *MonitorClient) MapCreateBulk(slice any, setFunc func(*MonitorCreate, int)) *MonitorCreateBulk {
 	rv := reflect.ValueOf(slice)
 	if rv.Kind() != reflect.Slice {
-		return &EndpointCreateBulk{err: fmt.Errorf("calling to EndpointClient.MapCreateBulk with wrong type %T, need slice", slice)}
+		return &MonitorCreateBulk{err: fmt.Errorf("calling to MonitorClient.MapCreateBulk with wrong type %T, need slice", slice)}
 	}
-	builders := make([]*EndpointCreate, rv.Len())
+	builders := make([]*MonitorCreate, rv.Len())
 	for i := 0; i < rv.Len(); i++ {
 		builders[i] = c.Create()
 		setFunc(builders[i], i)
 	}
-	return &EndpointCreateBulk{config: c.config, builders: builders}
+	return &MonitorCreateBulk{config: c.config, builders: builders}
 }
 
-// Update returns an update builder for Endpoint.
-func (c *EndpointClient) Update() *EndpointUpdate {
-	mutation := newEndpointMutation(c.config, OpUpdate)
-	return &EndpointUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+// Update returns an update builder for Monitor.
+func (c *MonitorClient) Update() *MonitorUpdate {
+	mutation := newMonitorMutation(c.config, OpUpdate)
+	return &MonitorUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
 // UpdateOne returns an update builder for the given entity.
-func (c *EndpointClient) UpdateOne(_m *Endpoint) *EndpointUpdateOne {
-	mutation := newEndpointMutation(c.config, OpUpdateOne, withEndpoint(_m))
-	return &EndpointUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+func (c *MonitorClient) UpdateOne(_m *Monitor) *MonitorUpdateOne {
+	mutation := newMonitorMutation(c.config, OpUpdateOne, withMonitor(_m))
+	return &MonitorUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
 // UpdateOneID returns an update builder for the given id.
-func (c *EndpointClient) UpdateOneID(id int) *EndpointUpdateOne {
-	mutation := newEndpointMutation(c.config, OpUpdateOne, withEndpointID(id))
-	return &EndpointUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+func (c *MonitorClient) UpdateOneID(id int) *MonitorUpdateOne {
+	mutation := newMonitorMutation(c.config, OpUpdateOne, withMonitorID(id))
+	return &MonitorUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
-// Delete returns a delete builder for Endpoint.
-func (c *EndpointClient) Delete() *EndpointDelete {
-	mutation := newEndpointMutation(c.config, OpDelete)
-	return &EndpointDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+// Delete returns a delete builder for Monitor.
+func (c *MonitorClient) Delete() *MonitorDelete {
+	mutation := newMonitorMutation(c.config, OpDelete)
+	return &MonitorDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
 // DeleteOne returns a builder for deleting the given entity.
-func (c *EndpointClient) DeleteOne(_m *Endpoint) *EndpointDeleteOne {
+func (c *MonitorClient) DeleteOne(_m *Monitor) *MonitorDeleteOne {
 	return c.DeleteOneID(_m.ID)
 }
 
 // DeleteOneID returns a builder for deleting the given entity by its id.
-func (c *EndpointClient) DeleteOneID(id int) *EndpointDeleteOne {
-	builder := c.Delete().Where(endpoint.ID(id))
+func (c *MonitorClient) DeleteOneID(id int) *MonitorDeleteOne {
+	builder := c.Delete().Where(monitor.ID(id))
 	builder.mutation.id = &id
 	builder.mutation.op = OpDeleteOne
-	return &EndpointDeleteOne{builder}
+	return &MonitorDeleteOne{builder}
 }
 
-// Query returns a query builder for Endpoint.
-func (c *EndpointClient) Query() *EndpointQuery {
-	return &EndpointQuery{
+// Query returns a query builder for Monitor.
+func (c *MonitorClient) Query() *MonitorQuery {
+	return &MonitorQuery{
 		config: c.config,
-		ctx:    &QueryContext{Type: TypeEndpoint},
+		ctx:    &QueryContext{Type: TypeMonitor},
 		inters: c.Interceptors(),
 	}
 }
 
-// Get returns a Endpoint entity by its id.
-func (c *EndpointClient) Get(ctx context.Context, id int) (*Endpoint, error) {
-	return c.Query().Where(endpoint.ID(id)).Only(ctx)
+// Get returns a Monitor entity by its id.
+func (c *MonitorClient) Get(ctx context.Context, id int) (*Monitor, error) {
+	return c.Query().Where(monitor.ID(id)).Only(ctx)
 }
 
 // GetX is like Get, but panics if an error occurs.
-func (c *EndpointClient) GetX(ctx context.Context, id int) *Endpoint {
+func (c *MonitorClient) GetX(ctx context.Context, id int) *Monitor {
 	obj, err := c.Get(ctx, id)
 	if err != nil {
 		panic(err)
@@ -485,15 +505,15 @@ func (c *EndpointClient) GetX(ctx context.Context, id int) *Endpoint {
 	return obj
 }
 
-// QueryCheckResults queries the check_results edge of a Endpoint.
-func (c *EndpointClient) QueryCheckResults(_m *Endpoint) *CheckResultQuery {
+// QueryCheckResults queries the check_results edge of a Monitor.
+func (c *MonitorClient) QueryCheckResults(_m *Monitor) *CheckResultQuery {
 	query := (&CheckResultClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
 		id := _m.ID
 		step := sqlgraph.NewStep(
-			sqlgraph.From(endpoint.Table, endpoint.FieldID, id),
+			sqlgraph.From(monitor.Table, monitor.FieldID, id),
 			sqlgraph.To(checkresult.Table, checkresult.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, endpoint.CheckResultsTable, endpoint.CheckResultsColumn),
+			sqlgraph.Edge(sqlgraph.O2M, false, monitor.CheckResultsTable, monitor.CheckResultsColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
@@ -501,15 +521,31 @@ func (c *EndpointClient) QueryCheckResults(_m *Endpoint) *CheckResultQuery {
 	return query
 }
 
-// QueryNotificationEvents queries the notification_events edge of a Endpoint.
-func (c *EndpointClient) QueryNotificationEvents(_m *Endpoint) *NotificationEventQuery {
+// QueryNotificationEvents queries the notification_events edge of a Monitor.
+func (c *MonitorClient) QueryNotificationEvents(_m *Monitor) *NotificationEventQuery {
 	query := (&NotificationEventClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
 		id := _m.ID
 		step := sqlgraph.NewStep(
-			sqlgraph.From(endpoint.Table, endpoint.FieldID, id),
+			sqlgraph.From(monitor.Table, monitor.FieldID, id),
 			sqlgraph.To(notificationevent.Table, notificationevent.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, endpoint.NotificationEventsTable, endpoint.NotificationEventsColumn),
+			sqlgraph.Edge(sqlgraph.O2M, false, monitor.NotificationEventsTable, monitor.NotificationEventsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryRuntime queries the runtime edge of a Monitor.
+func (c *MonitorClient) QueryRuntime(_m *Monitor) *MonitorRuntimeQuery {
+	query := (&MonitorRuntimeClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(monitor.Table, monitor.FieldID, id),
+			sqlgraph.To(monitorruntime.Table, monitorruntime.FieldID),
+			sqlgraph.Edge(sqlgraph.O2O, false, monitor.RuntimeTable, monitor.RuntimeColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
@@ -518,27 +554,176 @@ func (c *EndpointClient) QueryNotificationEvents(_m *Endpoint) *NotificationEven
 }
 
 // Hooks returns the client hooks.
-func (c *EndpointClient) Hooks() []Hook {
-	return c.hooks.Endpoint
+func (c *MonitorClient) Hooks() []Hook {
+	return c.hooks.Monitor
 }
 
 // Interceptors returns the client interceptors.
-func (c *EndpointClient) Interceptors() []Interceptor {
-	return c.inters.Endpoint
+func (c *MonitorClient) Interceptors() []Interceptor {
+	return c.inters.Monitor
 }
 
-func (c *EndpointClient) mutate(ctx context.Context, m *EndpointMutation) (Value, error) {
+func (c *MonitorClient) mutate(ctx context.Context, m *MonitorMutation) (Value, error) {
 	switch m.Op() {
 	case OpCreate:
-		return (&EndpointCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+		return (&MonitorCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
 	case OpUpdate:
-		return (&EndpointUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+		return (&MonitorUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
 	case OpUpdateOne:
-		return (&EndpointUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+		return (&MonitorUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
 	case OpDelete, OpDeleteOne:
-		return (&EndpointDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+		return (&MonitorDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
-		return nil, fmt.Errorf("ent: unknown Endpoint mutation op: %q", m.Op())
+		return nil, fmt.Errorf("ent: unknown Monitor mutation op: %q", m.Op())
+	}
+}
+
+// MonitorRuntimeClient is a client for the MonitorRuntime schema.
+type MonitorRuntimeClient struct {
+	config
+}
+
+// NewMonitorRuntimeClient returns a client for the MonitorRuntime from the given config.
+func NewMonitorRuntimeClient(c config) *MonitorRuntimeClient {
+	return &MonitorRuntimeClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `monitorruntime.Hooks(f(g(h())))`.
+func (c *MonitorRuntimeClient) Use(hooks ...Hook) {
+	c.hooks.MonitorRuntime = append(c.hooks.MonitorRuntime, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `monitorruntime.Intercept(f(g(h())))`.
+func (c *MonitorRuntimeClient) Intercept(interceptors ...Interceptor) {
+	c.inters.MonitorRuntime = append(c.inters.MonitorRuntime, interceptors...)
+}
+
+// Create returns a builder for creating a MonitorRuntime entity.
+func (c *MonitorRuntimeClient) Create() *MonitorRuntimeCreate {
+	mutation := newMonitorRuntimeMutation(c.config, OpCreate)
+	return &MonitorRuntimeCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of MonitorRuntime entities.
+func (c *MonitorRuntimeClient) CreateBulk(builders ...*MonitorRuntimeCreate) *MonitorRuntimeCreateBulk {
+	return &MonitorRuntimeCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *MonitorRuntimeClient) MapCreateBulk(slice any, setFunc func(*MonitorRuntimeCreate, int)) *MonitorRuntimeCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &MonitorRuntimeCreateBulk{err: fmt.Errorf("calling to MonitorRuntimeClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*MonitorRuntimeCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &MonitorRuntimeCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for MonitorRuntime.
+func (c *MonitorRuntimeClient) Update() *MonitorRuntimeUpdate {
+	mutation := newMonitorRuntimeMutation(c.config, OpUpdate)
+	return &MonitorRuntimeUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *MonitorRuntimeClient) UpdateOne(_m *MonitorRuntime) *MonitorRuntimeUpdateOne {
+	mutation := newMonitorRuntimeMutation(c.config, OpUpdateOne, withMonitorRuntime(_m))
+	return &MonitorRuntimeUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *MonitorRuntimeClient) UpdateOneID(id int) *MonitorRuntimeUpdateOne {
+	mutation := newMonitorRuntimeMutation(c.config, OpUpdateOne, withMonitorRuntimeID(id))
+	return &MonitorRuntimeUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for MonitorRuntime.
+func (c *MonitorRuntimeClient) Delete() *MonitorRuntimeDelete {
+	mutation := newMonitorRuntimeMutation(c.config, OpDelete)
+	return &MonitorRuntimeDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *MonitorRuntimeClient) DeleteOne(_m *MonitorRuntime) *MonitorRuntimeDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *MonitorRuntimeClient) DeleteOneID(id int) *MonitorRuntimeDeleteOne {
+	builder := c.Delete().Where(monitorruntime.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &MonitorRuntimeDeleteOne{builder}
+}
+
+// Query returns a query builder for MonitorRuntime.
+func (c *MonitorRuntimeClient) Query() *MonitorRuntimeQuery {
+	return &MonitorRuntimeQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeMonitorRuntime},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a MonitorRuntime entity by its id.
+func (c *MonitorRuntimeClient) Get(ctx context.Context, id int) (*MonitorRuntime, error) {
+	return c.Query().Where(monitorruntime.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *MonitorRuntimeClient) GetX(ctx context.Context, id int) *MonitorRuntime {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryMonitor queries the monitor edge of a MonitorRuntime.
+func (c *MonitorRuntimeClient) QueryMonitor(_m *MonitorRuntime) *MonitorQuery {
+	query := (&MonitorClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(monitorruntime.Table, monitorruntime.FieldID, id),
+			sqlgraph.To(monitor.Table, monitor.FieldID),
+			sqlgraph.Edge(sqlgraph.O2O, true, monitorruntime.MonitorTable, monitorruntime.MonitorColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *MonitorRuntimeClient) Hooks() []Hook {
+	return c.hooks.MonitorRuntime
+}
+
+// Interceptors returns the client interceptors.
+func (c *MonitorRuntimeClient) Interceptors() []Interceptor {
+	return c.inters.MonitorRuntime
+}
+
+func (c *MonitorRuntimeClient) mutate(ctx context.Context, m *MonitorRuntimeMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&MonitorRuntimeCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&MonitorRuntimeUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&MonitorRuntimeUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&MonitorRuntimeDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown MonitorRuntime mutation op: %q", m.Op())
 	}
 }
 
@@ -799,15 +984,15 @@ func (c *NotificationEventClient) GetX(ctx context.Context, id int) *Notificatio
 	return obj
 }
 
-// QueryEndpoint queries the endpoint edge of a NotificationEvent.
-func (c *NotificationEventClient) QueryEndpoint(_m *NotificationEvent) *EndpointQuery {
-	query := (&EndpointClient{config: c.config}).Query()
+// QueryMonitor queries the monitor edge of a NotificationEvent.
+func (c *NotificationEventClient) QueryMonitor(_m *NotificationEvent) *MonitorQuery {
+	query := (&MonitorClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
 		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(notificationevent.Table, notificationevent.FieldID, id),
-			sqlgraph.To(endpoint.Table, endpoint.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, notificationevent.EndpointTable, notificationevent.EndpointColumn),
+			sqlgraph.To(monitor.Table, monitor.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, notificationevent.MonitorTable, notificationevent.MonitorColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
@@ -856,12 +1041,147 @@ func (c *NotificationEventClient) mutate(ctx context.Context, m *NotificationEve
 	}
 }
 
+// SystemConfigClient is a client for the SystemConfig schema.
+type SystemConfigClient struct {
+	config
+}
+
+// NewSystemConfigClient returns a client for the SystemConfig from the given config.
+func NewSystemConfigClient(c config) *SystemConfigClient {
+	return &SystemConfigClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `systemconfig.Hooks(f(g(h())))`.
+func (c *SystemConfigClient) Use(hooks ...Hook) {
+	c.hooks.SystemConfig = append(c.hooks.SystemConfig, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `systemconfig.Intercept(f(g(h())))`.
+func (c *SystemConfigClient) Intercept(interceptors ...Interceptor) {
+	c.inters.SystemConfig = append(c.inters.SystemConfig, interceptors...)
+}
+
+// Create returns a builder for creating a SystemConfig entity.
+func (c *SystemConfigClient) Create() *SystemConfigCreate {
+	mutation := newSystemConfigMutation(c.config, OpCreate)
+	return &SystemConfigCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of SystemConfig entities.
+func (c *SystemConfigClient) CreateBulk(builders ...*SystemConfigCreate) *SystemConfigCreateBulk {
+	return &SystemConfigCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *SystemConfigClient) MapCreateBulk(slice any, setFunc func(*SystemConfigCreate, int)) *SystemConfigCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &SystemConfigCreateBulk{err: fmt.Errorf("calling to SystemConfigClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*SystemConfigCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &SystemConfigCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for SystemConfig.
+func (c *SystemConfigClient) Update() *SystemConfigUpdate {
+	mutation := newSystemConfigMutation(c.config, OpUpdate)
+	return &SystemConfigUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *SystemConfigClient) UpdateOne(_m *SystemConfig) *SystemConfigUpdateOne {
+	mutation := newSystemConfigMutation(c.config, OpUpdateOne, withSystemConfig(_m))
+	return &SystemConfigUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *SystemConfigClient) UpdateOneID(id int) *SystemConfigUpdateOne {
+	mutation := newSystemConfigMutation(c.config, OpUpdateOne, withSystemConfigID(id))
+	return &SystemConfigUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for SystemConfig.
+func (c *SystemConfigClient) Delete() *SystemConfigDelete {
+	mutation := newSystemConfigMutation(c.config, OpDelete)
+	return &SystemConfigDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *SystemConfigClient) DeleteOne(_m *SystemConfig) *SystemConfigDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *SystemConfigClient) DeleteOneID(id int) *SystemConfigDeleteOne {
+	builder := c.Delete().Where(systemconfig.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &SystemConfigDeleteOne{builder}
+}
+
+// Query returns a query builder for SystemConfig.
+func (c *SystemConfigClient) Query() *SystemConfigQuery {
+	return &SystemConfigQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeSystemConfig},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a SystemConfig entity by its id.
+func (c *SystemConfigClient) Get(ctx context.Context, id int) (*SystemConfig, error) {
+	return c.Query().Where(systemconfig.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *SystemConfigClient) GetX(ctx context.Context, id int) *SystemConfig {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *SystemConfigClient) Hooks() []Hook {
+	return c.hooks.SystemConfig
+}
+
+// Interceptors returns the client interceptors.
+func (c *SystemConfigClient) Interceptors() []Interceptor {
+	return c.inters.SystemConfig
+}
+
+func (c *SystemConfigClient) mutate(ctx context.Context, m *SystemConfigMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&SystemConfigCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&SystemConfigUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&SystemConfigUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&SystemConfigDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown SystemConfig mutation op: %q", m.Op())
+	}
+}
+
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		CheckResult, Endpoint, NotificationChannel, NotificationEvent []ent.Hook
+		CheckResult, Monitor, MonitorRuntime, NotificationChannel, NotificationEvent,
+		SystemConfig []ent.Hook
 	}
 	inters struct {
-		CheckResult, Endpoint, NotificationChannel, NotificationEvent []ent.Interceptor
+		CheckResult, Monitor, MonitorRuntime, NotificationChannel, NotificationEvent,
+		SystemConfig []ent.Interceptor
 	}
 )

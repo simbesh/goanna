@@ -18,38 +18,262 @@ paths:
               schema:
                 $ref: '#/components/schemas/HealthResponse'
 
-  /v1/endpoints:
+  /v1/monitors:
     get:
-      operationId: listEndpoints
-      summary: List monitored endpoints
+      operationId: listMonitors
+      summary: List configured monitors
       responses:
         '200':
-          description: Current endpoints
+          description: Current monitors
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Endpoint'
+                  $ref: '#/components/schemas/Monitor'
 
     post:
-      operationId: createEndpoint
-      summary: Create monitored endpoint
+      operationId: createMonitor
+      summary: Create monitor
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateEndpointRequest'
+              $ref: '#/components/schemas/CreateMonitorRequest'
       responses:
         '201':
-          description: Endpoint created
+          description: Monitor created
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Endpoint'
+                $ref: '#/components/schemas/Monitor'
         '400':
           description: Invalid request body
+
+  /v1/monitors/{monitorId}:
+    delete:
+      operationId: deleteMonitor
+      summary: Delete monitor
+      parameters:
+        - in: path
+          name: monitorId
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: Monitor deleted
+        '404':
+          description: Monitor not found
+
+    put:
+      operationId: updateMonitor
+      summary: Update monitor
+      parameters:
+        - in: path
+          name: monitorId
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMonitorRequest'
+      responses:
+        '200':
+          description: Monitor updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Monitor'
+        '400':
+          description: Invalid request body
+        '404':
+          description: Monitor not found
+
+  /v1/monitors/{monitorId}/trigger:
+    post:
+      operationId: triggerMonitor
+      summary: Trigger monitor to run immediately
+      parameters:
+        - in: path
+          name: monitorId
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Monitor trigger scheduled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Monitor'
+        '400':
+          description: Monitor cannot be triggered
+        '404':
+          description: Monitor not found
+
+  /v1/monitors/test:
+    post:
+      operationId: testMonitorUrl
+      summary: Test monitor URL via backend
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TestMonitorRequest'
+      responses:
+        '200':
+          description: Test response from target URL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TestMonitorResponse'
+        '400':
+          description: Invalid request body
+
+  /v1/monitors/selector-preview:
+    post:
+      operationId: previewMonitorSelector
+      summary: Preview a gjson selector against JSON
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SelectorPreviewRequest'
+      responses:
+        '200':
+          description: Selector evaluation output
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SelectorPreviewResponse'
+        '400':
+          description: Invalid request body
+
+  /v1/settings/notifications/telegram:
+    get:
+      operationId: getTelegramSettings
+      summary: Get Telegram notification channel settings
+      responses:
+        '200':
+          description: Telegram channel settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TelegramSettings'
+
+    put:
+      operationId: upsertTelegramSettings
+      summary: Create or update Telegram notification channel settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertTelegramSettingsRequest'
+      responses:
+        '200':
+          description: Updated Telegram channel settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TelegramSettings'
+        '400':
+          description: Invalid request body
+
+  /v1/settings/notifications/telegram/test:
+    post:
+      operationId: testTelegramSettings
+      summary: Send a test Telegram notification
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TestTelegramSettingsRequest'
+      responses:
+        '200':
+          description: Test message was sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TestTelegramSettingsResponse'
+        '400':
+          description: Invalid request body
+        '502':
+          description: Failed to send Telegram message
+
+  /v1/settings/runtime:
+    get:
+      operationId: getRuntimeSettings
+      summary: Get global runtime settings
+      responses:
+        '200':
+          description: Runtime settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuntimeSettings'
+
+    put:
+      operationId: upsertRuntimeSettings
+      summary: Update global runtime settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertRuntimeSettingsRequest'
+      responses:
+        '200':
+          description: Updated runtime settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuntimeSettings'
+        '400':
+          description: Invalid request body
+
+  /v1/monitors/{monitorId}/checks:
+    get:
+      operationId: listMonitorChecks
+      summary: List recent checks for a monitor
+      parameters:
+        - in: path
+          name: monitorId
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 500
+            default: 20
+      responses:
+        '200':
+          description: Recent checks for the monitor
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MonitorCheck'
+        '404':
+          description: Monitor not found
 
 components:
   schemas:
@@ -62,43 +286,99 @@ components:
           type: string
           example: ok
 
-    Endpoint:
+    Monitor:
       type: object
       required:
         - id
-        - name
-        - url
+        - iconUrl
         - method
-        - intervalSeconds
-        - timeoutSeconds
-        - expectedStatus
+        - url
+        - cron
+        - expectedType
+        - enabled
+        - status
+        - checkCount
         - createdAt
         - updatedAt
       properties:
         id:
           type: integer
           format: int64
-        name:
+        label:
           type: string
-        url:
-          type: string
-          format: uri
+          nullable: true
         method:
           type: string
           example: GET
-        intervalSeconds:
+        url:
+          type: string
+          format: uri
+        iconUrl:
+          type: string
+          format: uri
+        body:
+          type: string
+          nullable: true
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+        auth:
+          type: object
+          additionalProperties:
+            type: string
+        notificationChannels:
+          type: array
+          items:
+            type: string
+            enum: [telegram]
+        selector:
+          type: string
+          nullable: true
+        expectedType:
+          type: string
+          enum: [json, html, text]
+        expectedResponse:
+          type: string
+          nullable: true
+        cron:
+          type: string
+          example: "*/5 * * * *"
+        enabled:
+          type: boolean
+        status:
+          type: string
+          enum: [pending, ok, error, retrying, disabled]
+        checkCount:
+          type: integer
+          format: int64
+        nextRunAt:
+          type: string
+          format: date-time
+          nullable: true
+        lastCheckAt:
+          type: string
+          format: date-time
+          nullable: true
+        lastSuccessAt:
+          type: string
+          format: date-time
+          nullable: true
+        lastErrorAt:
+          type: string
+          format: date-time
+          nullable: true
+        lastStatusCode:
           type: integer
           format: int32
-          minimum: 1
-        timeoutSeconds:
+          nullable: true
+        lastDurationMs:
           type: integer
           format: int32
-          minimum: 1
-        expectedStatus:
-          type: integer
-          format: int32
-          minimum: 100
-          maximum: 599
+          nullable: true
+        lastErrorMessage:
+          type: string
+          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -106,33 +386,260 @@ components:
           type: string
           format: date-time
 
-    CreateEndpointRequest:
+    CreateMonitorRequest:
       type: object
       required:
-        - name
         - url
+        - cron
       properties:
-        name:
+        label:
           type: string
-        url:
-          type: string
-          format: uri
         method:
           type: string
           default: GET
-        intervalSeconds:
+        url:
+          type: string
+          format: uri
+        iconUrl:
+          type: string
+          format: uri
+        body:
+          type: string
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+        auth:
+          type: object
+          additionalProperties:
+            type: string
+        notificationChannels:
+          type: array
+          items:
+            type: string
+            enum: [telegram]
+        selector:
+          type: string
+        expectedType:
+          type: string
+          enum: [json, html, text]
+          default: json
+        expectedResponse:
+          type: string
+        cron:
+          type: string
+          example: "*/5 * * * *"
+        enabled:
+          type: boolean
+          default: true
+
+    TestMonitorRequest:
+      type: object
+      required:
+        - url
+      properties:
+        method:
+          type: string
+          default: GET
+        url:
+          type: string
+          format: uri
+        body:
+          type: string
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+        auth:
+          type: object
+          additionalProperties:
+            type: string
+
+    TestMonitorResponse:
+      type: object
+      required:
+        - ok
+        - status
+        - statusText
+        - headers
+        - body
+      properties:
+        ok:
+          type: boolean
+        status:
           type: integer
           format: int32
-          minimum: 1
-          default: 60
-        timeoutSeconds:
+        statusText:
+          type: string
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+        body:
+          nullable: true
+
+    SelectorPreviewRequest:
+      type: object
+      required:
+        - json
+      properties:
+        json:
+          type: string
+          description: Raw JSON payload to evaluate.
+        selector:
+          type: string
+          description: Optional gjson selector path.
+
+    SelectorPreviewResponse:
+      type: object
+      required:
+        - exists
+        - type
+      properties:
+        exists:
+          type: boolean
+        type:
+          type: string
+          description: one of none, null, false, number, string, true, json.
+        raw:
+          type: string
+          nullable: true
+          description: Raw selected value as JSON text.
+        value:
+          type: string
+          nullable: true
+          description: Normalized value used for monitor expectedResponse comparison.
+
+    TelegramSettings:
+      type: object
+      required:
+        - enabled
+        - botToken
+        - chatId
+      properties:
+        enabled:
+          type: boolean
+        botToken:
+          type: string
+        chatId:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    UpsertTelegramSettingsRequest:
+      type: object
+      required:
+        - botToken
+        - chatId
+      properties:
+        enabled:
+          type: boolean
+          default: true
+        botToken:
+          type: string
+        chatId:
+          type: string
+
+    TestTelegramSettingsRequest:
+      type: object
+      required:
+        - botToken
+        - chatId
+      properties:
+        botToken:
+          type: string
+        chatId:
+          type: string
+        message:
+          type: string
+          nullable: true
+
+    TestTelegramSettingsResponse:
+      type: object
+      required:
+        - ok
+      properties:
+        ok:
+          type: boolean
+
+    RuntimeSettings:
+      type: object
+      required:
+        - checksHistoryLimit
+        - requiredSettings
+      properties:
+        checksHistoryLimit:
           type: integer
           format: int32
-          minimum: 1
-          default: 10
-        expectedStatus:
+          minimum: 10
+        timezone:
+          type: string
+          nullable: true
+        requiredSettings:
+          type: array
+          items:
+            type: string
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    UpsertRuntimeSettingsRequest:
+      type: object
+      required:
+        - checksHistoryLimit
+        - timezone
+      properties:
+        checksHistoryLimit:
           type: integer
           format: int32
-          minimum: 100
-          maximum: 599
-          default: 200
+          minimum: 10
+        timezone:
+          type: string
+
+    MonitorCheck:
+      type: object
+      required:
+        - id
+        - status
+        - checkedAt
+      properties:
+        id:
+          type: integer
+          format: int64
+        status:
+          type: string
+          enum: [ok, error, retrying, pending, unknown]
+        statusCode:
+          type: integer
+          format: int32
+          nullable: true
+        responseTimeMs:
+          type: integer
+          format: int32
+          nullable: true
+        errorMessage:
+          type: string
+          nullable: true
+        selectionType:
+          type: string
+          nullable: true
+        selectionValue:
+          type: string
+          nullable: true
+        diffChanged:
+          type: boolean
+        diffKind:
+          type: string
+          nullable: true
+        diffSummary:
+          type: string
+          nullable: true
+        diffDetails:
+          type: string
+          nullable: true
+        checkedAt:
+          type: string
+          format: date-time

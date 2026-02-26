@@ -15,8 +15,14 @@ var (
 		{Name: "status_code", Type: field.TypeInt, Nullable: true},
 		{Name: "response_time_ms", Type: field.TypeInt, Nullable: true},
 		{Name: "error_message", Type: field.TypeString, Nullable: true},
+		{Name: "selection_type", Type: field.TypeString, Nullable: true},
+		{Name: "selection_value", Type: field.TypeString, Nullable: true},
+		{Name: "diff_changed", Type: field.TypeBool, Default: false},
+		{Name: "diff_kind", Type: field.TypeString, Nullable: true},
+		{Name: "diff_summary", Type: field.TypeString, Nullable: true},
+		{Name: "diff_details", Type: field.TypeString, Nullable: true},
 		{Name: "checked_at", Type: field.TypeTime},
-		{Name: "endpoint_check_results", Type: field.TypeInt},
+		{Name: "monitor_check_results", Type: field.TypeInt},
 	}
 	// CheckResultsTable holds the schema information for the "check_results" table.
 	CheckResultsTable = &schema.Table{
@@ -25,45 +31,95 @@ var (
 		PrimaryKey: []*schema.Column{CheckResultsColumns[0]},
 		ForeignKeys: []*schema.ForeignKey{
 			{
-				Symbol:     "check_results_endpoints_check_results",
-				Columns:    []*schema.Column{CheckResultsColumns[6]},
-				RefColumns: []*schema.Column{EndpointsColumns[0]},
+				Symbol:     "check_results_monitors_check_results",
+				Columns:    []*schema.Column{CheckResultsColumns[12]},
+				RefColumns: []*schema.Column{MonitorsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 		},
 	}
-	// EndpointsColumns holds the columns for the "endpoints" table.
-	EndpointsColumns = []*schema.Column{
+	// MonitorsColumns holds the columns for the "monitors" table.
+	MonitorsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "name", Type: field.TypeString, Unique: true},
-		{Name: "url", Type: field.TypeString},
+		{Name: "label", Type: field.TypeString, Nullable: true},
 		{Name: "method", Type: field.TypeString, Default: "GET"},
-		{Name: "interval_seconds", Type: field.TypeInt, Default: 60},
-		{Name: "timeout_seconds", Type: field.TypeInt, Default: 10},
-		{Name: "expected_status", Type: field.TypeInt, Default: 200},
+		{Name: "url", Type: field.TypeString},
+		{Name: "icon_url", Type: field.TypeString, Nullable: true},
+		{Name: "body", Type: field.TypeString, Nullable: true},
+		{Name: "headers", Type: field.TypeJSON, Nullable: true},
+		{Name: "auth", Type: field.TypeJSON, Nullable: true},
+		{Name: "notification_channels", Type: field.TypeJSON, Nullable: true},
+		{Name: "selector", Type: field.TypeString, Nullable: true},
+		{Name: "expected_type", Type: field.TypeEnum, Enums: []string{"json", "html", "text"}, Default: "json"},
+		{Name: "expected_response", Type: field.TypeString, Nullable: true},
+		{Name: "cron", Type: field.TypeString},
+		{Name: "enabled", Type: field.TypeBool, Default: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
 	}
-	// EndpointsTable holds the schema information for the "endpoints" table.
-	EndpointsTable = &schema.Table{
-		Name:       "endpoints",
-		Columns:    EndpointsColumns,
-		PrimaryKey: []*schema.Column{EndpointsColumns[0]},
+	// MonitorsTable holds the schema information for the "monitors" table.
+	MonitorsTable = &schema.Table{
+		Name:       "monitors",
+		Columns:    MonitorsColumns,
+		PrimaryKey: []*schema.Column{MonitorsColumns[0]},
+	}
+	// MonitorRuntimesColumns holds the columns for the "monitor_runtimes" table.
+	MonitorRuntimesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"pending", "ok", "error", "retrying", "disabled"}, Default: "pending"},
+		{Name: "check_count", Type: field.TypeInt64, Default: 0},
+		{Name: "success_count", Type: field.TypeInt64, Default: 0},
+		{Name: "error_count", Type: field.TypeInt64, Default: 0},
+		{Name: "retry_count", Type: field.TypeInt64, Default: 0},
+		{Name: "consecutive_successes", Type: field.TypeInt64, Default: 0},
+		{Name: "consecutive_errors", Type: field.TypeInt64, Default: 0},
+		{Name: "last_check_at", Type: field.TypeTime, Nullable: true},
+		{Name: "last_success_at", Type: field.TypeTime, Nullable: true},
+		{Name: "last_error_at", Type: field.TypeTime, Nullable: true},
+		{Name: "last_status_code", Type: field.TypeInt, Nullable: true},
+		{Name: "last_duration_ms", Type: field.TypeInt, Nullable: true},
+		{Name: "last_error_message", Type: field.TypeString, Nullable: true},
+		{Name: "next_run_at", Type: field.TypeTime, Nullable: true},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "monitor_runtime", Type: field.TypeInt, Unique: true},
+	}
+	// MonitorRuntimesTable holds the schema information for the "monitor_runtimes" table.
+	MonitorRuntimesTable = &schema.Table{
+		Name:       "monitor_runtimes",
+		Columns:    MonitorRuntimesColumns,
+		PrimaryKey: []*schema.Column{MonitorRuntimesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "monitor_runtimes_monitors_runtime",
+				Columns:    []*schema.Column{MonitorRuntimesColumns[16]},
+				RefColumns: []*schema.Column{MonitorsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
 	}
 	// NotificationChannelsColumns holds the columns for the "notification_channels" table.
 	NotificationChannelsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "name", Type: field.TypeString, Unique: true},
-		{Name: "kind", Type: field.TypeString},
-		{Name: "target", Type: field.TypeString},
+		{Name: "name", Type: field.TypeString, Default: "Telegram"},
+		{Name: "kind", Type: field.TypeEnum, Enums: []string{"telegram"}, Default: "telegram"},
+		{Name: "bot_token", Type: field.TypeString},
+		{Name: "chat_id", Type: field.TypeString},
 		{Name: "enabled", Type: field.TypeBool, Default: true},
 		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
 	}
 	// NotificationChannelsTable holds the schema information for the "notification_channels" table.
 	NotificationChannelsTable = &schema.Table{
 		Name:       "notification_channels",
 		Columns:    NotificationChannelsColumns,
 		PrimaryKey: []*schema.Column{NotificationChannelsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "notificationchannel_kind",
+				Unique:  true,
+				Columns: []*schema.Column{NotificationChannelsColumns[2]},
+			},
+		},
 	}
 	// NotificationEventsColumns holds the columns for the "notification_events" table.
 	NotificationEventsColumns = []*schema.Column{
@@ -71,7 +127,7 @@ var (
 		{Name: "status", Type: field.TypeString, Default: "pending"},
 		{Name: "message", Type: field.TypeString, Nullable: true},
 		{Name: "sent_at", Type: field.TypeTime},
-		{Name: "endpoint_notification_events", Type: field.TypeInt},
+		{Name: "monitor_notification_events", Type: field.TypeInt},
 		{Name: "notification_channel_notification_events", Type: field.TypeInt},
 	}
 	// NotificationEventsTable holds the schema information for the "notification_events" table.
@@ -81,9 +137,9 @@ var (
 		PrimaryKey: []*schema.Column{NotificationEventsColumns[0]},
 		ForeignKeys: []*schema.ForeignKey{
 			{
-				Symbol:     "notification_events_endpoints_notification_events",
+				Symbol:     "notification_events_monitors_notification_events",
 				Columns:    []*schema.Column{NotificationEventsColumns[4]},
-				RefColumns: []*schema.Column{EndpointsColumns[0]},
+				RefColumns: []*schema.Column{MonitorsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
@@ -94,17 +150,41 @@ var (
 			},
 		},
 	}
+	// SystemConfigsColumns holds the columns for the "system_configs" table.
+	SystemConfigsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "key", Type: field.TypeString, Default: "global"},
+		{Name: "checks_history_limit", Type: field.TypeInt, Default: 200},
+		{Name: "timezone", Type: field.TypeString, Nullable: true},
+		{Name: "updated_at", Type: field.TypeTime},
+	}
+	// SystemConfigsTable holds the schema information for the "system_configs" table.
+	SystemConfigsTable = &schema.Table{
+		Name:       "system_configs",
+		Columns:    SystemConfigsColumns,
+		PrimaryKey: []*schema.Column{SystemConfigsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "systemconfig_key",
+				Unique:  true,
+				Columns: []*schema.Column{SystemConfigsColumns[1]},
+			},
+		},
+	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		CheckResultsTable,
-		EndpointsTable,
+		MonitorsTable,
+		MonitorRuntimesTable,
 		NotificationChannelsTable,
 		NotificationEventsTable,
+		SystemConfigsTable,
 	}
 )
 
 func init() {
-	CheckResultsTable.ForeignKeys[0].RefTable = EndpointsTable
-	NotificationEventsTable.ForeignKeys[0].RefTable = EndpointsTable
+	CheckResultsTable.ForeignKeys[0].RefTable = MonitorsTable
+	MonitorRuntimesTable.ForeignKeys[0].RefTable = MonitorsTable
+	NotificationEventsTable.ForeignKeys[0].RefTable = MonitorsTable
 	NotificationEventsTable.ForeignKeys[1].RefTable = NotificationChannelsTable
 }

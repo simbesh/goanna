@@ -75,6 +75,36 @@ func ErrorMessage(v string) predicate.CheckResult {
 	return predicate.CheckResult(sql.FieldEQ(FieldErrorMessage, v))
 }
 
+// SelectionType applies equality check predicate on the "selection_type" field. It's identical to SelectionTypeEQ.
+func SelectionType(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldEQ(FieldSelectionType, v))
+}
+
+// SelectionValue applies equality check predicate on the "selection_value" field. It's identical to SelectionValueEQ.
+func SelectionValue(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldEQ(FieldSelectionValue, v))
+}
+
+// DiffChanged applies equality check predicate on the "diff_changed" field. It's identical to DiffChangedEQ.
+func DiffChanged(v bool) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldEQ(FieldDiffChanged, v))
+}
+
+// DiffKind applies equality check predicate on the "diff_kind" field. It's identical to DiffKindEQ.
+func DiffKind(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldEQ(FieldDiffKind, v))
+}
+
+// DiffSummary applies equality check predicate on the "diff_summary" field. It's identical to DiffSummaryEQ.
+func DiffSummary(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldEQ(FieldDiffSummary, v))
+}
+
+// DiffDetails applies equality check predicate on the "diff_details" field. It's identical to DiffDetailsEQ.
+func DiffDetails(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldEQ(FieldDiffDetails, v))
+}
+
 // CheckedAt applies equality check predicate on the "checked_at" field. It's identical to CheckedAtEQ.
 func CheckedAt(v time.Time) predicate.CheckResult {
 	return predicate.CheckResult(sql.FieldEQ(FieldCheckedAt, v))
@@ -320,6 +350,391 @@ func ErrorMessageContainsFold(v string) predicate.CheckResult {
 	return predicate.CheckResult(sql.FieldContainsFold(FieldErrorMessage, v))
 }
 
+// SelectionTypeEQ applies the EQ predicate on the "selection_type" field.
+func SelectionTypeEQ(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldEQ(FieldSelectionType, v))
+}
+
+// SelectionTypeNEQ applies the NEQ predicate on the "selection_type" field.
+func SelectionTypeNEQ(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldNEQ(FieldSelectionType, v))
+}
+
+// SelectionTypeIn applies the In predicate on the "selection_type" field.
+func SelectionTypeIn(vs ...string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldIn(FieldSelectionType, vs...))
+}
+
+// SelectionTypeNotIn applies the NotIn predicate on the "selection_type" field.
+func SelectionTypeNotIn(vs ...string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldNotIn(FieldSelectionType, vs...))
+}
+
+// SelectionTypeGT applies the GT predicate on the "selection_type" field.
+func SelectionTypeGT(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldGT(FieldSelectionType, v))
+}
+
+// SelectionTypeGTE applies the GTE predicate on the "selection_type" field.
+func SelectionTypeGTE(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldGTE(FieldSelectionType, v))
+}
+
+// SelectionTypeLT applies the LT predicate on the "selection_type" field.
+func SelectionTypeLT(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldLT(FieldSelectionType, v))
+}
+
+// SelectionTypeLTE applies the LTE predicate on the "selection_type" field.
+func SelectionTypeLTE(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldLTE(FieldSelectionType, v))
+}
+
+// SelectionTypeContains applies the Contains predicate on the "selection_type" field.
+func SelectionTypeContains(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldContains(FieldSelectionType, v))
+}
+
+// SelectionTypeHasPrefix applies the HasPrefix predicate on the "selection_type" field.
+func SelectionTypeHasPrefix(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldHasPrefix(FieldSelectionType, v))
+}
+
+// SelectionTypeHasSuffix applies the HasSuffix predicate on the "selection_type" field.
+func SelectionTypeHasSuffix(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldHasSuffix(FieldSelectionType, v))
+}
+
+// SelectionTypeIsNil applies the IsNil predicate on the "selection_type" field.
+func SelectionTypeIsNil() predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldIsNull(FieldSelectionType))
+}
+
+// SelectionTypeNotNil applies the NotNil predicate on the "selection_type" field.
+func SelectionTypeNotNil() predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldNotNull(FieldSelectionType))
+}
+
+// SelectionTypeEqualFold applies the EqualFold predicate on the "selection_type" field.
+func SelectionTypeEqualFold(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldEqualFold(FieldSelectionType, v))
+}
+
+// SelectionTypeContainsFold applies the ContainsFold predicate on the "selection_type" field.
+func SelectionTypeContainsFold(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldContainsFold(FieldSelectionType, v))
+}
+
+// SelectionValueEQ applies the EQ predicate on the "selection_value" field.
+func SelectionValueEQ(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldEQ(FieldSelectionValue, v))
+}
+
+// SelectionValueNEQ applies the NEQ predicate on the "selection_value" field.
+func SelectionValueNEQ(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldNEQ(FieldSelectionValue, v))
+}
+
+// SelectionValueIn applies the In predicate on the "selection_value" field.
+func SelectionValueIn(vs ...string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldIn(FieldSelectionValue, vs...))
+}
+
+// SelectionValueNotIn applies the NotIn predicate on the "selection_value" field.
+func SelectionValueNotIn(vs ...string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldNotIn(FieldSelectionValue, vs...))
+}
+
+// SelectionValueGT applies the GT predicate on the "selection_value" field.
+func SelectionValueGT(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldGT(FieldSelectionValue, v))
+}
+
+// SelectionValueGTE applies the GTE predicate on the "selection_value" field.
+func SelectionValueGTE(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldGTE(FieldSelectionValue, v))
+}
+
+// SelectionValueLT applies the LT predicate on the "selection_value" field.
+func SelectionValueLT(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldLT(FieldSelectionValue, v))
+}
+
+// SelectionValueLTE applies the LTE predicate on the "selection_value" field.
+func SelectionValueLTE(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldLTE(FieldSelectionValue, v))
+}
+
+// SelectionValueContains applies the Contains predicate on the "selection_value" field.
+func SelectionValueContains(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldContains(FieldSelectionValue, v))
+}
+
+// SelectionValueHasPrefix applies the HasPrefix predicate on the "selection_value" field.
+func SelectionValueHasPrefix(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldHasPrefix(FieldSelectionValue, v))
+}
+
+// SelectionValueHasSuffix applies the HasSuffix predicate on the "selection_value" field.
+func SelectionValueHasSuffix(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldHasSuffix(FieldSelectionValue, v))
+}
+
+// SelectionValueIsNil applies the IsNil predicate on the "selection_value" field.
+func SelectionValueIsNil() predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldIsNull(FieldSelectionValue))
+}
+
+// SelectionValueNotNil applies the NotNil predicate on the "selection_value" field.
+func SelectionValueNotNil() predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldNotNull(FieldSelectionValue))
+}
+
+// SelectionValueEqualFold applies the EqualFold predicate on the "selection_value" field.
+func SelectionValueEqualFold(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldEqualFold(FieldSelectionValue, v))
+}
+
+// SelectionValueContainsFold applies the ContainsFold predicate on the "selection_value" field.
+func SelectionValueContainsFold(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldContainsFold(FieldSelectionValue, v))
+}
+
+// DiffChangedEQ applies the EQ predicate on the "diff_changed" field.
+func DiffChangedEQ(v bool) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldEQ(FieldDiffChanged, v))
+}
+
+// DiffChangedNEQ applies the NEQ predicate on the "diff_changed" field.
+func DiffChangedNEQ(v bool) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldNEQ(FieldDiffChanged, v))
+}
+
+// DiffKindEQ applies the EQ predicate on the "diff_kind" field.
+func DiffKindEQ(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldEQ(FieldDiffKind, v))
+}
+
+// DiffKindNEQ applies the NEQ predicate on the "diff_kind" field.
+func DiffKindNEQ(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldNEQ(FieldDiffKind, v))
+}
+
+// DiffKindIn applies the In predicate on the "diff_kind" field.
+func DiffKindIn(vs ...string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldIn(FieldDiffKind, vs...))
+}
+
+// DiffKindNotIn applies the NotIn predicate on the "diff_kind" field.
+func DiffKindNotIn(vs ...string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldNotIn(FieldDiffKind, vs...))
+}
+
+// DiffKindGT applies the GT predicate on the "diff_kind" field.
+func DiffKindGT(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldGT(FieldDiffKind, v))
+}
+
+// DiffKindGTE applies the GTE predicate on the "diff_kind" field.
+func DiffKindGTE(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldGTE(FieldDiffKind, v))
+}
+
+// DiffKindLT applies the LT predicate on the "diff_kind" field.
+func DiffKindLT(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldLT(FieldDiffKind, v))
+}
+
+// DiffKindLTE applies the LTE predicate on the "diff_kind" field.
+func DiffKindLTE(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldLTE(FieldDiffKind, v))
+}
+
+// DiffKindContains applies the Contains predicate on the "diff_kind" field.
+func DiffKindContains(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldContains(FieldDiffKind, v))
+}
+
+// DiffKindHasPrefix applies the HasPrefix predicate on the "diff_kind" field.
+func DiffKindHasPrefix(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldHasPrefix(FieldDiffKind, v))
+}
+
+// DiffKindHasSuffix applies the HasSuffix predicate on the "diff_kind" field.
+func DiffKindHasSuffix(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldHasSuffix(FieldDiffKind, v))
+}
+
+// DiffKindIsNil applies the IsNil predicate on the "diff_kind" field.
+func DiffKindIsNil() predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldIsNull(FieldDiffKind))
+}
+
+// DiffKindNotNil applies the NotNil predicate on the "diff_kind" field.
+func DiffKindNotNil() predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldNotNull(FieldDiffKind))
+}
+
+// DiffKindEqualFold applies the EqualFold predicate on the "diff_kind" field.
+func DiffKindEqualFold(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldEqualFold(FieldDiffKind, v))
+}
+
+// DiffKindContainsFold applies the ContainsFold predicate on the "diff_kind" field.
+func DiffKindContainsFold(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldContainsFold(FieldDiffKind, v))
+}
+
+// DiffSummaryEQ applies the EQ predicate on the "diff_summary" field.
+func DiffSummaryEQ(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldEQ(FieldDiffSummary, v))
+}
+
+// DiffSummaryNEQ applies the NEQ predicate on the "diff_summary" field.
+func DiffSummaryNEQ(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldNEQ(FieldDiffSummary, v))
+}
+
+// DiffSummaryIn applies the In predicate on the "diff_summary" field.
+func DiffSummaryIn(vs ...string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldIn(FieldDiffSummary, vs...))
+}
+
+// DiffSummaryNotIn applies the NotIn predicate on the "diff_summary" field.
+func DiffSummaryNotIn(vs ...string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldNotIn(FieldDiffSummary, vs...))
+}
+
+// DiffSummaryGT applies the GT predicate on the "diff_summary" field.
+func DiffSummaryGT(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldGT(FieldDiffSummary, v))
+}
+
+// DiffSummaryGTE applies the GTE predicate on the "diff_summary" field.
+func DiffSummaryGTE(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldGTE(FieldDiffSummary, v))
+}
+
+// DiffSummaryLT applies the LT predicate on the "diff_summary" field.
+func DiffSummaryLT(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldLT(FieldDiffSummary, v))
+}
+
+// DiffSummaryLTE applies the LTE predicate on the "diff_summary" field.
+func DiffSummaryLTE(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldLTE(FieldDiffSummary, v))
+}
+
+// DiffSummaryContains applies the Contains predicate on the "diff_summary" field.
+func DiffSummaryContains(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldContains(FieldDiffSummary, v))
+}
+
+// DiffSummaryHasPrefix applies the HasPrefix predicate on the "diff_summary" field.
+func DiffSummaryHasPrefix(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldHasPrefix(FieldDiffSummary, v))
+}
+
+// DiffSummaryHasSuffix applies the HasSuffix predicate on the "diff_summary" field.
+func DiffSummaryHasSuffix(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldHasSuffix(FieldDiffSummary, v))
+}
+
+// DiffSummaryIsNil applies the IsNil predicate on the "diff_summary" field.
+func DiffSummaryIsNil() predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldIsNull(FieldDiffSummary))
+}
+
+// DiffSummaryNotNil applies the NotNil predicate on the "diff_summary" field.
+func DiffSummaryNotNil() predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldNotNull(FieldDiffSummary))
+}
+
+// DiffSummaryEqualFold applies the EqualFold predicate on the "diff_summary" field.
+func DiffSummaryEqualFold(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldEqualFold(FieldDiffSummary, v))
+}
+
+// DiffSummaryContainsFold applies the ContainsFold predicate on the "diff_summary" field.
+func DiffSummaryContainsFold(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldContainsFold(FieldDiffSummary, v))
+}
+
+// DiffDetailsEQ applies the EQ predicate on the "diff_details" field.
+func DiffDetailsEQ(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldEQ(FieldDiffDetails, v))
+}
+
+// DiffDetailsNEQ applies the NEQ predicate on the "diff_details" field.
+func DiffDetailsNEQ(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldNEQ(FieldDiffDetails, v))
+}
+
+// DiffDetailsIn applies the In predicate on the "diff_details" field.
+func DiffDetailsIn(vs ...string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldIn(FieldDiffDetails, vs...))
+}
+
+// DiffDetailsNotIn applies the NotIn predicate on the "diff_details" field.
+func DiffDetailsNotIn(vs ...string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldNotIn(FieldDiffDetails, vs...))
+}
+
+// DiffDetailsGT applies the GT predicate on the "diff_details" field.
+func DiffDetailsGT(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldGT(FieldDiffDetails, v))
+}
+
+// DiffDetailsGTE applies the GTE predicate on the "diff_details" field.
+func DiffDetailsGTE(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldGTE(FieldDiffDetails, v))
+}
+
+// DiffDetailsLT applies the LT predicate on the "diff_details" field.
+func DiffDetailsLT(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldLT(FieldDiffDetails, v))
+}
+
+// DiffDetailsLTE applies the LTE predicate on the "diff_details" field.
+func DiffDetailsLTE(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldLTE(FieldDiffDetails, v))
+}
+
+// DiffDetailsContains applies the Contains predicate on the "diff_details" field.
+func DiffDetailsContains(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldContains(FieldDiffDetails, v))
+}
+
+// DiffDetailsHasPrefix applies the HasPrefix predicate on the "diff_details" field.
+func DiffDetailsHasPrefix(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldHasPrefix(FieldDiffDetails, v))
+}
+
+// DiffDetailsHasSuffix applies the HasSuffix predicate on the "diff_details" field.
+func DiffDetailsHasSuffix(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldHasSuffix(FieldDiffDetails, v))
+}
+
+// DiffDetailsIsNil applies the IsNil predicate on the "diff_details" field.
+func DiffDetailsIsNil() predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldIsNull(FieldDiffDetails))
+}
+
+// DiffDetailsNotNil applies the NotNil predicate on the "diff_details" field.
+func DiffDetailsNotNil() predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldNotNull(FieldDiffDetails))
+}
+
+// DiffDetailsEqualFold applies the EqualFold predicate on the "diff_details" field.
+func DiffDetailsEqualFold(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldEqualFold(FieldDiffDetails, v))
+}
+
+// DiffDetailsContainsFold applies the ContainsFold predicate on the "diff_details" field.
+func DiffDetailsContainsFold(v string) predicate.CheckResult {
+	return predicate.CheckResult(sql.FieldContainsFold(FieldDiffDetails, v))
+}
+
 // CheckedAtEQ applies the EQ predicate on the "checked_at" field.
 func CheckedAtEQ(v time.Time) predicate.CheckResult {
 	return predicate.CheckResult(sql.FieldEQ(FieldCheckedAt, v))
@@ -360,21 +775,21 @@ func CheckedAtLTE(v time.Time) predicate.CheckResult {
 	return predicate.CheckResult(sql.FieldLTE(FieldCheckedAt, v))
 }
 
-// HasEndpoint applies the HasEdge predicate on the "endpoint" edge.
-func HasEndpoint() predicate.CheckResult {
+// HasMonitor applies the HasEdge predicate on the "monitor" edge.
+func HasMonitor() predicate.CheckResult {
 	return predicate.CheckResult(func(s *sql.Selector) {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, EndpointTable, EndpointColumn),
+			sqlgraph.Edge(sqlgraph.M2O, true, MonitorTable, MonitorColumn),
 		)
 		sqlgraph.HasNeighbors(s, step)
 	})
 }
 
-// HasEndpointWith applies the HasEdge predicate on the "endpoint" edge with a given conditions (other predicates).
-func HasEndpointWith(preds ...predicate.Endpoint) predicate.CheckResult {
+// HasMonitorWith applies the HasEdge predicate on the "monitor" edge with a given conditions (other predicates).
+func HasMonitorWith(preds ...predicate.Monitor) predicate.CheckResult {
 	return predicate.CheckResult(func(s *sql.Selector) {
-		step := newEndpointStep()
+		step := newMonitorStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

@@ -20,16 +20,28 @@ func (f CheckResultFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value,
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.CheckResultMutation", m)
 }
 
-// The EndpointFunc type is an adapter to allow the use of ordinary
-// function as Endpoint mutator.
-type EndpointFunc func(context.Context, *ent.EndpointMutation) (ent.Value, error)
+// The MonitorFunc type is an adapter to allow the use of ordinary
+// function as Monitor mutator.
+type MonitorFunc func(context.Context, *ent.MonitorMutation) (ent.Value, error)
 
 // Mutate calls f(ctx, m).
-func (f EndpointFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-	if mv, ok := m.(*ent.EndpointMutation); ok {
+func (f MonitorFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.MonitorMutation); ok {
 		return f(ctx, mv)
 	}
-	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.EndpointMutation", m)
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.MonitorMutation", m)
+}
+
+// The MonitorRuntimeFunc type is an adapter to allow the use of ordinary
+// function as MonitorRuntime mutator.
+type MonitorRuntimeFunc func(context.Context, *ent.MonitorRuntimeMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f MonitorRuntimeFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.MonitorRuntimeMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.MonitorRuntimeMutation", m)
 }
 
 // The NotificationChannelFunc type is an adapter to allow the use of ordinary
@@ -54,6 +66,18 @@ func (f NotificationEventFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.
 		return f(ctx, mv)
 	}
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.NotificationEventMutation", m)
+}
+
+// The SystemConfigFunc type is an adapter to allow the use of ordinary
+// function as SystemConfig mutator.
+type SystemConfigFunc func(context.Context, *ent.SystemConfigMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f SystemConfigFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.SystemConfigMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.SystemConfigMutation", m)
 }
 
 // Condition is a hook condition function.

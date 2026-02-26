@@ -7,9 +7,11 @@ import (
 	"errors"
 	"fmt"
 	"goanna/apps/api/ent/checkresult"
-	"goanna/apps/api/ent/endpoint"
+	"goanna/apps/api/ent/monitor"
+	"goanna/apps/api/ent/monitorruntime"
 	"goanna/apps/api/ent/notificationchannel"
 	"goanna/apps/api/ent/notificationevent"
+	"goanna/apps/api/ent/systemconfig"
 	"reflect"
 	"sync"
 
@@ -77,9 +79,11 @@ func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
 			checkresult.Table:         checkresult.ValidColumn,
-			endpoint.Table:            endpoint.ValidColumn,
+			monitor.Table:             monitor.ValidColumn,
+			monitorruntime.Table:      monitorruntime.ValidColumn,
 			notificationchannel.Table: notificationchannel.ValidColumn,
 			notificationevent.Table:   notificationevent.ValidColumn,
+			systemconfig.Table:        systemconfig.ValidColumn,
 		})
 	})
 	return columnCheck(t, c)

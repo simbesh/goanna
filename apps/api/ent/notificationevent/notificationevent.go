@@ -20,19 +20,19 @@ const (
 	FieldMessage = "message"
 	// FieldSentAt holds the string denoting the sent_at field in the database.
 	FieldSentAt = "sent_at"
-	// EdgeEndpoint holds the string denoting the endpoint edge name in mutations.
-	EdgeEndpoint = "endpoint"
+	// EdgeMonitor holds the string denoting the monitor edge name in mutations.
+	EdgeMonitor = "monitor"
 	// EdgeChannel holds the string denoting the channel edge name in mutations.
 	EdgeChannel = "channel"
 	// Table holds the table name of the notificationevent in the database.
 	Table = "notification_events"
-	// EndpointTable is the table that holds the endpoint relation/edge.
-	EndpointTable = "notification_events"
-	// EndpointInverseTable is the table name for the Endpoint entity.
-	// It exists in this package in order to avoid circular dependency with the "endpoint" package.
-	EndpointInverseTable = "endpoints"
-	// EndpointColumn is the table column denoting the endpoint relation/edge.
-	EndpointColumn = "endpoint_notification_events"
+	// MonitorTable is the table that holds the monitor relation/edge.
+	MonitorTable = "notification_events"
+	// MonitorInverseTable is the table name for the Monitor entity.
+	// It exists in this package in order to avoid circular dependency with the "monitor" package.
+	MonitorInverseTable = "monitors"
+	// MonitorColumn is the table column denoting the monitor relation/edge.
+	MonitorColumn = "monitor_notification_events"
 	// ChannelTable is the table that holds the channel relation/edge.
 	ChannelTable = "notification_events"
 	// ChannelInverseTable is the table name for the NotificationChannel entity.
@@ -53,7 +53,7 @@ var Columns = []string{
 // ForeignKeys holds the SQL foreign-keys that are owned by the "notification_events"
 // table and are not defined as standalone fields in the schema.
 var ForeignKeys = []string{
-	"endpoint_notification_events",
+	"monitor_notification_events",
 	"notification_channel_notification_events",
 }
 
@@ -102,10 +102,10 @@ func BySentAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldSentAt, opts...).ToFunc()
 }
 
-// ByEndpointField orders the results by endpoint field.
-func ByEndpointField(field string, opts ...sql.OrderTermOption) OrderOption {
+// ByMonitorField orders the results by monitor field.
+func ByMonitorField(field string, opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborTerms(s, newEndpointStep(), sql.OrderByField(field, opts...))
+		sqlgraph.OrderByNeighborTerms(s, newMonitorStep(), sql.OrderByField(field, opts...))
 	}
 }
 
@@ -115,11 +115,11 @@ func ByChannelField(field string, opts ...sql.OrderTermOption) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newChannelStep(), sql.OrderByField(field, opts...))
 	}
 }
-func newEndpointStep() *sqlgraph.Step {
+func newMonitorStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(EndpointInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.M2O, true, EndpointTable, EndpointColumn),
+		sqlgraph.To(MonitorInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2O, true, MonitorTable, MonitorColumn),
 	)
 }
 func newChannelStep() *sqlgraph.Step {

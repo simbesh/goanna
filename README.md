@@ -44,3 +44,14 @@ openapi/
 packages/
   api-client/
 ```
+
+## Current scaffold features
+
+- Monitor CRUD API with cron-only scheduling (`/v1/monitors`)
+- Monitor recent checks API (`/v1/monitors/{monitorId}/checks`)
+- Background worker stores monitor runtime state (`pending|ok|error|retrying|disabled`)
+- Lifetime counters per monitor (`checkCount`, success/error/retry counters)
+- Global history retention setting for all monitors (`/v1/settings/runtime`)
+- Telegram notification channel settings API (`/v1/settings/notifications/telegram`)
+- Frontend monitor creation form with a built-in cron builder + custom cron input
+- Frontend Settings page with Notifications + Runtime tabs

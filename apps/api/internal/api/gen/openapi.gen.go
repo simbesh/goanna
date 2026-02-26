@@ -16,52 +16,277 @@ import (
 	"github.com/getkin/kin-openapi/openapi3"
 )
 
-// CreateEndpointRequest defines model for CreateEndpointRequest.
-type CreateEndpointRequest struct {
-	ExpectedStatus  *int32  `json:"expectedStatus,omitempty"`
-	IntervalSeconds *int32  `json:"intervalSeconds,omitempty"`
-	Method          *string `json:"method,omitempty"`
-	Name            string  `json:"name"`
-	TimeoutSeconds  *int32  `json:"timeoutSeconds,omitempty"`
-	Url             string  `json:"url"`
+// Defines values for CreateMonitorRequestExpectedType.
+const (
+	CreateMonitorRequestExpectedTypeHtml CreateMonitorRequestExpectedType = "html"
+	CreateMonitorRequestExpectedTypeJson CreateMonitorRequestExpectedType = "json"
+	CreateMonitorRequestExpectedTypeText CreateMonitorRequestExpectedType = "text"
+)
+
+// Defines values for CreateMonitorRequestNotificationChannels.
+const (
+	CreateMonitorRequestNotificationChannelsTelegram CreateMonitorRequestNotificationChannels = "telegram"
+)
+
+// Defines values for MonitorExpectedType.
+const (
+	MonitorExpectedTypeHtml MonitorExpectedType = "html"
+	MonitorExpectedTypeJson MonitorExpectedType = "json"
+	MonitorExpectedTypeText MonitorExpectedType = "text"
+)
+
+// Defines values for MonitorNotificationChannels.
+const (
+	MonitorNotificationChannelsTelegram MonitorNotificationChannels = "telegram"
+)
+
+// Defines values for MonitorStatus.
+const (
+	MonitorStatusDisabled MonitorStatus = "disabled"
+	MonitorStatusError    MonitorStatus = "error"
+	MonitorStatusOk       MonitorStatus = "ok"
+	MonitorStatusPending  MonitorStatus = "pending"
+	MonitorStatusRetrying MonitorStatus = "retrying"
+)
+
+// Defines values for MonitorCheckStatus.
+const (
+	MonitorCheckStatusError    MonitorCheckStatus = "error"
+	MonitorCheckStatusOk       MonitorCheckStatus = "ok"
+	MonitorCheckStatusPending  MonitorCheckStatus = "pending"
+	MonitorCheckStatusRetrying MonitorCheckStatus = "retrying"
+	MonitorCheckStatusUnknown  MonitorCheckStatus = "unknown"
+)
+
+// CreateMonitorRequest defines model for CreateMonitorRequest.
+type CreateMonitorRequest struct {
+	Auth                 *map[string]string                          `json:"auth,omitempty"`
+	Body                 *string                                     `json:"body,omitempty"`
+	Cron                 string                                      `json:"cron"`
+	Enabled              *bool                                       `json:"enabled,omitempty"`
+	ExpectedResponse     *string                                     `json:"expectedResponse,omitempty"`
+	ExpectedType         *CreateMonitorRequestExpectedType           `json:"expectedType,omitempty"`
+	Headers              *map[string]string                          `json:"headers,omitempty"`
+	IconUrl              *string                                     `json:"iconUrl,omitempty"`
+	Label                *string                                     `json:"label,omitempty"`
+	Method               *string                                     `json:"method,omitempty"`
+	NotificationChannels *[]CreateMonitorRequestNotificationChannels `json:"notificationChannels,omitempty"`
+	Selector             *string                                     `json:"selector,omitempty"`
+	Url                  string                                      `json:"url"`
 }
 
-// Endpoint defines model for Endpoint.
-type Endpoint struct {
-	CreatedAt       time.Time `json:"createdAt"`
-	ExpectedStatus  int32     `json:"expectedStatus"`
-	Id              int64     `json:"id"`
-	IntervalSeconds int32     `json:"intervalSeconds"`
-	Method          string    `json:"method"`
-	Name            string    `json:"name"`
-	TimeoutSeconds  int32     `json:"timeoutSeconds"`
-	UpdatedAt       time.Time `json:"updatedAt"`
-	Url             string    `json:"url"`
-}
+// CreateMonitorRequestExpectedType defines model for CreateMonitorRequest.ExpectedType.
+type CreateMonitorRequestExpectedType string
+
+// CreateMonitorRequestNotificationChannels defines model for CreateMonitorRequest.NotificationChannels.
+type CreateMonitorRequestNotificationChannels string
 
 // HealthResponse defines model for HealthResponse.
 type HealthResponse struct {
 	Status string `json:"status"`
 }
 
-// CreateEndpointJSONRequestBody defines body for CreateEndpoint for application/json ContentType.
-type CreateEndpointJSONRequestBody = CreateEndpointRequest
+// Monitor defines model for Monitor.
+type Monitor struct {
+	Auth                 *map[string]string             `json:"auth,omitempty"`
+	Body                 *string                        `json:"body"`
+	CheckCount           int64                          `json:"checkCount"`
+	CreatedAt            time.Time                      `json:"createdAt"`
+	Cron                 string                         `json:"cron"`
+	Enabled              bool                           `json:"enabled"`
+	ExpectedResponse     *string                        `json:"expectedResponse"`
+	ExpectedType         MonitorExpectedType            `json:"expectedType"`
+	Headers              *map[string]string             `json:"headers,omitempty"`
+	IconUrl              string                         `json:"iconUrl"`
+	Id                   int64                          `json:"id"`
+	Label                *string                        `json:"label"`
+	LastCheckAt          *time.Time                     `json:"lastCheckAt"`
+	LastDurationMs       *int32                         `json:"lastDurationMs"`
+	LastErrorAt          *time.Time                     `json:"lastErrorAt"`
+	LastErrorMessage     *string                        `json:"lastErrorMessage"`
+	LastStatusCode       *int32                         `json:"lastStatusCode"`
+	LastSuccessAt        *time.Time                     `json:"lastSuccessAt"`
+	Method               string                         `json:"method"`
+	NextRunAt            *time.Time                     `json:"nextRunAt"`
+	NotificationChannels *[]MonitorNotificationChannels `json:"notificationChannels,omitempty"`
+	Selector             *string                        `json:"selector"`
+	Status               MonitorStatus                  `json:"status"`
+	UpdatedAt            time.Time                      `json:"updatedAt"`
+	Url                  string                         `json:"url"`
+}
+
+// MonitorExpectedType defines model for Monitor.ExpectedType.
+type MonitorExpectedType string
+
+// MonitorNotificationChannels defines model for Monitor.NotificationChannels.
+type MonitorNotificationChannels string
+
+// MonitorStatus defines model for Monitor.Status.
+type MonitorStatus string
+
+// MonitorCheck defines model for MonitorCheck.
+type MonitorCheck struct {
+	CheckedAt      time.Time          `json:"checkedAt"`
+	DiffChanged    *bool              `json:"diffChanged,omitempty"`
+	DiffDetails    *string            `json:"diffDetails"`
+	DiffKind       *string            `json:"diffKind"`
+	DiffSummary    *string            `json:"diffSummary"`
+	ErrorMessage   *string            `json:"errorMessage"`
+	Id             int64              `json:"id"`
+	ResponseTimeMs *int32             `json:"responseTimeMs"`
+	SelectionType  *string            `json:"selectionType"`
+	SelectionValue *string            `json:"selectionValue"`
+	Status         MonitorCheckStatus `json:"status"`
+	StatusCode     *int32             `json:"statusCode"`
+}
+
+// MonitorCheckStatus defines model for MonitorCheck.Status.
+type MonitorCheckStatus string
+
+// RuntimeSettings defines model for RuntimeSettings.
+type RuntimeSettings struct {
+	ChecksHistoryLimit int32      `json:"checksHistoryLimit"`
+	RequiredSettings   []string   `json:"requiredSettings"`
+	Timezone           *string    `json:"timezone"`
+	UpdatedAt          *time.Time `json:"updatedAt"`
+}
+
+// SelectorPreviewRequest defines model for SelectorPreviewRequest.
+type SelectorPreviewRequest struct {
+	// Json Raw JSON payload to evaluate.
+	Json string `json:"json"`
+
+	// Selector Optional gjson selector path.
+	Selector *string `json:"selector,omitempty"`
+}
+
+// SelectorPreviewResponse defines model for SelectorPreviewResponse.
+type SelectorPreviewResponse struct {
+	Exists bool `json:"exists"`
+
+	// Raw Raw selected value as JSON text.
+	Raw *string `json:"raw"`
+
+	// Type one of none, null, false, number, string, true, json.
+	Type string `json:"type"`
+
+	// Value Normalized value used for monitor expectedResponse comparison.
+	Value *string `json:"value"`
+}
+
+// TelegramSettings defines model for TelegramSettings.
+type TelegramSettings struct {
+	BotToken  string     `json:"botToken"`
+	ChatId    string     `json:"chatId"`
+	Enabled   bool       `json:"enabled"`
+	UpdatedAt *time.Time `json:"updatedAt"`
+}
+
+// TestMonitorRequest defines model for TestMonitorRequest.
+type TestMonitorRequest struct {
+	Auth    *map[string]string `json:"auth,omitempty"`
+	Body    *string            `json:"body,omitempty"`
+	Headers *map[string]string `json:"headers,omitempty"`
+	Method  *string            `json:"method,omitempty"`
+	Url     string             `json:"url"`
+}
+
+// TestMonitorResponse defines model for TestMonitorResponse.
+type TestMonitorResponse struct {
+	Body       interface{}       `json:"body"`
+	Headers    map[string]string `json:"headers"`
+	Ok         bool              `json:"ok"`
+	Status     int32             `json:"status"`
+	StatusText string            `json:"statusText"`
+}
+
+// TestTelegramSettingsRequest defines model for TestTelegramSettingsRequest.
+type TestTelegramSettingsRequest struct {
+	BotToken string  `json:"botToken"`
+	ChatId   string  `json:"chatId"`
+	Message  *string `json:"message"`
+}
+
+// TestTelegramSettingsResponse defines model for TestTelegramSettingsResponse.
+type TestTelegramSettingsResponse struct {
+	Ok bool `json:"ok"`
+}
+
+// UpsertRuntimeSettingsRequest defines model for UpsertRuntimeSettingsRequest.
+type UpsertRuntimeSettingsRequest struct {
+	ChecksHistoryLimit int32  `json:"checksHistoryLimit"`
+	Timezone           string `json:"timezone"`
+}
+
+// UpsertTelegramSettingsRequest defines model for UpsertTelegramSettingsRequest.
+type UpsertTelegramSettingsRequest struct {
+	BotToken string `json:"botToken"`
+	ChatId   string `json:"chatId"`
+	Enabled  *bool  `json:"enabled,omitempty"`
+}
+
+// ListMonitorChecksParams defines parameters for ListMonitorChecks.
+type ListMonitorChecksParams struct {
+	Limit *int32 `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// CreateMonitorJSONRequestBody defines body for CreateMonitor for application/json ContentType.
+type CreateMonitorJSONRequestBody = CreateMonitorRequest
+
+// PreviewMonitorSelectorJSONRequestBody defines body for PreviewMonitorSelector for application/json ContentType.
+type PreviewMonitorSelectorJSONRequestBody = SelectorPreviewRequest
+
+// TestMonitorUrlJSONRequestBody defines body for TestMonitorUrl for application/json ContentType.
+type TestMonitorUrlJSONRequestBody = TestMonitorRequest
+
+// UpdateMonitorJSONRequestBody defines body for UpdateMonitor for application/json ContentType.
+type UpdateMonitorJSONRequestBody = CreateMonitorRequest
+
+// UpsertTelegramSettingsJSONRequestBody defines body for UpsertTelegramSettings for application/json ContentType.
+type UpsertTelegramSettingsJSONRequestBody = UpsertTelegramSettingsRequest
+
+// TestTelegramSettingsJSONRequestBody defines body for TestTelegramSettings for application/json ContentType.
+type TestTelegramSettingsJSONRequestBody = TestTelegramSettingsRequest
+
+// UpsertRuntimeSettingsJSONRequestBody defines body for UpsertRuntimeSettings for application/json ContentType.
+type UpsertRuntimeSettingsJSONRequestBody = UpsertRuntimeSettingsRequest
 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/6xV3U/bMBD/V6LbHrMmBYYgbwyhrdImIdgb4sHEV2KIP7AvFR3K/z7ZTtOGZGJ8vLn1",
-	"+e5+H3d5glJLoxUqclA8gSsrlCwcTy0ywjPFjRaKLvChQUf+wlht0JLAEIaPBktCfkmMmvAPxyVraoJi",
-	"L89TWGorGUEBQtH+HqQg2aOQjYTi6/FxClKo+Gvug2ltMIbiLVpo03C0K1ZfYqkVH+Y/nEzfJ5xKJ5Eq",
-	"zQdZ4PvZb+hjHVmhbn2oYhJ94OiChETd0FRH89d31Njap+hfNVaMu2lTsPjQCIsciqvYWnx63cfqmzss",
-	"yafcaDYWqwya8hMalOSM8ItHNUXDWN/3KsqfJzk8gP+U/s1q4yOTpsYPUfu1Ahv+Ws7f4gnBId01Ro9+",
-	"TOQI1EjldMcpuwim3PYDWU3VBTqjlcOx51xvnK0I+v5FPN2zccU2WGOp4+C50gpDQiso4OR8kZRakWUl",
-	"JUttE+wGIZFaCdK+TsIUT5QmsRQl8+/cLPBB0RyaKcWSX9vwk/MFpLBC62KNfDaf5R62NqiYEVDA/iyf",
-	"7UMKhlEVcGZVoOSPP99i0N0TEsotuC+DFFkDjzkSF17u5XkYU60I4/wyY+qu0+zO+RY2S9qfPltcQgGf",
-	"su0Wz7oVnj3TJfA25ku4JHa7Dgq4Rkpm11B0siZlheV9uMpW82xDqPsntJ/C0Vkf9U54glC6l3D2267t",
-	"rcKsZespxKeNtago2eIYgvbdb8yCfDcsBaPdBN7hVxKih9HRN83XHybl9Ke4HY4M2QbbEeHzD2tiy/OY",
-	"181d0q0Nz9dBFHsYuFArVguedCwlN56moQYR7IQKsbBD66cRiqunuCehIjJFltW6ZHWlHRVH+VEO7XX7",
-	"NwAA//9Lk9UI3QgAAA==",
+	"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",
+	"nP82+21GH748/B0AAP//JsT4XugsAAA=",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

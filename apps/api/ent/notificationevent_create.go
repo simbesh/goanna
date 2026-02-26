@@ -6,7 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"goanna/apps/api/ent/endpoint"
+	"goanna/apps/api/ent/monitor"
 	"goanna/apps/api/ent/notificationchannel"
 	"goanna/apps/api/ent/notificationevent"
 	"time"
@@ -64,15 +64,15 @@ func (_c *NotificationEventCreate) SetNillableSentAt(v *time.Time) *Notification
 	return _c
 }
 
-// SetEndpointID sets the "endpoint" edge to the Endpoint entity by ID.
-func (_c *NotificationEventCreate) SetEndpointID(id int) *NotificationEventCreate {
-	_c.mutation.SetEndpointID(id)
+// SetMonitorID sets the "monitor" edge to the Monitor entity by ID.
+func (_c *NotificationEventCreate) SetMonitorID(id int) *NotificationEventCreate {
+	_c.mutation.SetMonitorID(id)
 	return _c
 }
 
-// SetEndpoint sets the "endpoint" edge to the Endpoint entity.
-func (_c *NotificationEventCreate) SetEndpoint(v *Endpoint) *NotificationEventCreate {
-	return _c.SetEndpointID(v.ID)
+// SetMonitor sets the "monitor" edge to the Monitor entity.
+func (_c *NotificationEventCreate) SetMonitor(v *Monitor) *NotificationEventCreate {
+	return _c.SetMonitorID(v.ID)
 }
 
 // SetChannelID sets the "channel" edge to the NotificationChannel entity by ID.
@@ -139,8 +139,8 @@ func (_c *NotificationEventCreate) check() error {
 	if _, ok := _c.mutation.SentAt(); !ok {
 		return &ValidationError{Name: "sent_at", err: errors.New(`ent: missing required field "NotificationEvent.sent_at"`)}
 	}
-	if len(_c.mutation.EndpointIDs()) == 0 {
-		return &ValidationError{Name: "endpoint", err: errors.New(`ent: missing required edge "NotificationEvent.endpoint"`)}
+	if len(_c.mutation.MonitorIDs()) == 0 {
+		return &ValidationError{Name: "monitor", err: errors.New(`ent: missing required edge "NotificationEvent.monitor"`)}
 	}
 	if len(_c.mutation.ChannelIDs()) == 0 {
 		return &ValidationError{Name: "channel", err: errors.New(`ent: missing required edge "NotificationEvent.channel"`)}
@@ -183,21 +183,21 @@ func (_c *NotificationEventCreate) createSpec() (*NotificationEvent, *sqlgraph.C
 		_spec.SetField(notificationevent.FieldSentAt, field.TypeTime, value)
 		_node.SentAt = value
 	}
-	if nodes := _c.mutation.EndpointIDs(); len(nodes) > 0 {
+	if nodes := _c.mutation.MonitorIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
-			Table:   notificationevent.EndpointTable,
-			Columns: []string{notificationevent.EndpointColumn},
+			Table:   notificationevent.MonitorTable,
+			Columns: []string{notificationevent.MonitorColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(endpoint.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(monitor.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
-		_node.endpoint_notification_events = &nodes[0]
+		_node.monitor_notification_events = &nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	if nodes := _c.mutation.ChannelIDs(); len(nodes) > 0 {

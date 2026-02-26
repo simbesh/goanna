@@ -29,7 +29,7 @@ func (NotificationEvent) Fields() []ent.Field {
 // Edges of the NotificationEvent.
 func (NotificationEvent) Edges() []ent.Edge {
 	return []ent.Edge{
-		edge.From("endpoint", Endpoint.Type).
+		edge.From("monitor", Monitor.Type).
 			Ref("notification_events").
 			Unique().
 			Required(),

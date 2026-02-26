@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"goanna/apps/api/ent/checkresult"
-	"goanna/apps/api/ent/endpoint"
+	"goanna/apps/api/ent/monitor"
 	"goanna/apps/api/ent/predicate"
 	"time"
 
@@ -117,6 +117,120 @@ func (_u *CheckResultUpdate) ClearErrorMessage() *CheckResultUpdate {
 	return _u
 }
 
+// SetSelectionType sets the "selection_type" field.
+func (_u *CheckResultUpdate) SetSelectionType(v string) *CheckResultUpdate {
+	_u.mutation.SetSelectionType(v)
+	return _u
+}
+
+// SetNillableSelectionType sets the "selection_type" field if the given value is not nil.
+func (_u *CheckResultUpdate) SetNillableSelectionType(v *string) *CheckResultUpdate {
+	if v != nil {
+		_u.SetSelectionType(*v)
+	}
+	return _u
+}
+
+// ClearSelectionType clears the value of the "selection_type" field.
+func (_u *CheckResultUpdate) ClearSelectionType() *CheckResultUpdate {
+	_u.mutation.ClearSelectionType()
+	return _u
+}
+
+// SetSelectionValue sets the "selection_value" field.
+func (_u *CheckResultUpdate) SetSelectionValue(v string) *CheckResultUpdate {
+	_u.mutation.SetSelectionValue(v)
+	return _u
+}
+
+// SetNillableSelectionValue sets the "selection_value" field if the given value is not nil.
+func (_u *CheckResultUpdate) SetNillableSelectionValue(v *string) *CheckResultUpdate {
+	if v != nil {
+		_u.SetSelectionValue(*v)
+	}
+	return _u
+}
+
+// ClearSelectionValue clears the value of the "selection_value" field.
+func (_u *CheckResultUpdate) ClearSelectionValue() *CheckResultUpdate {
+	_u.mutation.ClearSelectionValue()
+	return _u
+}
+
+// SetDiffChanged sets the "diff_changed" field.
+func (_u *CheckResultUpdate) SetDiffChanged(v bool) *CheckResultUpdate {
+	_u.mutation.SetDiffChanged(v)
+	return _u
+}
+
+// SetNillableDiffChanged sets the "diff_changed" field if the given value is not nil.
+func (_u *CheckResultUpdate) SetNillableDiffChanged(v *bool) *CheckResultUpdate {
+	if v != nil {
+		_u.SetDiffChanged(*v)
+	}
+	return _u
+}
+
+// SetDiffKind sets the "diff_kind" field.
+func (_u *CheckResultUpdate) SetDiffKind(v string) *CheckResultUpdate {
+	_u.mutation.SetDiffKind(v)
+	return _u
+}
+
+// SetNillableDiffKind sets the "diff_kind" field if the given value is not nil.
+func (_u *CheckResultUpdate) SetNillableDiffKind(v *string) *CheckResultUpdate {
+	if v != nil {
+		_u.SetDiffKind(*v)
+	}
+	return _u
+}
+
+// ClearDiffKind clears the value of the "diff_kind" field.
+func (_u *CheckResultUpdate) ClearDiffKind() *CheckResultUpdate {
+	_u.mutation.ClearDiffKind()
+	return _u
+}
+
+// SetDiffSummary sets the "diff_summary" field.
+func (_u *CheckResultUpdate) SetDiffSummary(v string) *CheckResultUpdate {
+	_u.mutation.SetDiffSummary(v)
+	return _u
+}
+
+// SetNillableDiffSummary sets the "diff_summary" field if the given value is not nil.
+func (_u *CheckResultUpdate) SetNillableDiffSummary(v *string) *CheckResultUpdate {
+	if v != nil {
+		_u.SetDiffSummary(*v)
+	}
+	return _u
+}
+
+// ClearDiffSummary clears the value of the "diff_summary" field.
+func (_u *CheckResultUpdate) ClearDiffSummary() *CheckResultUpdate {
+	_u.mutation.ClearDiffSummary()
+	return _u
+}
+
+// SetDiffDetails sets the "diff_details" field.
+func (_u *CheckResultUpdate) SetDiffDetails(v string) *CheckResultUpdate {
+	_u.mutation.SetDiffDetails(v)
+	return _u
+}
+
+// SetNillableDiffDetails sets the "diff_details" field if the given value is not nil.
+func (_u *CheckResultUpdate) SetNillableDiffDetails(v *string) *CheckResultUpdate {
+	if v != nil {
+		_u.SetDiffDetails(*v)
+	}
+	return _u
+}
+
+// ClearDiffDetails clears the value of the "diff_details" field.
+func (_u *CheckResultUpdate) ClearDiffDetails() *CheckResultUpdate {
+	_u.mutation.ClearDiffDetails()
+	return _u
+}
+
 // SetCheckedAt sets the "checked_at" field.
 func (_u *CheckResultUpdate) SetCheckedAt(v time.Time) *CheckResultUpdate {
 	_u.mutation.SetCheckedAt(v)
@@ -131,15 +245,15 @@ func (_u *CheckResultUpdate) SetNillableCheckedAt(v *time.Time) *CheckResultUpda
 	return _u
 }
 
-// SetEndpointID sets the "endpoint" edge to the Endpoint entity by ID.
-func (_u *CheckResultUpdate) SetEndpointID(id int) *CheckResultUpdate {
-	_u.mutation.SetEndpointID(id)
+// SetMonitorID sets the "monitor" edge to the Monitor entity by ID.
+func (_u *CheckResultUpdate) SetMonitorID(id int) *CheckResultUpdate {
+	_u.mutation.SetMonitorID(id)
 	return _u
 }
 
-// SetEndpoint sets the "endpoint" edge to the Endpoint entity.
-func (_u *CheckResultUpdate) SetEndpoint(v *Endpoint) *CheckResultUpdate {
-	return _u.SetEndpointID(v.ID)
+// SetMonitor sets the "monitor" edge to the Monitor entity.
+func (_u *CheckResultUpdate) SetMonitor(v *Monitor) *CheckResultUpdate {
+	return _u.SetMonitorID(v.ID)
 }
 
 // Mutation returns the CheckResultMutation object of the builder.
@@ -147,9 +261,9 @@ func (_u *CheckResultUpdate) Mutation() *CheckResultMutation {
 	return _u.mutation
 }
 
-// ClearEndpoint clears the "endpoint" edge to the Endpoint entity.
-func (_u *CheckResultUpdate) ClearEndpoint() *CheckResultUpdate {
-	_u.mutation.ClearEndpoint()
+// ClearMonitor clears the "monitor" edge to the Monitor entity.
+func (_u *CheckResultUpdate) ClearMonitor() *CheckResultUpdate {
+	_u.mutation.ClearMonitor()
 	return _u
 }
 
@@ -182,8 +296,8 @@ func (_u *CheckResultUpdate) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *CheckResultUpdate) check() error {
-	if _u.mutation.EndpointCleared() && len(_u.mutation.EndpointIDs()) > 0 {
-		return errors.New(`ent: clearing a required unique edge "CheckResult.endpoint"`)
+	if _u.mutation.MonitorCleared() && len(_u.mutation.MonitorIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "CheckResult.monitor"`)
 	}
 	return nil
 }
@@ -227,31 +341,64 @@ func (_u *CheckResultUpdate) sqlSave(ctx context.Context) (_node int, err error)
 	if _u.mutation.ErrorMessageCleared() {
 		_spec.ClearField(checkresult.FieldErrorMessage, field.TypeString)
 	}
+	if value, ok := _u.mutation.SelectionType(); ok {
+		_spec.SetField(checkresult.FieldSelectionType, field.TypeString, value)
+	}
+	if _u.mutation.SelectionTypeCleared() {
+		_spec.ClearField(checkresult.FieldSelectionType, field.TypeString)
+	}
+	if value, ok := _u.mutation.SelectionValue(); ok {
+		_spec.SetField(checkresult.FieldSelectionValue, field.TypeString, value)
+	}
+	if _u.mutation.SelectionValueCleared() {
+		_spec.ClearField(checkresult.FieldSelectionValue, field.TypeString)
+	}
+	if value, ok := _u.mutation.DiffChanged(); ok {
+		_spec.SetField(checkresult.FieldDiffChanged, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.DiffKind(); ok {
+		_spec.SetField(checkresult.FieldDiffKind, field.TypeString, value)
+	}
+	if _u.mutation.DiffKindCleared() {
+		_spec.ClearField(checkresult.FieldDiffKind, field.TypeString)
+	}
+	if value, ok := _u.mutation.DiffSummary(); ok {
+		_spec.SetField(checkresult.FieldDiffSummary, field.TypeString, value)
+	}
+	if _u.mutation.DiffSummaryCleared() {
+		_spec.ClearField(checkresult.FieldDiffSummary, field.TypeString)
+	}
+	if value, ok := _u.mutation.DiffDetails(); ok {
+		_spec.SetField(checkresult.FieldDiffDetails, field.TypeString, value)
+	}
+	if _u.mutation.DiffDetailsCleared() {
+		_spec.ClearField(checkresult.FieldDiffDetails, field.TypeString)
+	}
 	if value, ok := _u.mutation.CheckedAt(); ok {
 		_spec.SetField(checkresult.FieldCheckedAt, field.TypeTime, value)
 	}
-	if _u.mutation.EndpointCleared() {
+	if _u.mutation.MonitorCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
-			Table:   checkresult.EndpointTable,
-			Columns: []string{checkresult.EndpointColumn},
+			Table:   checkresult.MonitorTable,
+			Columns: []string{checkresult.MonitorColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(endpoint.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(monitor.FieldID, field.TypeInt),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := _u.mutation.EndpointIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.MonitorIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
-			Table:   checkresult.EndpointTable,
-			Columns: []string{checkresult.EndpointColumn},
+			Table:   checkresult.MonitorTable,
+			Columns: []string{checkresult.MonitorColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(endpoint.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(monitor.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -367,6 +514,120 @@ func (_u *CheckResultUpdateOne) ClearErrorMessage() *CheckResultUpdateOne {
 	return _u
 }
 
+// SetSelectionType sets the "selection_type" field.
+func (_u *CheckResultUpdateOne) SetSelectionType(v string) *CheckResultUpdateOne {
+	_u.mutation.SetSelectionType(v)
+	return _u
+}
+
+// SetNillableSelectionType sets the "selection_type" field if the given value is not nil.
+func (_u *CheckResultUpdateOne) SetNillableSelectionType(v *string) *CheckResultUpdateOne {
+	if v != nil {
+		_u.SetSelectionType(*v)
+	}
+	return _u
+}
+
+// ClearSelectionType clears the value of the "selection_type" field.
+func (_u *CheckResultUpdateOne) ClearSelectionType() *CheckResultUpdateOne {
+	_u.mutation.ClearSelectionType()
+	return _u
+}
+
+// SetSelectionValue sets the "selection_value" field.
+func (_u *CheckResultUpdateOne) SetSelectionValue(v string) *CheckResultUpdateOne {
+	_u.mutation.SetSelectionValue(v)
+	return _u
+}
+
+// SetNillableSelectionValue sets the "selection_value" field if the given value is not nil.
+func (_u *CheckResultUpdateOne) SetNillableSelectionValue(v *string) *CheckResultUpdateOne {
+	if v != nil {
+		_u.SetSelectionValue(*v)
+	}
+	return _u
+}
+
+// ClearSelectionValue clears the value of the "selection_value" field.
+func (_u *CheckResultUpdateOne) ClearSelectionValue() *CheckResultUpdateOne {
+	_u.mutation.ClearSelectionValue()
+	return _u
+}
+
+// SetDiffChanged sets the "diff_changed" field.
+func (_u *CheckResultUpdateOne) SetDiffChanged(v bool) *CheckResultUpdateOne {
+	_u.mutation.SetDiffChanged(v)
+	return _u
+}
+
+// SetNillableDiffChanged sets the "diff_changed" field if the given value is not nil.
+func (_u *CheckResultUpdateOne) SetNillableDiffChanged(v *bool) *CheckResultUpdateOne {
+	if v != nil {
+		_u.SetDiffChanged(*v)
+	}
+	return _u
+}
+
+// SetDiffKind sets the "diff_kind" field.
+func (_u *CheckResultUpdateOne) SetDiffKind(v string) *CheckResultUpdateOne {
+	_u.mutation.SetDiffKind(v)
+	return _u
+}
+
+// SetNillableDiffKind sets the "diff_kind" field if the given value is not nil.
+func (_u *CheckResultUpdateOne) SetNillableDiffKind(v *string) *CheckResultUpdateOne {
+	if v != nil {
+		_u.SetDiffKind(*v)
+	}
+	return _u
+}
+
+// ClearDiffKind clears the value of the "diff_kind" field.
+func (_u *CheckResultUpdateOne) ClearDiffKind() *CheckResultUpdateOne {
+	_u.mutation.ClearDiffKind()
+	return _u
+}
+
+// SetDiffSummary sets the "diff_summary" field.
+func (_u *CheckResultUpdateOne) SetDiffSummary(v string) *CheckResultUpdateOne {
+	_u.mutation.SetDiffSummary(v)
+	return _u
+}
+
+// SetNillableDiffSummary sets the "diff_summary" field if the given value is not nil.
+func (_u *CheckResultUpdateOne) SetNillableDiffSummary(v *string) *CheckResultUpdateOne {
+	if v != nil {
+		_u.SetDiffSummary(*v)
+	}
+	return _u
+}
+
+// ClearDiffSummary clears the value of the "diff_summary" field.
+func (_u *CheckResultUpdateOne) ClearDiffSummary() *CheckResultUpdateOne {
+	_u.mutation.ClearDiffSummary()
+	return _u
+}
+
+// SetDiffDetails sets the "diff_details" field.
+func (_u *CheckResultUpdateOne) SetDiffDetails(v string) *CheckResultUpdateOne {
+	_u.mutation.SetDiffDetails(v)
+	return _u
+}
+
+// SetNillableDiffDetails sets the "diff_details" field if the given value is not nil.
+func (_u *CheckResultUpdateOne) SetNillableDiffDetails(v *string) *CheckResultUpdateOne {
+	if v != nil {
+		_u.SetDiffDetails(*v)
+	}
+	return _u
+}
+
+// ClearDiffDetails clears the value of the "diff_details" field.
+func (_u *CheckResultUpdateOne) ClearDiffDetails() *CheckResultUpdateOne {
+	_u.mutation.ClearDiffDetails()
+	return _u
+}
+
 // SetCheckedAt sets the "checked_at" field.
 func (_u *CheckResultUpdateOne) SetCheckedAt(v time.Time) *CheckResultUpdateOne {
 	_u.mutation.SetCheckedAt(v)
@@ -381,15 +642,15 @@ func (_u *CheckResultUpdateOne) SetNillableCheckedAt(v *time.Time) *CheckResultU
 	return _u
 }
 
-// SetEndpointID sets the "endpoint" edge to the Endpoint entity by ID.
-func (_u *CheckResultUpdateOne) SetEndpointID(id int) *CheckResultUpdateOne {
-	_u.mutation.SetEndpointID(id)
+// SetMonitorID sets the "monitor" edge to the Monitor entity by ID.
+func (_u *CheckResultUpdateOne) SetMonitorID(id int) *CheckResultUpdateOne {
+	_u.mutation.SetMonitorID(id)
 	return _u
 }
 
-// SetEndpoint sets the "endpoint" edge to the Endpoint entity.
-func (_u *CheckResultUpdateOne) SetEndpoint(v *Endpoint) *CheckResultUpdateOne {
-	return _u.SetEndpointID(v.ID)
+// SetMonitor sets the "monitor" edge to the Monitor entity.
+func (_u *CheckResultUpdateOne) SetMonitor(v *Monitor) *CheckResultUpdateOne {
+	return _u.SetMonitorID(v.ID)
 }
 
 // Mutation returns the CheckResultMutation object of the builder.
@@ -397,9 +658,9 @@ func (_u *CheckResultUpdateOne) Mutation() *CheckResultMutation {
 	return _u.mutation
 }
 
-// ClearEndpoint clears the "endpoint" edge to the Endpoint entity.
-func (_u *CheckResultUpdateOne) ClearEndpoint() *CheckResultUpdateOne {
-	_u.mutation.ClearEndpoint()
+// ClearMonitor clears the "monitor" edge to the Monitor entity.
+func (_u *CheckResultUpdateOne) ClearMonitor() *CheckResultUpdateOne {
+	_u.mutation.ClearMonitor()
 	return _u
 }
 
@@ -445,8 +706,8 @@ func (_u *CheckResultUpdateOne) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *CheckResultUpdateOne) check() error {
-	if _u.mutation.EndpointCleared() && len(_u.mutation.EndpointIDs()) > 0 {
-		return errors.New(`ent: clearing a required unique edge "CheckResult.endpoint"`)
+	if _u.mutation.MonitorCleared() && len(_u.mutation.MonitorIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "CheckResult.monitor"`)
 	}
 	return nil
 }
@@ -507,31 +768,64 @@ func (_u *CheckResultUpdateOne) sqlSave(ctx context.Context) (_node *CheckResult
 	if _u.mutation.ErrorMessageCleared() {
 		_spec.ClearField(checkresult.FieldErrorMessage, field.TypeString)
 	}
+	if value, ok := _u.mutation.SelectionType(); ok {
+		_spec.SetField(checkresult.FieldSelectionType, field.TypeString, value)
+	}
+	if _u.mutation.SelectionTypeCleared() {
+		_spec.ClearField(checkresult.FieldSelectionType, field.TypeString)
+	}
+	if value, ok := _u.mutation.SelectionValue(); ok {
+		_spec.SetField(checkresult.FieldSelectionValue, field.TypeString, value)
+	}
+	if _u.mutation.SelectionValueCleared() {
+		_spec.ClearField(checkresult.FieldSelectionValue, field.TypeString)
+	}
+	if value, ok := _u.mutation.DiffChanged(); ok {
+		_spec.SetField(checkresult.FieldDiffChanged, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.DiffKind(); ok {
+		_spec.SetField(checkresult.FieldDiffKind, field.TypeString, value)
+	}
+	if _u.mutation.DiffKindCleared() {
+		_spec.ClearField(checkresult.FieldDiffKind, field.TypeString)
+	}
+	if value, ok := _u.mutation.DiffSummary(); ok {
+		_spec.SetField(checkresult.FieldDiffSummary, field.TypeString, value)
+	}
+	if _u.mutation.DiffSummaryCleared() {
+		_spec.ClearField(checkresult.FieldDiffSummary, field.TypeString)
+	}
+	if value, ok := _u.mutation.DiffDetails(); ok {
+		_spec.SetField(checkresult.FieldDiffDetails, field.TypeString, value)
+	}
+	if _u.mutation.DiffDetailsCleared() {
+		_spec.ClearField(checkresult.FieldDiffDetails, field.TypeString)
+	}
 	if value, ok := _u.mutation.CheckedAt(); ok {
 		_spec.SetField(checkresult.FieldCheckedAt, field.TypeTime, value)
 	}
-	if _u.mutation.EndpointCleared() {
+	if _u.mutation.MonitorCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
-			Table:   checkresult.EndpointTable,
-			Columns: []string{checkresult.EndpointColumn},
+			Table:   checkresult.MonitorTable,
+			Columns: []string{checkresult.MonitorColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(endpoint.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(monitor.FieldID, field.TypeInt),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := _u.mutation.EndpointIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.MonitorIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
-			Table:   checkresult.EndpointTable,
-			Columns: []string{checkresult.EndpointColumn},
+			Table:   checkresult.MonitorTable,
+			Columns: []string{checkresult.MonitorColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(endpoint.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(monitor.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
