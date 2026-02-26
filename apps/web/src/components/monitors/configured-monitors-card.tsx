@@ -50,6 +50,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
   DialogContent,
@@ -69,6 +70,7 @@ import {
   HybridTooltipTrigger,
 } from '@/components/ui/hybrid-tooltip'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -113,6 +115,7 @@ type ConfiguredMonitorsTableCardProps = Omit<
 > & {
   onImportMonitorConfigs: (
     monitorConfigs: Array<CreateMonitorRequest>,
+    triggerOnCreate: boolean,
   ) => Promise<{ importedCount: number; failedCount: number }>
 }
 
@@ -183,6 +186,7 @@ export const ConfiguredMonitorsTableCard = memo(
     >([])
     const [importPreviewOpen, setImportPreviewOpen] = useState(false)
     const [importingConfigs, setImportingConfigs] = useState(false)
+    const [triggerOnImport, setTriggerOnImport] = useState(true)
 
     useEffect(() => {
       const normalizedPageSize = normalizeMonitorTablePageSize(storedTablePageSize)
@@ -727,6 +731,7 @@ export const ConfiguredMonitorsTableCard = memo(
       setImportPreviewRows([])
       setImportPreviewSelection({})
       setImportPreviewSorting([])
+      setTriggerOnImport(true)
     }, [])
 
     const onExport = useCallback(() => {
@@ -825,6 +830,7 @@ export const ConfiguredMonitorsTableCard = memo(
       try {
         const { importedCount, failedCount } = await onImportMonitorConfigs(
           selectedImportConfigs,
+          triggerOnImport,
         )
 
         if (failedCount === 0) {
@@ -841,7 +847,12 @@ export const ConfiguredMonitorsTableCard = memo(
       } finally {
         setImportingConfigs(false)
       }
-    }, [closeImportPreview, onImportMonitorConfigs, selectedImportConfigs])
+    }, [
+      closeImportPreview,
+      onImportMonitorConfigs,
+      selectedImportConfigs,
+      triggerOnImport,
+    ])
 
     const tableFilterValue =
       (table.getColumn('name')?.getFilterValue() as string | undefined) ?? ''
@@ -1084,6 +1095,18 @@ export const ConfiguredMonitorsTableCard = memo(
                 {selectedImportConfigs.length} of {importPreviewRows.length}{' '}
                 selected.
               </p>
+
+              <div className="inline-flex w-fit items-center gap-2 rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2">
+                <Label htmlFor="importTriggerOnCreate" className="text-sm text-zinc-300">
+                  Trigger monitors after import
+                </Label>
+                <Checkbox
+                  id="importTriggerOnCreate"
+                  checked={triggerOnImport}
+                  disabled={importingConfigs}
+                  onCheckedChange={setTriggerOnImport}
+                />
+              </div>
 
               <div className="max-h-[55vh] overflow-auto rounded-lg border border-zinc-800 bg-zinc-950">
                 <Table>

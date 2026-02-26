@@ -321,6 +321,7 @@ function MonitorsPage() {
   const onImportMonitorConfigs = useCallback(
     async (
       monitorConfigs: Array<CreateMonitorRequest>,
+      triggerOnCreate: boolean,
     ): Promise<{ importedCount: number; failedCount: number }> => {
       let importedCount = 0
       let failedCount = 0
@@ -330,7 +331,7 @@ function MonitorsPage() {
           await createMonitorRequest.mutateAsync({
             body: {
               ...monitorConfig,
-              triggerOnCreate: false,
+              triggerOnCreate,
             },
           })
           importedCount += 1
