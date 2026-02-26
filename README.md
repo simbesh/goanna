@@ -40,6 +40,77 @@ bun run gen:api
 - default: `25165824` (24 MB)
 - example: `GOANNA_MAX_RESPONSE_BODY_BYTES=33554432 bun run dev:api`
 
+## Docker (single image, production)
+
+This repository now includes a production `Dockerfile` that runs both services in one container:
+
+- Web (TanStack Start/Nitro) on `9044`
+- API (Go + SQLite) internally on `8080` (optional external port mapping)
+
+### Build image
+
+```bash
+docker build -t goanna:latest --build-arg VITE_API_BASE_URL=/ .
+```
+
+`VITE_API_BASE_URL` is a build-time variable used by the web app. Use `/` to route browser API calls through the web gateway in the same container.
+
+### Runtime environment variables
+
+- `GOANNA_WEB_HOST` (default: `0.0.0.0`)
+- `GOANNA_WEB_PORT` (default: `9044`)
+- `GOANNA_WEB_INTERNAL_PORT` (default: `9045`)
+- `GOANNA_API_ADDR` (default: `:8080`)
+- `GOANNA_API_DSN` (default: `file:/app/data/goanna.db?_fk=1`)
+- `GOANNA_MAX_RESPONSE_BODY_BYTES` (default: `25165824`)
+- `GOANNA_API_INTERNAL_URL` (optional, default: `http://127.0.0.1:8080`)
+
+By default, only the web port is published. The API stays internal and is proxied through the web port for `/v1/*` and `/healthz`.
+
+### Docker Compose example (all options)
+
+```yaml
+services:
+  goanna:
+    image: ghcr.io/<owner>/<repo>:latest
+    # Optional: build locally instead of pulling
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: /
+    environment:
+      GOANNA_WEB_HOST: 0.0.0.0
+      GOANNA_WEB_PORT: '9044'
+      GOANNA_WEB_INTERNAL_PORT: '9045'
+      GOANNA_API_ADDR: ':8080'
+      GOANNA_API_DSN: file:/app/data/goanna.db?_fk=1
+      GOANNA_MAX_RESPONSE_BODY_BYTES: '25165824'
+    ports:
+      - '9044:9044'
+      # Optional: expose API publicly if needed later
+      # - '8080:8080'
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+```
+
+### One-line `docker run` example
+
+```bash
+docker run -d --name goanna -p 9044:9044 -e GOANNA_WEB_HOST=0.0.0.0 -e GOANNA_WEB_PORT=9044 -e GOANNA_WEB_INTERNAL_PORT=9045 -e GOANNA_API_ADDR=:8080 -e GOANNA_API_DSN='file:/app/data/goanna.db?_fk=1' -e GOANNA_MAX_RESPONSE_BODY_BYTES=25165824 -v ./data:/app/data goanna:latest
+```
+
+To expose the API later, add `-p 8080:8080` to `docker run` (or uncomment it in Compose).
+
+### GitHub Actions image pipeline
+
+CI is configured in `.github/workflows/docker-image.yml`:
+
+- Pull requests: build-only validation
+- `main`/tags: build and push to `ghcr.io/<owner>/<repo>`
+- Optional repo variable for frontend API URL: `VITE_API_BASE_URL`
+
 ## Layout
 
 ```text

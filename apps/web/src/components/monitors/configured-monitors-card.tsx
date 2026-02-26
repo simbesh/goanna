@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   flexRender,
   getCoreRowModel,
@@ -11,20 +11,36 @@ import {
   ChevronDown,
   ChevronUp,
   ChevronsUpDown,
+  Download,
   MoreHorizontal,
+  Upload,
 } from 'lucide-react'
+import { sileo } from 'sileo'
+import { useLocalStorage } from 'usehooks-ts'
 import type {
   Column,
   ColumnDef,
   ColumnFiltersState,
   PaginationState,
+  RowSelectionState,
   SortingState,
 } from '@tanstack/react-table'
 import type {
+  CreateMonitorRequest,
   MonitorCheck as MonitorCheckRecord,
   Monitor as MonitorRecord,
 } from '@goanna/api-client'
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -53,6 +69,13 @@ import {
   HybridTooltipTrigger,
 } from '@/components/ui/hybrid-tooltip'
 import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import {
   Table,
   TableBody,
@@ -87,7 +110,27 @@ type ConfiguredMonitorsCardProps = {
 type ConfiguredMonitorsTableCardProps = Omit<
   ConfiguredMonitorsCardProps,
   'expandedMonitorId' | 'onToggleChecks'
->
+> & {
+  onImportMonitorConfigs: (
+    monitorConfigs: Array<CreateMonitorRequest>,
+  ) => Promise<{ importedCount: number; failedCount: number }>
+}
+
+type ImportPreviewRow = {
+  previewId: string
+  config: CreateMonitorRequest
+}
+
+const monitorTablePageSizeOptions = [10, 25, 50, 100] as const
+const monitorTablePageSizeStorageKey = 'configuredMonitorsTablePageSize'
+
+function normalizeMonitorTablePageSize(pageSize: number): number {
+  return monitorTablePageSizeOptions.includes(
+    pageSize as (typeof monitorTablePageSizeOptions)[number],
+  )
+    ? pageSize
+    : monitorTablePageSizeOptions[0]
+}
 
 export const ConfiguredMonitorsTableCard = memo(
   function ConfiguredMonitorsTableCard({
@@ -106,17 +149,58 @@ export const ConfiguredMonitorsTableCard = memo(
     onTriggerMonitor,
     onDeleteMonitor,
     onEditMonitor,
+    onImportMonitorConfigs,
   }: ConfiguredMonitorsTableCardProps) {
     const [tableSorting, setTableSorting] = useState<SortingState>([])
     const [tableColumnFilters, setTableColumnFilters] =
       useState<ColumnFiltersState>([])
+    const [storedTablePageSize, setStoredTablePageSize] =
+      useLocalStorage<number>(
+        monitorTablePageSizeStorageKey,
+        monitorTablePageSizeOptions[0],
+      )
     const [tablePagination, setTablePagination] = useState<PaginationState>({
       pageIndex: 0,
-      pageSize: 8,
+      pageSize: normalizeMonitorTablePageSize(storedTablePageSize),
     })
+    const [selectedMonitorRows, setSelectedMonitorRows] =
+      useState<RowSelectionState>({})
     const [checksDialogMonitorId, setChecksDialogMonitorId] = useState<
       number | null
     >(null)
+    const [exportWarningOpen, setExportWarningOpen] = useState(false)
+    const [pendingExportConfigs, setPendingExportConfigs] = useState<
+      Array<CreateMonitorRequest>
+    >([])
+    const fileInputRef = useRef<HTMLInputElement | null>(null)
+    const [importPreviewRows, setImportPreviewRows] = useState<
+      Array<ImportPreviewRow>
+    >([])
+    const [importPreviewSelection, setImportPreviewSelection] =
+      useState<RowSelectionState>({})
+    const [importPreviewSorting, setImportPreviewSorting] = useState<
+      SortingState
+    >([])
+    const [importPreviewOpen, setImportPreviewOpen] = useState(false)
+    const [importingConfigs, setImportingConfigs] = useState(false)
+
+    useEffect(() => {
+      const normalizedPageSize = normalizeMonitorTablePageSize(storedTablePageSize)
+
+      if (normalizedPageSize !== storedTablePageSize) {
+        setStoredTablePageSize(normalizedPageSize)
+      }
+
+      setTablePagination((current) =>
+        current.pageSize === normalizedPageSize
+          ? current
+          : {
+              ...current,
+              pageIndex: 0,
+              pageSize: normalizedPageSize,
+            },
+      )
+    }, [setStoredTablePageSize, storedTablePageSize])
 
     const openChecksDialogForMonitor = useCallback(
       async (monitorId: number) => {
@@ -145,8 +229,99 @@ export const ConfiguredMonitorsTableCard = memo(
       [checksDialogMonitorId, monitors],
     )
 
+    const sortedMonitors = useMemo(
+      () => [...monitors].sort((left, right) => right.id - left.id),
+      [monitors],
+    )
+
+    const allRowsSelected =
+      sortedMonitors.length > 0 &&
+      sortedMonitors.every((monitor) => selectedMonitorRows[String(monitor.id)])
+
+    const someRowsSelected =
+      !allRowsSelected &&
+      sortedMonitors.some((monitor) => selectedMonitorRows[String(monitor.id)])
+
+    const toggleMonitorRowSelection = useCallback(
+      (monitorId: number, checked: boolean) => {
+        const key = String(monitorId)
+        setSelectedMonitorRows((current) => {
+          if (checked) {
+            if (current[key]) {
+              return current
+            }
+
+            return {
+              ...current,
+              [key]: true,
+            }
+          }
+
+          if (!current[key]) {
+            return current
+          }
+
+          const next = { ...current }
+          delete next[key]
+          return next
+        })
+      },
+      [],
+    )
+
+    const toggleAllRowsSelection = useCallback(
+      (checked: boolean) => {
+        if (!checked) {
+          setSelectedMonitorRows({})
+          return
+        }
+
+        setSelectedMonitorRows(
+          Object.fromEntries(
+            sortedMonitors.map((monitor) => [String(monitor.id), true] as const),
+          ),
+        )
+      },
+      [sortedMonitors],
+    )
+
     const columns = useMemo<Array<ColumnDef<MonitorRecord>>>(
       () => [
+        {
+          id: 'select',
+          enableSorting: false,
+          enableColumnFilter: false,
+          header: () => (
+            <input
+              type="checkbox"
+              className="size-4 cursor-pointer accent-zinc-200"
+              checked={allRowsSelected}
+              ref={(element) => {
+                if (!element) {
+                  return
+                }
+                element.indeterminate = someRowsSelected
+              }}
+              onChange={(event) => {
+                toggleAllRowsSelection(event.target.checked)
+              }}
+              onClick={(event) => event.stopPropagation()}
+              aria-label="Select all rows"
+            />
+          ),
+          cell: ({ row }) => (
+            <input
+              type="checkbox"
+              className="size-4 cursor-pointer accent-zinc-200"
+              checked={Boolean(selectedMonitorRows[String(row.original.id)])}
+              onChange={(event) => {
+                toggleMonitorRowSelection(row.original.id, event.target.checked)
+              }}
+              onClick={(event) => event.stopPropagation()}
+              aria-label={`Select ${getMonitorDisplayLabel(row.original)}`}
+            />
+          ),
+        },
         {
           id: 'name',
           accessorFn: (monitor) => getMonitorDisplayLabel(monitor),
@@ -358,6 +533,7 @@ export const ConfiguredMonitorsTableCard = memo(
         },
       ],
       [
+        allRowsSelected,
         deletingMonitorId,
         editingMonitorId,
         loadingChecksFor,
@@ -366,14 +542,19 @@ export const ConfiguredMonitorsTableCard = memo(
         onToggleMonitorEnabled,
         onTriggerMonitor,
         openChecksDialogForMonitor,
+        someRowsSelected,
+        selectedMonitorRows,
+        toggleMonitorRowSelection,
+        toggleAllRowsSelection,
         togglingMonitorId,
         triggeringMonitorId,
       ],
     )
 
     const table = useReactTable({
-      data: monitors,
+      data: sortedMonitors,
       columns,
+      getRowId: (monitor) => String(monitor.id),
       state: {
         sorting: tableSorting,
         columnFilters: tableColumnFilters,
@@ -387,6 +568,280 @@ export const ConfiguredMonitorsTableCard = memo(
       getPaginationRowModel: getPaginationRowModel(),
       getSortedRowModel: getSortedRowModel(),
     })
+
+    const selectedMonitors = useMemo(() => {
+      const selectedIDs = new Set(
+        Object.entries(selectedMonitorRows)
+          .filter(([, selected]) => selected)
+          .map(([id]) => id),
+      )
+
+      return sortedMonitors.filter((monitor) =>
+        selectedIDs.has(String(monitor.id)),
+      )
+    }, [selectedMonitorRows, sortedMonitors])
+
+    const rowsToExport =
+      selectedMonitors.length > 0 ? selectedMonitors : sortedMonitors
+
+    const importPreviewColumns = useMemo<Array<ColumnDef<ImportPreviewRow>>>(
+      () => [
+        {
+          id: 'select',
+          header: ({ table: importTable }) => (
+            <input
+              type="checkbox"
+              className="size-4 cursor-pointer accent-zinc-200"
+              checked={importTable.getIsAllRowsSelected()}
+              ref={(element) => {
+                if (!element) {
+                  return
+                }
+                element.indeterminate = importTable.getIsSomeRowsSelected()
+              }}
+              onChange={(event) => {
+                importTable.toggleAllRowsSelected(event.target.checked)
+              }}
+              onClick={(event) => event.stopPropagation()}
+              aria-label="Select all import rows"
+            />
+          ),
+          enableSorting: false,
+          enableColumnFilter: false,
+          cell: ({ row }) => (
+            <input
+              type="checkbox"
+              className="size-4 cursor-pointer accent-zinc-200"
+              checked={row.getIsSelected()}
+              onChange={(event) => row.toggleSelected(event.target.checked)}
+              onClick={(event) => event.stopPropagation()}
+              aria-label={`Select ${row.original.config.url}`}
+            />
+          ),
+        },
+        {
+          id: 'name',
+          accessorFn: (row) => row.config.label ?? row.config.url,
+          header: ({ column }) =>
+            formatImportSortLabel({
+              title: 'Name',
+              column,
+            }),
+          cell: ({ row }) => {
+            const monitorConfig = row.original.config
+            const iconURL = getMonitorConfigIconURL(monitorConfig)
+
+            return (
+              <div className="flex min-w-0 items-center gap-2">
+                {iconURL ? (
+                  <img
+                    src={iconURL}
+                    alt=""
+                    className="size-5 rounded"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="size-5 rounded bg-zinc-800" />
+                )}
+                <div className="min-w-0">
+                  <p className="max-w-72 truncate font-medium text-zinc-100">
+                    {monitorConfig.label?.trim() || monitorConfig.url}
+                  </p>
+                  <p className="max-w-72 truncate text-zinc-400">
+                    {monitorConfig.url}
+                  </p>
+                </div>
+              </div>
+            )
+          },
+        },
+        {
+          id: 'method',
+          accessorFn: (row) => row.config.method ?? 'GET',
+          header: ({ column }) =>
+            formatImportSortLabel({
+              title: 'Method',
+              column,
+            }),
+          cell: ({ row }) => (
+            <Badge variant="secondary">{row.original.config.method ?? 'GET'}</Badge>
+          ),
+        },
+        {
+          id: 'cron',
+          accessorFn: (row) => row.config.cron,
+          header: ({ column }) =>
+            formatImportSortLabel({
+              title: 'Schedule',
+              column,
+            }),
+          cell: ({ row }) => (
+            <span className="font-mono text-zinc-300">{row.original.config.cron}</span>
+          ),
+        },
+        {
+          id: 'auth',
+          accessorFn: (row) =>
+            monitorConfigContainsAuthSettings(row.config) ? 1 : 0,
+          header: ({ column }) =>
+            formatImportSortLabel({
+              title: 'Auth',
+              column,
+            }),
+          cell: ({ row }) =>
+            monitorConfigContainsAuthSettings(row.original.config) ? (
+              <span className="text-amber-300">Included</span>
+            ) : (
+              <span className="text-zinc-500">None</span>
+            ),
+        },
+      ],
+      [],
+    )
+
+    const importPreviewTable = useReactTable({
+      data: importPreviewRows,
+      columns: importPreviewColumns,
+      getRowId: (row) => row.previewId,
+      enableRowSelection: true,
+      state: {
+        sorting: importPreviewSorting,
+        rowSelection: importPreviewSelection,
+      },
+      onSortingChange: setImportPreviewSorting,
+      onRowSelectionChange: setImportPreviewSelection,
+      getCoreRowModel: getCoreRowModel(),
+      getSortedRowModel: getSortedRowModel(),
+    })
+
+    const selectedImportConfigs = useMemo(
+      () =>
+        importPreviewRows
+          .filter((row) => importPreviewSelection[row.previewId])
+          .map((row) => row.config),
+      [importPreviewRows, importPreviewSelection],
+    )
+
+    const closeImportPreview = useCallback(() => {
+      setImportPreviewOpen(false)
+      setImportPreviewRows([])
+      setImportPreviewSelection({})
+      setImportPreviewSorting([])
+    }, [])
+
+    const onExport = useCallback(() => {
+      if (rowsToExport.length === 0) {
+        sileo.error({ title: 'No monitors available to export.' })
+        return
+      }
+
+      const monitorConfigs = rowsToExport.map(buildMonitorConfigForExport)
+      if (monitorConfigs.some(monitorConfigContainsAuthSettings)) {
+        setPendingExportConfigs(monitorConfigs)
+        setExportWarningOpen(true)
+        return
+      }
+
+      downloadMonitorConfigs(monitorConfigs)
+    }, [rowsToExport])
+
+    const onConfirmSensitiveExport = useCallback(() => {
+      if (pendingExportConfigs.length === 0) {
+        return
+      }
+
+      downloadMonitorConfigs(pendingExportConfigs)
+      setExportWarningOpen(false)
+      setPendingExportConfigs([])
+    }, [pendingExportConfigs])
+
+    const onOpenImportFilePicker = useCallback(() => {
+      fileInputRef.current?.click()
+    }, [])
+
+    const onImportFileSelected = useCallback(
+      async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0]
+        event.target.value = ''
+
+        if (!file) {
+          return
+        }
+
+        try {
+          const text = await file.text()
+          const parsed = JSON.parse(text) as unknown
+
+          if (!Array.isArray(parsed)) {
+            sileo.error({ title: 'Import JSON must be a list of monitor configs.' })
+            return
+          }
+
+          const previewRows = parsed.map((entry, index) => {
+            const monitorConfig = parseImportedMonitorConfig(entry)
+            if (!monitorConfig) {
+              throw new Error(
+                `Item ${index + 1} is invalid. Export a list from Goanna and try again.`,
+              )
+            }
+
+            return {
+              previewId: `row-${index}`,
+              config: monitorConfig,
+            } satisfies ImportPreviewRow
+          })
+
+          if (previewRows.length === 0) {
+            sileo.error({ title: 'Import JSON does not include any monitor configs.' })
+            return
+          }
+
+          setImportPreviewRows(previewRows)
+          setImportPreviewSelection(
+            Object.fromEntries(
+              previewRows.map((row) => [row.previewId, true] as const),
+            ),
+          )
+          setImportPreviewSorting([])
+          setImportPreviewOpen(true)
+        } catch (caughtError) {
+          const message =
+            caughtError instanceof Error
+              ? caughtError.message
+              : 'Unable to read import JSON file.'
+          sileo.error({ title: message })
+        }
+      },
+      [],
+    )
+
+    const onConfirmImport = useCallback(async () => {
+      if (selectedImportConfigs.length === 0) {
+        sileo.error({ title: 'Select at least one row to import.' })
+        return
+      }
+
+      setImportingConfigs(true)
+      try {
+        const { importedCount, failedCount } = await onImportMonitorConfigs(
+          selectedImportConfigs,
+        )
+
+        if (failedCount === 0) {
+          sileo.success({
+            description: `Imported ${importedCount} monitor${importedCount === 1 ? '' : 's'}.`,
+          })
+          closeImportPreview()
+          return
+        }
+
+        sileo.error({
+          title: `Imported ${importedCount}, failed ${failedCount}.`,
+        })
+      } finally {
+        setImportingConfigs(false)
+      }
+    }, [closeImportPreview, onImportMonitorConfigs, selectedImportConfigs])
 
     const tableFilterValue =
       (table.getColumn('name')?.getFilterValue() as string | undefined) ?? ''
@@ -412,8 +867,9 @@ export const ConfiguredMonitorsTableCard = memo(
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Input
+              className="min-w-[220px] flex-1"
               value={tableFilterValue}
               onChange={(event) => {
                 table.getColumn('name')?.setFilterValue(event.target.value)
@@ -421,6 +877,28 @@ export const ConfiguredMonitorsTableCard = memo(
               }}
               placeholder="Filter table..."
             />
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="hidden"
+              accept="application/json,.json"
+              onChange={(event) => {
+                void onImportFileSelected(event)
+              }}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onOpenImportFilePicker}
+            >
+              <Upload className="size-4" />
+              Import JSON
+            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={onExport}>
+              <Download className="size-4" />
+              Export JSON
+            </Button>
             <Button
               type="button"
               variant="outline"
@@ -431,6 +909,11 @@ export const ConfiguredMonitorsTableCard = memo(
               {loading ? 'Refreshing...' : 'Refresh'}
             </Button>
           </div>
+
+          <p className="text-xs text-zinc-400">
+            Selected for export: {selectedMonitors.length}. Export uses selected
+            rows when any are selected; otherwise all rows.
+          </p>
 
           <div className="rounded-lg border border-zinc-800 bg-zinc-950">
             <Table>
@@ -455,6 +938,11 @@ export const ConfiguredMonitorsTableCard = memo(
                   table.getRowModel().rows.map((row) => (
                     <TableRow
                       key={row.id}
+                      data-state={
+                        selectedMonitorRows[String(row.original.id)]
+                          ? 'selected'
+                          : undefined
+                      }
                       className={cn(
                         'cursor-pointer transition-opacity',
                         !row.original.enabled && 'opacity-60',
@@ -491,6 +979,40 @@ export const ConfiguredMonitorsTableCard = memo(
               {Math.max(table.getPageCount(), 1)}
             </p>
             <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-zinc-400">Rows per page</span>
+                <Select
+                  value={String(table.getState().pagination.pageSize)}
+                  onValueChange={(value) => {
+                    if (!value) {
+                      return
+                    }
+
+                    const nextPageSize = Number.parseInt(value, 10)
+
+                    if (Number.isNaN(nextPageSize)) {
+                      return
+                    }
+
+                    table.setPageSize(nextPageSize)
+                    setStoredTablePageSize(nextPageSize)
+                  }}
+                >
+                  <SelectTrigger
+                    size="sm"
+                    className="min-w-16 border-zinc-700 bg-zinc-950 text-zinc-100"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent align="end">
+                    {monitorTablePageSizeOptions.map((pageSize) => (
+                      <SelectItem key={pageSize} value={String(pageSize)}>
+                        {pageSize}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <Button
                 type="button"
                 variant="outline"
@@ -511,6 +1033,119 @@ export const ConfiguredMonitorsTableCard = memo(
               </Button>
             </div>
           </div>
+
+          <AlertDialog
+            open={exportWarningOpen}
+            onOpenChange={(open) => {
+              setExportWarningOpen(open)
+            }}
+          >
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Export contains auth settings</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This export includes auth tokens or sensitive headers. Continue
+                  only if you trust how this file will be stored and shared.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel
+                  onClick={() => {
+                    setPendingExportConfigs([])
+                  }}
+                >
+                  Cancel
+                </AlertDialogCancel>
+                <AlertDialogAction onClick={onConfirmSensitiveExport}>
+                  Export JSON
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          <Dialog
+            open={importPreviewOpen}
+            onOpenChange={(open) => {
+              if (!open && !importingConfigs) {
+                closeImportPreview()
+              }
+            }}
+          >
+            <DialogContent className="sm:max-w-4xl">
+              <DialogHeader>
+                <DialogTitle>Import Preview</DialogTitle>
+                <DialogDescription>
+                  Click rows to include them. Only selected rows will be
+                  imported.
+                </DialogDescription>
+              </DialogHeader>
+
+              <p className="text-xs text-zinc-400">
+                {selectedImportConfigs.length} of {importPreviewRows.length}{' '}
+                selected.
+              </p>
+
+              <div className="max-h-[55vh] overflow-auto rounded-lg border border-zinc-800 bg-zinc-950">
+                <Table>
+                  <TableHeader>
+                    {importPreviewTable.getHeaderGroups().map((headerGroup) => (
+                      <TableRow key={headerGroup.id}>
+                        {headerGroup.headers.map((header) => (
+                          <TableHead key={header.id}>
+                            {header.isPlaceholder
+                              ? null
+                              : flexRender(
+                                  header.column.columnDef.header,
+                                  header.getContext(),
+                                )}
+                          </TableHead>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableHeader>
+                  <TableBody>
+                    {importPreviewTable.getRowModel().rows.map((row) => (
+                      <TableRow
+                        key={row.id}
+                        data-state={row.getIsSelected() ? 'selected' : undefined}
+                        className="cursor-pointer"
+                        onClick={() => row.toggleSelected()}
+                      >
+                        {row.getVisibleCells().map((cell) => (
+                          <TableCell key={cell.id}>
+                            {flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext(),
+                            )}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={importingConfigs}
+                  onClick={closeImportPreview}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={importingConfigs || selectedImportConfigs.length === 0}
+                  onClick={() => void onConfirmImport()}
+                >
+                  {importingConfigs ? 'Importing...' : 'Import selected'}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
 
           <Dialog
             open={checksDialogMonitorId !== null}
@@ -1012,6 +1647,48 @@ function formatSortLabel({
   )
 }
 
+function formatImportSortLabel({
+  title,
+  column,
+  className,
+}: {
+  title: string
+  column: Column<ImportPreviewRow, unknown>
+  className?: string
+}) {
+  const cycleSort = () => column.toggleSorting(column.getIsSorted() === 'asc')
+  const sortDirection = column.getIsSorted()
+
+  return (
+    <div className={cn('flex items-center space-x-2', className)}>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="data-[state=open]:bg-accent h-8 w-full"
+        onClick={cycleSort}
+      >
+        <span>{title}</span>
+        {sortDirection === 'desc' ? (
+          <div className="ml-auto">
+            <ChevronUp className="size-4 min-w-4 text-stone-600" />
+            <ChevronDown className="size-4 -mt-1.5 min-w-4 text-white" />
+          </div>
+        ) : sortDirection === 'asc' ? (
+          <div className="ml-auto">
+            <ChevronUp className="size-4 min-w-4 text-white" />
+            <ChevronDown className="size-4 -mt-1.5 min-w-4 text-stone-600" />
+          </div>
+        ) : (
+          <div className="ml-auto">
+            <ChevronsUpDown className="ml-2 size-5 min-w-4 text-stone-600" />
+          </div>
+        )}
+      </Button>
+    </div>
+  )
+}
+
 function matchesMonitorQuery(monitor: MonitorRecord, query: string): boolean {
   const normalizedQuery = query.trim().toLowerCase()
   if (normalizedQuery === '') {
@@ -1259,6 +1936,15 @@ function getMonitorIconURL(monitor: MonitorRecord): string | null {
   return null
 }
 
+function getMonitorConfigIconURL(monitorConfig: CreateMonitorRequest): string | null {
+  if (typeof monitorConfig.iconUrl !== 'string') {
+    return null
+  }
+
+  const trimmedIconURL = monitorConfig.iconUrl.trim()
+  return trimmedIconURL === '' ? null : trimmedIconURL
+}
+
 function getMonitorNotificationChannels(monitor: MonitorRecord): Array<string> {
   const notificationChannels = (
     monitor as MonitorRecord & { notificationChannels?: unknown }
@@ -1271,6 +1957,211 @@ function getMonitorNotificationChannels(monitor: MonitorRecord): Array<string> {
   return values.filter(
     (channel): channel is string => typeof channel === 'string',
   )
+}
+
+function buildMonitorConfigForExport(monitor: MonitorRecord): CreateMonitorRequest {
+  return {
+    label: monitor.label ?? undefined,
+    method: monitor.method,
+    url: monitor.url,
+    iconUrl: monitor.iconUrl,
+    body: monitor.body ?? undefined,
+    headers: monitor.headers,
+    auth: monitor.auth,
+    notificationChannels: monitor.notificationChannels,
+    selector: monitor.selector ?? undefined,
+    expectedType: monitor.expectedType,
+    expectedResponse: monitor.expectedResponse ?? undefined,
+    cron: monitor.cron,
+    enabled: monitor.enabled,
+  }
+}
+
+function monitorConfigContainsAuthSettings(
+  monitorConfig: CreateMonitorRequest,
+): boolean {
+  if (hasValues(monitorConfig.auth)) {
+    return true
+  }
+
+  if (!monitorConfig.headers) {
+    return false
+  }
+
+  return Object.entries(monitorConfig.headers).some(([key, value]) => {
+    if (typeof value !== 'string' || value.trim() === '') {
+      return false
+    }
+
+    const normalizedKey = key.toLowerCase()
+    return (
+      normalizedKey.includes('authorization') ||
+      normalizedKey.includes('token') ||
+      normalizedKey.includes('secret') ||
+      normalizedKey.includes('api-key') ||
+      normalizedKey.includes('apikey') ||
+      normalizedKey.includes('cookie')
+    )
+  })
+}
+
+function hasValues(value: Record<string, string> | undefined): boolean {
+  if (!value) {
+    return false
+  }
+
+  return Object.values(value).some(
+    (entry) => typeof entry === 'string' && entry.trim() !== '',
+  )
+}
+
+function downloadMonitorConfigs(monitorConfigs: Array<CreateMonitorRequest>): void {
+  const json = JSON.stringify(monitorConfigs, null, 2)
+  const blob = new Blob([json], { type: 'application/json' })
+  const downloadURL = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = downloadURL
+  link.download = `goanna-monitors-${new Date().toISOString().slice(0, 10)}.json`
+  document.body.append(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(downloadURL)
+}
+
+function parseImportedMonitorConfig(value: unknown): CreateMonitorRequest | null {
+  if (!value || Array.isArray(value) || typeof value !== 'object') {
+    return null
+  }
+
+  const record = value as Record<string, unknown>
+  const url = asNonEmptyString(record.url)
+  const cron = asNonEmptyString(record.cron)
+  if (!url || !cron) {
+    return null
+  }
+
+  const expectedTypeValue = record.expectedType
+  const expectedType =
+    expectedTypeValue === undefined
+      ? 'json'
+      : expectedTypeValue === 'json' ||
+          expectedTypeValue === 'html' ||
+          expectedTypeValue === 'text'
+        ? expectedTypeValue
+        : null
+  if (!expectedType) {
+    return null
+  }
+
+  const method = asString(record.method) ?? 'GET'
+  const enabled =
+    typeof record.enabled === 'boolean'
+      ? record.enabled
+      : record.enabled === undefined
+        ? true
+        : null
+  if (enabled === null) {
+    return null
+  }
+
+  const headers = asStringMap(record.headers)
+  const auth = asStringMap(record.auth)
+  const notificationChannels = asNotificationChannels(record.notificationChannels)
+
+  if (
+    (record.headers !== undefined && headers === null) ||
+    (record.auth !== undefined && auth === null) ||
+    (record.notificationChannels !== undefined && notificationChannels === null)
+  ) {
+    return null
+  }
+
+  const label = asString(record.label)
+  const iconUrl = asString(record.iconUrl)
+  const body = asString(record.body)
+  const selector = asString(record.selector)
+  const expectedResponse = asString(record.expectedResponse)
+
+  return {
+    label: emptyToUndefined(label),
+    method,
+    url,
+    iconUrl: emptyToUndefined(iconUrl),
+    body: emptyToUndefined(body),
+    headers: headers ?? undefined,
+    auth: auth ?? undefined,
+    notificationChannels: notificationChannels ?? undefined,
+    selector: emptyToUndefined(selector),
+    expectedType,
+    expectedResponse: emptyToUndefined(expectedResponse),
+    cron,
+    enabled,
+  }
+}
+
+function asString(value: unknown): string | undefined {
+  return typeof value === 'string' ? value : undefined
+}
+
+function asNonEmptyString(value: unknown): string | null {
+  if (typeof value !== 'string') {
+    return null
+  }
+
+  const trimmed = value.trim()
+  return trimmed === '' ? null : trimmed
+}
+
+function asStringMap(
+  value: unknown,
+): Record<string, string> | undefined | null {
+  if (value === undefined) {
+    return undefined
+  }
+
+  if (!value || Array.isArray(value) || typeof value !== 'object') {
+    return null
+  }
+
+  const mapped: Record<string, string> = {}
+  for (const [key, entry] of Object.entries(value)) {
+    if (typeof entry !== 'string') {
+      return null
+    }
+    mapped[key] = entry
+  }
+
+  return mapped
+}
+
+function asNotificationChannels(
+  value: unknown,
+): Array<'telegram'> | undefined | null {
+  if (value === undefined) {
+    return undefined
+  }
+  if (!Array.isArray(value)) {
+    return null
+  }
+
+  const mapped: Array<'telegram'> = []
+  for (const channel of value) {
+    if (channel !== 'telegram') {
+      return null
+    }
+    mapped.push(channel)
+  }
+
+  return mapped
+}
+
+function emptyToUndefined(value: string | undefined): string | undefined {
+  if (!value) {
+    return undefined
+  }
+
+  const trimmed = value.trim()
+  return trimmed === '' ? undefined : trimmed
 }
 
 function getCheckSelectionType(check: MonitorCheckRecord): string | null {

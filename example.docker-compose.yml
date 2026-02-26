@@ -1,0 +1,23 @@
+services:
+  goanna:
+    image: ghcr.io/<owner>/<repo>:latest
+    # Optional: build locally instead of pulling
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: /
+    environment:
+      GOANNA_WEB_HOST: 0.0.0.0
+      GOANNA_WEB_PORT: '9044'
+      GOANNA_WEB_INTERNAL_PORT: '9045'
+      GOANNA_API_ADDR: ':8080'
+      GOANNA_API_DSN: file:/app/data/goanna.db?_fk=1
+      GOANNA_MAX_RESPONSE_BODY_BYTES: '25165824'
+    ports:
+      - '9044:9044'
+      # Optional: expose API publicly if needed later
+      # - '8080:8080'
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped

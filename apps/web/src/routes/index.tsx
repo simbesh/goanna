@@ -1,4 +1,5 @@
 import {
+  createMonitorMutation,
   deleteMonitorMutation,
   listMonitorChecksOptions,
   listMonitorsOptions,
@@ -31,6 +32,7 @@ export const Route = createFileRoute('/')({
 function MonitorsPage() {
   const queryClient = useQueryClient()
   const monitorsQuery = useQuery(listMonitorsOptions())
+  const createMonitorRequest = useMutation(createMonitorMutation())
   const triggerMonitorRequest = useMutation(triggerMonitorMutation())
   const deleteMonitorRequest = useMutation(deleteMonitorMutation())
   const updateMonitorRequest = useMutation(updateMonitorMutation())
@@ -316,6 +318,44 @@ function MonitorsPage() {
     [queryClient, updateMonitorRequest],
   )
 
+  const onImportMonitorConfigs = useCallback(
+    async (
+      monitorConfigs: Array<CreateMonitorRequest>,
+    ): Promise<{ importedCount: number; failedCount: number }> => {
+      let importedCount = 0
+      let failedCount = 0
+
+      for (const monitorConfig of monitorConfigs) {
+        try {
+          await createMonitorRequest.mutateAsync({
+            body: {
+              ...monitorConfig,
+              triggerOnCreate: false,
+            },
+          })
+          importedCount += 1
+        } catch (caughtError) {
+          failedCount += 1
+          const message = getApiErrorMessage(
+            caughtError,
+            `Failed to import monitor for ${monitorConfig.url}.`,
+          )
+          sileo.error({ title: message })
+        }
+      }
+
+      if (importedCount > 0) {
+        await loadMonitors()
+      }
+
+      return {
+        importedCount,
+        failedCount,
+      }
+    },
+    [createMonitorRequest, loadMonitors],
+  )
+
   return (
     <div className="space-y-4">
       {error ? <p className="text-sm text-red-300">{error}</p> : null}
@@ -333,6 +373,7 @@ function MonitorsPage() {
         onRefreshChecks={loadMonitorChecks}
         onTriggerMonitor={onTriggerMonitor}
         onToggleMonitorEnabled={onToggleMonitorEnabled}
+        onImportMonitorConfigs={onImportMonitorConfigs}
         deletingMonitorId={deletingMonitorId}
         togglingMonitorId={togglingMonitorId}
         triggeringMonitorId={triggeringMonitorId}

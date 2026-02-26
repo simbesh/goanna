@@ -23,6 +23,7 @@ report.*.json
 .DS_Store
 
 apps/api/data/
+apps/api/server.exe
 *.db
 *.db-shm
 *.db-wal

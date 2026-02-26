@@ -15,7 +15,7 @@ import {
   testMonitorUrlMutation,
   updateMonitorMutation,
 } from '@goanna/api-client'
-import { Maximize2, Minimize2 } from 'lucide-react'
+import { Copy, Maximize2, Minimize2 } from 'lucide-react'
 import { sileo } from 'sileo'
 import { useMutation } from '@tanstack/react-query'
 import type {
@@ -93,7 +93,7 @@ const defaultForm: FormState = {
   iconUrl: '',
   body: '',
   headers: defaultHeaders,
-  auth: defaultAuth,
+  auth: '',
   notifyTelegram: true,
   selector: '',
   expectedType: 'json',
@@ -654,10 +654,27 @@ export function CreateEditMonitorCard({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="auth">Auth JSON (optional)</Label>
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="auth">Auth JSON (optional)</Label>
+              <Button
+                type="button"
+                variant="ghost"
+                size="xs"
+                onClick={() =>
+                  setForm((current) => ({
+                    ...current,
+                    auth: defaultAuth,
+                  }))
+                }
+              >
+                <Copy aria-hidden="true" />
+                Use example
+              </Button>
+            </div>
             <Textarea
               id="auth"
               className="min-h-24 bg-zinc-950 font-mono"
+              placeholder={defaultAuth}
               value={form.auth}
               onChange={(event) =>
                 setForm((current) => ({
@@ -944,7 +961,7 @@ function mapMonitorToForm(monitor: MonitorRecord): FormState {
     iconUrl: monitor.iconUrl,
     body: monitor.body ?? '',
     headers: formatJsonMap(monitor.headers, defaultHeaders),
-    auth: formatJsonMap(monitor.auth, defaultAuth),
+    auth: formatJsonMap(monitor.auth, ''),
     notifyTelegram: hasTelegramChannel(monitor),
     selector: monitor.selector ?? '',
     expectedType: monitor.expectedType,
