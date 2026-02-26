@@ -7,11 +7,14 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "generate": "openapi --input ../../openapi/openapi.yaml --output src/generated --client fetch --useOptions --exportServices true --exportModels true --exportCore true",
+    "generate": "openapi-ts -f openapi-ts.config.ts",
     "check": "tsc --noEmit"
   },
+  "dependencies": {
+    "@tanstack/react-query": "^5.90.21"
+  },
   "devDependencies": {
-    "openapi-typescript-codegen": "^0.29.0",
+    "@hey-api/openapi-ts": "0.93.0",
     "typescript": "^5.9.2"
   }
 }

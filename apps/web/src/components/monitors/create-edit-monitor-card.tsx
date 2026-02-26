@@ -9,8 +9,15 @@ import {
   useRef,
   useState,
 } from 'react'
+import {
+  createMonitorMutation,
+  previewMonitorSelectorMutation,
+  testMonitorUrlMutation,
+  updateMonitorMutation,
+} from '@goanna/api-client'
 import { Maximize2, Minimize2 } from 'lucide-react'
 import { sileo } from 'sileo'
+import { useMutation } from '@tanstack/react-query'
 import type {
   CreateMonitorRequest,
   MonitorCheck as MonitorCheckRecord,
@@ -46,12 +53,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  DefaultService,
-  createMonitor,
-  previewMonitorSelector,
-  updateMonitor,
-} from '@/lib/api'
+import { getApiErrorMessage } from '@/lib/api'
 
 type FormState = {
   label: string
@@ -126,6 +128,10 @@ export function CreateEditMonitorCard({
   const [isJsonResponseExpanded, setIsJsonResponseExpanded] = useState(false)
 
   const editingMonitorId = editingMonitor?.id ?? null
+  const createMonitorRequest = useMutation(createMonitorMutation())
+  const updateMonitorRequest = useMutation(updateMonitorMutation())
+  const testMonitorURLRequest = useMutation(testMonitorUrlMutation())
+  const previewSelectorRequest = useMutation(previewMonitorSelectorMutation())
 
   useEffect(() => {
     if (editingMonitor) {
@@ -217,9 +223,10 @@ export function CreateEditMonitorCard({
             selector: emptyToUndefined(deferredSelector),
           }
 
-      void previewMonitorSelector({
-        ...previewRequest,
-      })
+      void previewSelectorRequest
+        .mutateAsync({
+          body: previewRequest,
+        })
         .then((preview: SelectorPreviewResponse) => {
           if (selectorPreviewRequestID.current !== requestID) {
             return
@@ -254,6 +261,7 @@ export function CreateEditMonitorCard({
     }
   }, [
     deferredSelector,
+    previewSelectorRequest,
     selectorPayloadToken,
     selectorPreviewUnavailable,
     testResponse,
@@ -296,7 +304,7 @@ export function CreateEditMonitorCard({
         auth: auth.value,
         notificationChannels,
         selector: emptyToUndefined(form.selector),
-        expectedType: form.expectedType as CreateMonitorRequest.expectedType,
+        expectedType: form.expectedType as CreateMonitorRequest['expectedType'],
         expectedResponse: emptyToUndefined(form.expectedResponse),
         cron: form.cron,
         enabled: form.enabled,
@@ -306,11 +314,18 @@ export function CreateEditMonitorCard({
       let savedCheck: MonitorCheckRecord | null = null
 
       if (editingMonitor) {
-        savedMonitor = await updateMonitor(editingMonitor.id, requestBody)
+        savedMonitor = await updateMonitorRequest.mutateAsync({
+          body: requestBody,
+          path: {
+            monitorId: editingMonitor.id,
+          },
+        })
       } else {
-        const createdResult = await createMonitor({
-          ...requestBody,
-          triggerOnCreate: form.triggerOnCreate,
+        const createdResult = await createMonitorRequest.mutateAsync({
+          body: {
+            ...requestBody,
+            triggerOnCreate: form.triggerOnCreate,
+          },
         })
         savedMonitor = createdResult.monitor
         savedCheck = createdResult.check ?? null
@@ -380,8 +395,8 @@ export function CreateEditMonitorCard({
     setIsJsonResponseExpanded(false)
 
     try {
-      const response = await DefaultService.testMonitorUrl({
-        requestBody: {
+      const response = await testMonitorURLRequest.mutateAsync({
+        body: {
           method,
           url,
           body,
@@ -1109,21 +1124,5 @@ function parseJsonMap(
 }
 
 function getErrorMessage(caughtError: unknown): string {
-  if (
-    caughtError &&
-    typeof caughtError === 'object' &&
-    'body' in caughtError &&
-    typeof caughtError.body === 'object' &&
-    caughtError.body &&
-    'error' in caughtError.body &&
-    typeof caughtError.body.error === 'string'
-  ) {
-    return caughtError.body.error
-  }
-
-  if (caughtError instanceof Error) {
-    return caughtError.message
-  }
-
-  return 'Failed to fetch URL.'
+  return getApiErrorMessage(caughtError, 'Failed to fetch URL.')
 }

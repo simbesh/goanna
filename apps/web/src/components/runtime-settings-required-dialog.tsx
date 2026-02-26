@@ -1,3 +1,9 @@
+import {
+  getRuntimeSettingsOptions,
+  getRuntimeSettingsQueryKey,
+  upsertRuntimeSettingsMutation,
+} from '@goanna/api-client'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -10,21 +16,46 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { DefaultService } from '@/lib/api'
+import { getApiErrorMessage } from '@/lib/api'
 
 const timezoneSettingKey = 'timezone'
 
 export function RuntimeSettingsRequiredDialog() {
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
+  const queryClient = useQueryClient()
+  const runtimeSettingsQuery = useQuery(getRuntimeSettingsOptions())
+  const saveRuntimeSettings = useMutation(upsertRuntimeSettingsMutation())
+
   const [historyLimit, setHistoryLimit] = useState(200)
   const [timezone, setTimezone] = useState(getBrowserTimezone())
   const [requiredSettings, setRequiredSettings] = useState<Array<string>>([])
   const [message, setMessage] = useState('')
 
+  const loading = runtimeSettingsQuery.isPending
+  const saving = saveRuntimeSettings.isPending
+
   useEffect(() => {
-    void loadRuntimeSettings()
-  }, [])
+    if (!runtimeSettingsQuery.data) {
+      return
+    }
+
+    setHistoryLimit(runtimeSettingsQuery.data.checksHistoryLimit)
+    setTimezone(runtimeSettingsQuery.data.timezone ?? getBrowserTimezone())
+    setRequiredSettings(
+      Array.isArray(runtimeSettingsQuery.data.requiredSettings)
+        ? runtimeSettingsQuery.data.requiredSettings
+        : [],
+    )
+  }, [runtimeSettingsQuery.data])
+
+  useEffect(() => {
+    if (!runtimeSettingsQuery.error) {
+      return
+    }
+
+    setMessage(
+      getApiErrorMessage(runtimeSettingsQuery.error, 'Failed to load runtime settings.'),
+    )
+  }, [runtimeSettingsQuery.error])
 
   const timezoneRequired = requiredSettings.includes(timezoneSettingKey)
   const unsupportedRequiredSettings = useMemo(
@@ -32,49 +63,26 @@ export function RuntimeSettingsRequiredDialog() {
     [requiredSettings],
   )
 
-  async function loadRuntimeSettings() {
-    setLoading(true)
-    setMessage('')
-
-    try {
-      const settings = await DefaultService.getRuntimeSettings()
-      setHistoryLimit(settings.checksHistoryLimit)
-      setTimezone(settings.timezone ?? getBrowserTimezone())
-      setRequiredSettings(
-        Array.isArray(settings.requiredSettings) ? settings.requiredSettings : [],
-      )
-    } catch (error) {
-      setMessage(getErrorMessage(error, 'Failed to load runtime settings.'))
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  async function onSaveRequiredSettings(
-    event: React.FormEvent<HTMLFormElement>,
-  ) {
+  async function onSaveRequiredSettings(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    setSaving(true)
     setMessage('')
 
     if (timezone.trim() === '') {
       setMessage('Timezone is required.')
-      setSaving(false)
       return
     }
 
     try {
-      await DefaultService.upsertRuntimeSettings({
-        requestBody: {
+      const settings = await saveRuntimeSettings.mutateAsync({
+        body: {
           checksHistoryLimit: historyLimit,
           timezone,
         },
       })
-      await loadRuntimeSettings()
+
+      queryClient.setQueryData(getRuntimeSettingsQueryKey(), settings)
     } catch (error) {
-      setMessage(getErrorMessage(error, 'Could not save runtime settings.'))
-    } finally {
-      setSaving(false)
+      setMessage(getApiErrorMessage(error, 'Could not save runtime settings.'))
     }
   }
 
@@ -117,9 +125,7 @@ export function RuntimeSettingsRequiredDialog() {
               </p>
             ) : null}
 
-            {message ? (
-              <p className="text-sm text-zinc-300">{message}</p>
-            ) : null}
+            {message ? <p className="text-sm text-zinc-300">{message}</p> : null}
 
             <Button type="submit" disabled={saving || !timezoneRequired}>
               {saving ? 'Saving...' : 'Save Required Settings'}
@@ -129,29 +135,6 @@ export function RuntimeSettingsRequiredDialog() {
       </DialogContent>
     </Dialog>
   )
-}
-
-function getErrorMessage(error: unknown, fallback: string): string {
-  if (typeof error === 'object' && error !== null) {
-    const errorWithBody = error as {
-      body?: { error?: unknown }
-      message?: unknown
-    }
-
-    const bodyError = errorWithBody.body?.error
-    if (typeof bodyError === 'string' && bodyError.trim() !== '') {
-      return bodyError
-    }
-
-    if (
-      typeof errorWithBody.message === 'string' &&
-      errorWithBody.message.trim() !== ''
-    ) {
-      return errorWithBody.message
-    }
-  }
-
-  return fallback
 }
 
 function getBrowserTimezone(): string {

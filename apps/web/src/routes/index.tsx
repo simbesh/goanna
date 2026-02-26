@@ -1,34 +1,42 @@
+import {
+  deleteMonitorMutation,
+  listMonitorChecksOptions,
+  listMonitorsOptions,
+  listMonitorsQueryKey,
+  triggerMonitorMutation,
+  updateMonitorMutation,
+} from '@goanna/api-client'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { sileo } from 'sileo'
 import type {
+  CreateMonitorRequest,
   MonitorCheck as MonitorCheckRecord,
   Monitor as MonitorRecord,
+  MonitorTriggerResult,
 } from '@goanna/api-client'
-import type { MonitorTriggerResult } from '@/lib/api'
-import {
-  DefaultService,
-  deleteMonitor,
-  triggerMonitor,
-} from '@/lib/api'
 
 import {
   ConfiguredMonitorsCard,
   ConfiguredMonitorsTableCard,
 } from '@/components/monitors/configured-monitors-card'
 import { CreateEditMonitorCard } from '@/components/monitors/create-edit-monitor-card'
+import { getApiErrorMessage } from '@/lib/api'
 
 export const Route = createFileRoute('/')({
   component: MonitorsPage,
 })
 
 function MonitorsPage() {
-  const [monitors, setMonitors] = useState<Array<MonitorRecord>>([])
-  const [loading, setLoading] = useState(true)
+  const queryClient = useQueryClient()
+  const monitorsQuery = useQuery(listMonitorsOptions())
+  const triggerMonitorRequest = useMutation(triggerMonitorMutation())
+  const deleteMonitorRequest = useMutation(deleteMonitorMutation())
+  const updateMonitorRequest = useMutation(updateMonitorMutation())
+
   const [error, setError] = useState('')
-  const [expandedMonitorId, setExpandedMonitorId] = useState<number | null>(
-    null,
-  )
+  const [expandedMonitorId, setExpandedMonitorId] = useState<number | null>(null)
   const [checksByMonitor, setChecksByMonitor] = useState<
     Partial<Record<number, Array<MonitorCheckRecord>>>
   >({})
@@ -39,55 +47,64 @@ function MonitorsPage() {
     null,
   )
   const [deletingMonitorId, setDeletingMonitorId] = useState<number | null>(null)
+  const [togglingMonitorId, setTogglingMonitorId] = useState<number | null>(
+    null,
+  )
 
-  const loadMonitors = useCallback(async () => {
-    setLoading(true)
-    setError('')
-    try {
-      const data = await DefaultService.listMonitors()
-      setMonitors(data)
-    } catch (caughtError) {
-      const message = getErrorMessage(
-        caughtError,
-        'Failed to load monitors from API.',
-      )
-      setError(message)
-      sileo.error({ title: message })
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+  const monitors = monitorsQuery.data ?? []
+  const loading = monitorsQuery.isPending
 
   useEffect(() => {
-    void loadMonitors()
-  }, [loadMonitors])
-
-  const loadMonitorChecks = useCallback(async (monitorId: number) => {
-    setLoadingChecksFor(monitorId)
-    setChecksErrors((current) => ({ ...current, [monitorId]: '' }))
-    try {
-      const checks = await DefaultService.listMonitorChecks({
-        monitorId,
-        limit: 20,
-      })
-      setChecksByMonitor((current) => ({
-        ...current,
-        [monitorId]: checks,
-      }))
-    } catch (caughtError) {
-      const message = getErrorMessage(
-        caughtError,
-        'Failed to load recent checks.',
-      )
-      setChecksErrors((current) => ({
-        ...current,
-        [monitorId]: message,
-      }))
-      sileo.error({ title: message })
-    } finally {
-      setLoadingChecksFor(null)
+    if (!monitorsQuery.error) {
+      return
     }
-  }, [])
+
+    const message = getApiErrorMessage(
+      monitorsQuery.error,
+      'Failed to load monitors from API.',
+    )
+    setError(message)
+    sileo.error({ title: message })
+  }, [monitorsQuery.error])
+
+  const loadMonitors = useCallback(async () => {
+    setError('')
+    await monitorsQuery.refetch()
+  }, [monitorsQuery])
+
+  const loadMonitorChecks = useCallback(
+    async (monitorId: number) => {
+      setLoadingChecksFor(monitorId)
+      setChecksErrors((current) => ({ ...current, [monitorId]: '' }))
+
+      try {
+        const checks = await queryClient.fetchQuery(
+          listMonitorChecksOptions({
+            path: { monitorId },
+            query: { limit: 20 },
+          }),
+        )
+
+        setChecksByMonitor((current) => ({
+          ...current,
+          [monitorId]: checks,
+        }))
+      } catch (caughtError) {
+        const message = getApiErrorMessage(
+          caughtError,
+          'Failed to load recent checks.',
+        )
+        setChecksErrors((current) => ({
+          ...current,
+          [monitorId]: message,
+        }))
+        sileo.error({ title: message })
+      } finally {
+        setLoadingChecksFor(null)
+      }
+    },
+    [queryClient],
+  )
 
   const toggleMonitorChecks = useCallback(
     async (monitorId: number) => {
@@ -127,16 +144,20 @@ function MonitorsPage() {
     (result: MonitorTriggerResult) => {
       const { monitor, check } = result
 
-      setMonitors((current) => {
-        const index = current.findIndex((entry) => entry.id === monitor.id)
-        if (index === -1) {
-          return [monitor, ...current]
-        }
+      queryClient.setQueryData<Array<MonitorRecord>>(
+        listMonitorsQueryKey(),
+        (current) => {
+          const existing = current ?? []
+          const index = existing.findIndex((entry) => entry.id === monitor.id)
+          if (index === -1) {
+            return [monitor, ...existing]
+          }
 
-        const next = [...current]
-        next[index] = monitor
-        return next
-      })
+          const next = [...existing]
+          next[index] = monitor
+          return next
+        },
+      )
 
       if (!check) {
         return
@@ -155,15 +176,18 @@ function MonitorsPage() {
         [monitor.id]: '',
       }))
     },
-    [],
+    [queryClient],
   )
 
   const onTriggerMonitor = useCallback(
     async (monitor: MonitorRecord) => {
       setTriggeringMonitorId(monitor.id)
       setError('')
+
       try {
-        const triggerResult = await triggerMonitor(monitor.id)
+        const triggerResult = await triggerMonitorRequest.mutateAsync({
+          path: { monitorId: monitor.id },
+        })
         applyMonitorTriggerResult(triggerResult)
 
         if (
@@ -173,10 +197,7 @@ function MonitorsPage() {
           await loadMonitorChecks(monitor.id)
         }
       } catch (caughtError) {
-        const message = getErrorMessage(
-          caughtError,
-          'Failed to trigger monitor.',
-        )
+        const message = getApiErrorMessage(caughtError, 'Failed to trigger monitor.')
         setError(message)
         sileo.error({ title: message })
       } finally {
@@ -188,6 +209,7 @@ function MonitorsPage() {
       checksByMonitor,
       expandedMonitorId,
       loadMonitorChecks,
+      triggerMonitorRequest,
     ],
   )
 
@@ -219,8 +241,11 @@ function MonitorsPage() {
 
       setDeletingMonitorId(monitor.id)
       setError('')
+
       try {
-        await deleteMonitor(monitor.id)
+        await deleteMonitorRequest.mutateAsync({
+          path: { monitorId: monitor.id },
+        })
 
         setExpandedMonitorId((current) =>
           current === monitor.id ? null : current,
@@ -241,14 +266,54 @@ function MonitorsPage() {
 
         await loadMonitors()
       } catch (caughtError) {
-        const message = getErrorMessage(caughtError, 'Failed to delete monitor.')
+        const message = getApiErrorMessage(caughtError, 'Failed to delete monitor.')
         setError(message)
         sileo.error({ title: message })
       } finally {
         setDeletingMonitorId(null)
       }
     },
-    [loadMonitors],
+    [deleteMonitorRequest, loadMonitors],
+  )
+
+  const onToggleMonitorEnabled = useCallback(
+    async (monitor: MonitorRecord) => {
+      setTogglingMonitorId(monitor.id)
+      setError('')
+
+      try {
+        const updatedMonitor = await updateMonitorRequest.mutateAsync({
+          path: { monitorId: monitor.id },
+          body: buildMonitorUpdateRequest(monitor, !monitor.enabled),
+        })
+
+        queryClient.setQueryData<Array<MonitorRecord>>(
+          listMonitorsQueryKey(),
+          (current) => {
+            const existing = current ?? []
+            const index = existing.findIndex((entry) => entry.id === monitor.id)
+            if (index === -1) {
+              return existing
+            }
+
+            const next = [...existing]
+            next[index] = updatedMonitor
+            return next
+          },
+        )
+      } catch (caughtError) {
+        const action = monitor.enabled ? 'disable' : 'enable'
+        const message = getApiErrorMessage(
+          caughtError,
+          `Failed to ${action} monitor checks.`,
+        )
+        setError(message)
+        sileo.error({ title: message })
+      } finally {
+        setTogglingMonitorId(null)
+      }
+    },
+    [queryClient, updateMonitorRequest],
   )
 
   return (
@@ -267,7 +332,9 @@ function MonitorsPage() {
         onRefreshMonitors={loadMonitors}
         onRefreshChecks={loadMonitorChecks}
         onTriggerMonitor={onTriggerMonitor}
+        onToggleMonitorEnabled={onToggleMonitorEnabled}
         deletingMonitorId={deletingMonitorId}
+        togglingMonitorId={togglingMonitorId}
         triggeringMonitorId={triggeringMonitorId}
       />
 
@@ -290,9 +357,11 @@ function MonitorsPage() {
           onRefreshMonitors={loadMonitors}
           onRefreshChecks={loadMonitorChecks}
           onToggleChecks={toggleMonitorChecks}
+          onToggleMonitorEnabled={onToggleMonitorEnabled}
           onDeleteMonitor={onDeleteMonitor}
           onTriggerMonitor={onTriggerMonitor}
           deletingMonitorId={deletingMonitorId}
+          togglingMonitorId={togglingMonitorId}
           triggeringMonitorId={triggeringMonitorId}
         />
       </div>
@@ -300,22 +369,23 @@ function MonitorsPage() {
   )
 }
 
-function getErrorMessage(caughtError: unknown, fallback: string): string {
-  if (
-    caughtError &&
-    typeof caughtError === 'object' &&
-    'body' in caughtError &&
-    typeof caughtError.body === 'object' &&
-    caughtError.body &&
-    'error' in caughtError.body &&
-    typeof caughtError.body.error === 'string'
-  ) {
-    return caughtError.body.error
+function buildMonitorUpdateRequest(
+  monitor: MonitorRecord,
+  enabled: boolean,
+): CreateMonitorRequest {
+  return {
+    label: monitor.label ?? undefined,
+    method: monitor.method,
+    url: monitor.url,
+    iconUrl: monitor.iconUrl,
+    body: monitor.body ?? undefined,
+    headers: monitor.headers,
+    auth: monitor.auth,
+    notificationChannels: monitor.notificationChannels,
+    selector: monitor.selector ?? undefined,
+    expectedType: monitor.expectedType,
+    expectedResponse: monitor.expectedResponse ?? undefined,
+    cron: monitor.cron,
+    enabled,
   }
-
-  if (caughtError instanceof Error && caughtError.message.trim() !== '') {
-    return caughtError.message
-  }
-
-  return fallback
 }

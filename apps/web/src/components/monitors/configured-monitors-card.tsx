@@ -7,8 +7,14 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
-import { MoreHorizontal } from 'lucide-react'
+import {
+  ChevronDown,
+  ChevronUp,
+  ChevronsUpDown,
+  MoreHorizontal,
+} from 'lucide-react'
 import type {
+  Column,
   ColumnDef,
   ColumnFiltersState,
   PaginationState,
@@ -56,6 +62,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { getCronDescription } from '@/lib/cron'
+import { cn } from '@/lib/utils'
 
 type ConfiguredMonitorsCardProps = {
   loading: boolean
@@ -66,8 +73,10 @@ type ConfiguredMonitorsCardProps = {
   loadingChecksFor: number | null
   triggeringMonitorId: number | null
   deletingMonitorId: number | null
+  togglingMonitorId: number | null
   editingMonitorId: number | null
   onToggleChecks: (monitorId: number) => Promise<void>
+  onToggleMonitorEnabled: (monitor: MonitorRecord) => Promise<void>
   onRefreshMonitors: () => Promise<void>
   onRefreshChecks: (monitorId: number) => Promise<void>
   onTriggerMonitor: (monitor: MonitorRecord) => Promise<void>
@@ -89,7 +98,9 @@ export const ConfiguredMonitorsTableCard = memo(
     loadingChecksFor,
     triggeringMonitorId,
     deletingMonitorId,
+    togglingMonitorId,
     editingMonitorId,
+    onToggleMonitorEnabled,
     onRefreshMonitors,
     onRefreshChecks,
     onTriggerMonitor,
@@ -141,22 +152,12 @@ export const ConfiguredMonitorsTableCard = memo(
           accessorFn: (monitor) => getMonitorDisplayLabel(monitor),
           filterFn: (row, _columnId, value) =>
             matchesMonitorQuery(row.original, String(value ?? '')),
-          header: ({ column }) => (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="-ml-2"
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === 'asc')
-              }
-            >
-              Name
-              <span className="text-zinc-500">
-                {formatSortLabel(column.getIsSorted())}
-              </span>
-            </Button>
-          ),
+          header: ({ column }) =>
+            formatSortLabel({
+              className: '-ml-2',
+              title: 'Name',
+              column,
+            }),
           cell: ({ row }) => {
             const monitor = row.original
             return (
@@ -165,7 +166,10 @@ export const ConfiguredMonitorsTableCard = memo(
                   <img
                     src={getMonitorIconURL(monitor) ?? undefined}
                     alt=""
-                    className="size-5 rounded"
+                    className={cn(
+                      'size-5 rounded transition-[filter,opacity]',
+                      !monitor.enabled && 'grayscale opacity-70',
+                    )}
                     loading="lazy"
                   />
                 ) : (
@@ -188,44 +192,24 @@ export const ConfiguredMonitorsTableCard = memo(
         },
         {
           accessorKey: 'method',
-          header: ({ column }) => (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="-ml-2"
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === 'asc')
-              }
-            >
-              Method
-              <span className="text-zinc-500">
-                {formatSortLabel(column.getIsSorted())}
-              </span>
-            </Button>
-          ),
+          header: ({ column }) =>
+            formatSortLabel({
+              className: '-ml-2',
+              title: 'Method',
+              column,
+            }),
           cell: ({ row }) => (
             <Badge variant="secondary">{row.original.method}</Badge>
           ),
         },
         {
           accessorKey: 'status',
-          header: ({ column }) => (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="-ml-2"
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === 'asc')
-              }
-            >
-              Status
-              <span className="text-zinc-500">
-                {formatSortLabel(column.getIsSorted())}
-              </span>
-            </Button>
-          ),
+          header: ({ column }) =>
+            formatSortLabel({
+              className: '-ml-2',
+              title: 'Status',
+              column,
+            }),
           cell: ({ row }) => {
             const monitor = row.original
             return <StatusBadge monitor={monitor} />
@@ -233,22 +217,12 @@ export const ConfiguredMonitorsTableCard = memo(
         },
         {
           accessorKey: 'checkCount',
-          header: ({ column }) => (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="-ml-2"
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === 'asc')
-              }
-            >
-              Checks
-              <span className="text-zinc-500">
-                {formatSortLabel(column.getIsSorted())}
-              </span>
-            </Button>
-          ),
+          header: ({ column }) =>
+            formatSortLabel({
+              className: '-ml-2',
+              title: 'Checks',
+              column,
+            }),
           cell: ({ row }) => (
             <span className="font-medium text-zinc-300">
               {row.original.checkCount}
@@ -259,22 +233,12 @@ export const ConfiguredMonitorsTableCard = memo(
           id: 'nextTrigger',
           accessorFn: (monitor) =>
             getMonitorNextTriggerTime(monitor)?.getTime() ?? -1,
-          header: ({ column }) => (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="-ml-2"
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === 'asc')
-              }
-            >
-              Next trigger
-              <span className="text-zinc-500">
-                {formatSortLabel(column.getIsSorted())}
-              </span>
-            </Button>
-          ),
+          header: ({ column }) =>
+            formatSortLabel({
+              className: '-ml-2',
+              title: 'Next trigger',
+              column,
+            }),
           cell: ({ row }) => {
             const timestamp = getMonitorNextTriggerTime(row.original)
             return <RelativeTimestampCell timestamp={timestamp} />
@@ -286,22 +250,12 @@ export const ConfiguredMonitorsTableCard = memo(
             const time = parseTimestamp(monitor.lastCheckAt)
             return time ? time.getTime() : -1
           },
-          header: ({ column }) => (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="-ml-2"
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === 'asc')
-              }
-            >
-              Last trigger
-              <span className="text-zinc-500">
-                {formatSortLabel(column.getIsSorted())}
-              </span>
-            </Button>
-          ),
+          header: ({ column }) =>
+            formatSortLabel({
+              className: '-ml-2',
+              title: 'Last trigger',
+              column,
+            }),
           cell: ({ row }) => (
             <RelativeTimestampCell
               timestamp={parseTimestamp(row.original.lastCheckAt)}
@@ -310,7 +264,7 @@ export const ConfiguredMonitorsTableCard = memo(
         },
         {
           id: 'recentChecks',
-          header: 'Recent checks',
+          header: 'History',
           enableSorting: false,
           cell: ({ row }) => {
             const monitor = row.original
@@ -326,7 +280,7 @@ export const ConfiguredMonitorsTableCard = memo(
                   void openChecksDialogForMonitor(monitor.id)
                 }}
               >
-                {isLoading ? 'Loading...' : 'View checks'}
+                {isLoading ? 'Loading...' : 'History'}
               </Button>
             )
           },
@@ -337,49 +291,68 @@ export const ConfiguredMonitorsTableCard = memo(
           enableSorting: false,
           cell: ({ row }) => {
             const monitor = row.original
+            const isToggling = togglingMonitorId === monitor.id
             return (
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  onClick={(event) => event.stopPropagation()}
-                  render={<Button variant="ghost" size="icon-sm" />}
+              <div className="flex items-center justify-end gap-2">
+                <Button
+                  type="button"
+                  variant={monitor.enabled ? 'outline' : 'secondary'}
+                  size="sm"
+                  disabled={isToggling}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    void onToggleMonitorEnabled(monitor)
+                  }}
                 >
-                  <MoreHorizontal />
-                  <span className="sr-only">Open actions</span>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-36">
-                  <DropdownMenuItem
-                    disabled={triggeringMonitorId === monitor.id}
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      void onTriggerMonitor(monitor)
-                    }}
+                  {isToggling
+                    ? 'Saving...'
+                    : monitor.enabled
+                      ? 'Disable'
+                      : 'Enable'}
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    onClick={(event) => event.stopPropagation()}
+                    render={<Button variant="ghost" size="icon-sm" />}
                   >
-                    {triggeringMonitorId === monitor.id
-                      ? 'Triggering...'
-                      : 'Trigger'}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      onEditMonitor(monitor)
-                    }}
-                  >
-                    {editingMonitorId === monitor.id ? 'Editing' : 'Edit'}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    variant="destructive"
-                    disabled={deletingMonitorId === monitor.id}
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      void onDeleteMonitor(monitor)
-                    }}
-                  >
-                    {deletingMonitorId === monitor.id
-                      ? 'Deleting...'
-                      : 'Delete'}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                    <MoreHorizontal />
+                    <span className="sr-only">Open actions</span>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-36">
+                    <DropdownMenuItem
+                      disabled={triggeringMonitorId === monitor.id}
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        void onTriggerMonitor(monitor)
+                      }}
+                    >
+                      {triggeringMonitorId === monitor.id
+                        ? 'Triggering...'
+                        : 'Trigger'}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        onEditMonitor(monitor)
+                      }}
+                    >
+                      {editingMonitorId === monitor.id ? 'Editing' : 'Edit'}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      variant="destructive"
+                      disabled={deletingMonitorId === monitor.id}
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        void onDeleteMonitor(monitor)
+                      }}
+                    >
+                      {deletingMonitorId === monitor.id
+                        ? 'Deleting...'
+                        : 'Delete'}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             )
           },
         },
@@ -390,8 +363,10 @@ export const ConfiguredMonitorsTableCard = memo(
         loadingChecksFor,
         onDeleteMonitor,
         onEditMonitor,
+        onToggleMonitorEnabled,
         onTriggerMonitor,
         openChecksDialogForMonitor,
+        togglingMonitorId,
         triggeringMonitorId,
       ],
     )
@@ -480,7 +455,10 @@ export const ConfiguredMonitorsTableCard = memo(
                   table.getRowModel().rows.map((row) => (
                     <TableRow
                       key={row.id}
-                      className="cursor-pointer"
+                      className={cn(
+                        'cursor-pointer transition-opacity',
+                        !row.original.enabled && 'opacity-60',
+                      )}
                       onClick={() => onEditMonitor(row.original)}
                     >
                       {row.getVisibleCells().map((cell) => (
@@ -544,11 +522,11 @@ export const ConfiguredMonitorsTableCard = memo(
           >
             <DialogContent className="sm:max-w-2xl">
               <DialogHeader>
-                <DialogTitle>Recent checks</DialogTitle>
+                <DialogTitle>History</DialogTitle>
                 <DialogDescription>
                   {checksDialogMonitor
                     ? `${getMonitorDisplayLabel(checksDialogMonitor)} - ${checksDialogMonitor.url}`
-                    : 'Select a monitor to view recent checks.'}
+                    : 'Select a monitor to view history.'}
                 </DialogDescription>
               </DialogHeader>
 
@@ -605,8 +583,10 @@ export const ConfiguredMonitorsCard = memo(function ConfiguredMonitorsCard({
   loadingChecksFor,
   triggeringMonitorId,
   deletingMonitorId,
+  togglingMonitorId,
   editingMonitorId,
   onToggleChecks,
+  onToggleMonitorEnabled,
   onRefreshMonitors,
   onRefreshChecks,
   onTriggerMonitor,
@@ -656,7 +636,10 @@ export const ConfiguredMonitorsCard = memo(function ConfiguredMonitorsCard({
         {filteredCardMonitors.map((monitor) => (
           <div
             key={monitor.id}
-            className="rounded-lg border border-zinc-800 bg-zinc-950 p-4"
+            className={cn(
+              'rounded-lg border border-zinc-800 bg-zinc-950 p-4 transition-opacity',
+              !monitor.enabled && 'opacity-60',
+            )}
           >
             <div className="mb-2 flex items-start justify-between gap-2">
               <div className="flex min-w-0 items-center gap-2">
@@ -664,7 +647,10 @@ export const ConfiguredMonitorsCard = memo(function ConfiguredMonitorsCard({
                   <img
                     src={getMonitorIconURL(monitor) ?? undefined}
                     alt=""
-                    className="size-6 rounded"
+                    className={cn(
+                      'size-6 rounded transition-[filter,opacity]',
+                      !monitor.enabled && 'grayscale opacity-70',
+                    )}
                     loading="lazy"
                   />
                 ) : (
@@ -740,8 +726,21 @@ export const ConfiguredMonitorsCard = memo(function ConfiguredMonitorsCard({
                 onClick={() => void onToggleChecks(monitor.id)}
               >
                 {expandedMonitorId === monitor.id
-                  ? 'Hide checks'
-                  : 'Recent checks'}
+                  ? 'Hide history'
+                  : 'History'}
+              </Button>
+              <Button
+                type="button"
+                variant={monitor.enabled ? 'outline' : 'secondary'}
+                size="sm"
+                disabled={togglingMonitorId === monitor.id}
+                onClick={() => void onToggleMonitorEnabled(monitor)}
+              >
+                {togglingMonitorId === monitor.id
+                  ? 'Saving...'
+                  : monitor.enabled
+                    ? 'Disable checks'
+                    : 'Enable checks'}
               </Button>
               {expandedMonitorId === monitor.id ? (
                 <Button
@@ -971,14 +970,46 @@ function MonitorChecksList({
   )
 }
 
-function formatSortLabel(value: false | 'asc' | 'desc'): string {
-  if (value === 'asc') {
-    return '(asc)'
-  }
-  if (value === 'desc') {
-    return '(desc)'
-  }
-  return ''
+function formatSortLabel({
+  title,
+  column,
+  className,
+}: {
+  title: string
+  column: Column<MonitorRecord, unknown>
+  className?: string
+}) {
+  const cycleSort = () => column.toggleSorting(column.getIsSorted() === 'asc')
+  const sortDirection = column.getIsSorted()
+
+  return (
+    <div className={cn('flex items-center space-x-2', className)}>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="data-[state=open]:bg-accent h-8 w-full"
+        onClick={cycleSort}
+      >
+        <span>{title}</span>
+        {sortDirection === 'desc' ? (
+          <div className="ml-auto">
+            <ChevronUp className="size-4 min-w-4 text-stone-600" />
+            <ChevronDown className="size-4 -mt-1.5 min-w-4 text-white" />
+          </div>
+        ) : sortDirection === 'asc' ? (
+          <div className="ml-auto">
+            <ChevronUp className="size-4 min-w-4 text-white" />
+            <ChevronDown className="size-4 -mt-1.5 min-w-4 text-stone-600" />
+          </div>
+        ) : (
+          <div className="ml-auto">
+            <ChevronsUpDown className="ml-2 size-5 min-w-4 text-stone-600" />
+          </div>
+        )}
+      </Button>
+    </div>
+  )
 }
 
 function matchesMonitorQuery(monitor: MonitorRecord, query: string): boolean {

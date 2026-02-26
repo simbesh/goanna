@@ -1,3 +1,13 @@
+import {
+  getRuntimeSettingsOptions,
+  getRuntimeSettingsQueryKey,
+  getTelegramSettingsOptions,
+  getTelegramSettingsQueryKey,
+  testTelegramSettingsMutation,
+  upsertRuntimeSettingsMutation,
+  upsertTelegramSettingsMutation,
+} from '@goanna/api-client'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { sileo } from 'sileo'
@@ -14,13 +24,20 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { DefaultService, testTelegramSettings } from '@/lib/api'
+import { getApiErrorMessage } from '@/lib/api'
 
 export const Route = createFileRoute('/settings')({
   component: SettingsPage,
 })
 
 function SettingsPage() {
+  const queryClient = useQueryClient()
+  const telegramSettingsQuery = useQuery(getTelegramSettingsOptions())
+  const runtimeSettingsQuery = useQuery(getRuntimeSettingsOptions())
+  const saveTelegramSettings = useMutation(upsertTelegramSettingsMutation())
+  const sendTelegramTest = useMutation(testTelegramSettingsMutation())
+  const saveRuntimeSettings = useMutation(upsertRuntimeSettingsMutation())
+
   const [botToken, setBotToken] = useState('')
   const [chatId, setChatId] = useState('')
   const [enabled, setEnabled] = useState(false)
@@ -29,126 +46,136 @@ function SettingsPage() {
   const [requiredRuntimeSettings, setRequiredRuntimeSettings] = useState<
     Array<string>
   >([])
-
-  const [loadingTelegram, setLoadingTelegram] = useState(true)
-  const [savingTelegram, setSavingTelegram] = useState(false)
-  const [testingTelegram, setTestingTelegram] = useState(false)
   const [telegramMessage, setTelegramMessage] = useState('')
-
-  const [loadingRuntime, setLoadingRuntime] = useState(true)
-  const [savingRuntime, setSavingRuntime] = useState(false)
   const [runtimeMessage, setRuntimeMessage] = useState('')
 
+  const loadingTelegram = telegramSettingsQuery.isPending
+  const savingTelegram = saveTelegramSettings.isPending
+  const testingTelegram = sendTelegramTest.isPending
+  const loadingRuntime = runtimeSettingsQuery.isPending
+  const savingRuntime = saveRuntimeSettings.isPending
+
   useEffect(() => {
-    void Promise.all([loadTelegramSettings(), loadRuntimeSettings()])
-  }, [])
+    if (!telegramSettingsQuery.data) {
+      return
+    }
 
-  async function loadTelegramSettings() {
-    setLoadingTelegram(true)
+    setBotToken(telegramSettingsQuery.data.botToken)
+    setChatId(telegramSettingsQuery.data.chatId)
+    setEnabled(telegramSettingsQuery.data.enabled)
+  }, [telegramSettingsQuery.data])
+
+  useEffect(() => {
+    if (!telegramSettingsQuery.error) {
+      return
+    }
+
     setTelegramMessage('')
-    try {
-      const settings = await DefaultService.getTelegramSettings()
-      setBotToken(settings.botToken)
-      setChatId(settings.chatId)
-      setEnabled(settings.enabled)
-    } catch {
-      setTelegramMessage('Failed to load Telegram settings.')
-    } finally {
-      setLoadingTelegram(false)
-    }
-  }
+    setTelegramMessage(
+      getApiErrorMessage(
+        telegramSettingsQuery.error,
+        'Failed to load Telegram settings.',
+      ),
+    )
+  }, [telegramSettingsQuery.error])
 
-  async function loadRuntimeSettings() {
-    setLoadingRuntime(true)
-    setRuntimeMessage('')
-    try {
-      const settings = await DefaultService.getRuntimeSettings()
-      setHistoryLimit(settings.checksHistoryLimit)
-      setTimezone(settings.timezone ?? getBrowserTimezone())
-      setRequiredRuntimeSettings(
-        Array.isArray(settings.requiredSettings) ? settings.requiredSettings : [],
-      )
-    } catch {
-      setRuntimeMessage('Failed to load runtime settings.')
-    } finally {
-      setLoadingRuntime(false)
+  useEffect(() => {
+    if (!runtimeSettingsQuery.data) {
+      return
     }
-  }
+
+    setHistoryLimit(runtimeSettingsQuery.data.checksHistoryLimit)
+    setTimezone(runtimeSettingsQuery.data.timezone ?? getBrowserTimezone())
+    setRequiredRuntimeSettings(
+      Array.isArray(runtimeSettingsQuery.data.requiredSettings)
+        ? runtimeSettingsQuery.data.requiredSettings
+        : [],
+    )
+  }, [runtimeSettingsQuery.data])
+
+  useEffect(() => {
+    if (!runtimeSettingsQuery.error) {
+      return
+    }
+
+    setRuntimeMessage(
+      getApiErrorMessage(runtimeSettingsQuery.error, 'Failed to load runtime settings.'),
+    )
+  }, [runtimeSettingsQuery.error])
 
   async function onSaveTelegram(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    setSavingTelegram(true)
     setTelegramMessage('')
+
     try {
-      const settings = await DefaultService.upsertTelegramSettings({
-        requestBody: {
+      const settings = await saveTelegramSettings.mutateAsync({
+        body: {
           enabled,
           botToken,
           chatId,
         },
       })
+
+      queryClient.setQueryData(getTelegramSettingsQueryKey(), settings)
       setEnabled(settings.enabled)
       setTelegramMessage('Telegram settings saved.')
     } catch (error) {
       setTelegramMessage(
-        getErrorMessage(
+        getApiErrorMessage(
           error,
           'Could not save Telegram settings. Please verify fields.',
         ),
       )
-    } finally {
-      setSavingTelegram(false)
     }
   }
 
   async function onTestTelegram() {
-    setTestingTelegram(true)
     setTelegramMessage('')
 
     try {
-      await testTelegramSettings({
-        botToken,
-        chatId,
-        message: 'Goanna test notification from Settings',
+      await sendTelegramTest.mutateAsync({
+        body: {
+          botToken,
+          chatId,
+          message: 'Goanna test notification from Settings',
+        },
       })
+
       sileo.success({ description: 'Test message sent to Telegram.' })
       setTelegramMessage('Test message sent to Telegram.')
     } catch (error) {
       setTelegramMessage(
-        getErrorMessage(
+        getApiErrorMessage(
           error,
           'Could not send test message. Please verify bot token and chat ID.',
         ),
       )
-    } finally {
-      setTestingTelegram(false)
     }
   }
 
   async function onSaveRuntime(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    setSavingRuntime(true)
     setRuntimeMessage('')
 
     if (!Number.isFinite(historyLimit) || historyLimit < 10) {
       setRuntimeMessage('Checks history limit must be at least 10.')
-      setSavingRuntime(false)
       return
     }
 
     if (timezone.trim() === '') {
       setRuntimeMessage('Timezone is required.')
-      setSavingRuntime(false)
       return
     }
 
     try {
-      const settings = await DefaultService.upsertRuntimeSettings({
-        requestBody: {
+      const settings = await saveRuntimeSettings.mutateAsync({
+        body: {
           checksHistoryLimit: historyLimit,
           timezone,
         },
       })
+
+      queryClient.setQueryData(getRuntimeSettingsQueryKey(), settings)
       setHistoryLimit(settings.checksHistoryLimit)
       setTimezone(settings.timezone ?? timezone)
       setRequiredRuntimeSettings(
@@ -156,11 +183,7 @@ function SettingsPage() {
       )
       setRuntimeMessage('Runtime settings saved.')
     } catch (error) {
-      setRuntimeMessage(
-        getErrorMessage(error, 'Could not save runtime settings.'),
-      )
-    } finally {
-      setSavingRuntime(false)
+      setRuntimeMessage(getApiErrorMessage(error, 'Could not save runtime settings.'))
     }
   }
 
@@ -327,29 +350,6 @@ function SettingsPage() {
       </TabsContent>
     </Tabs>
   )
-}
-
-function getErrorMessage(error: unknown, fallback: string): string {
-  if (typeof error === 'object' && error !== null) {
-    const errorWithBody = error as {
-      body?: { error?: unknown }
-      message?: unknown
-    }
-
-    const bodyError = errorWithBody.body?.error
-    if (typeof bodyError === 'string' && bodyError.trim() !== '') {
-      return bodyError
-    }
-
-    if (
-      typeof errorWithBody.message === 'string' &&
-      errorWithBody.message.trim() !== ''
-    ) {
-      return errorWithBody.message
-    }
-  }
-
-  return fallback
 }
 
 function getBrowserTimezone(): string {
