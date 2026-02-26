@@ -52,6 +52,12 @@ type executionResult struct {
 	success      bool
 }
 
+type TriggerMonitorResult struct {
+	Monitor *ent.Monitor
+	Runtime *ent.MonitorRuntime
+	Check   *ent.CheckResult
+}
+
 func New(db *ent.Client) *Worker {
 	return NewWithConfig(db, Config{})
 }
@@ -86,6 +92,58 @@ func (w *Worker) Start(ctx context.Context) {
 			w.tick(ctx, nil)
 		}
 	}
+}
+
+func (w *Worker) TriggerMonitorNow(ctx context.Context, monitorID int) (*TriggerMonitorResult, error) {
+	row, err := w.db.Monitor.Query().
+		Where(monitor.IDEQ(monitorID)).
+		WithRuntime().
+		Only(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	config, err := w.ensureSystemConfig(ctx)
+	if err != nil {
+		return nil, err
+	}
+	cronLocation := cronLocationFromConfig(config.Timezone)
+
+	now := time.Now().UTC()
+	runtimeRow, err := w.ensureRuntime(ctx, row, now, cronLocation)
+	if err != nil {
+		return nil, err
+	}
+
+	disableAfterRun := !row.Enabled
+	if err := w.runMonitor(ctx, row, runtimeRow, now, cronLocation, disableAfterRun); err != nil {
+		return nil, err
+	}
+
+	updatedMonitor, err := w.db.Monitor.Query().
+		Where(monitor.IDEQ(monitorID)).
+		WithRuntime().
+		Only(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	latestCheck, err := w.db.CheckResult.Query().
+		Where(checkresult.HasMonitorWith(monitor.IDEQ(monitorID))).
+		Order(ent.Desc(checkresult.FieldCheckedAt), ent.Desc(checkresult.FieldID)).
+		First(ctx)
+	if err != nil {
+		if !ent.IsNotFound(err) {
+			return nil, err
+		}
+		latestCheck = nil
+	}
+
+	return &TriggerMonitorResult{
+		Monitor: updatedMonitor,
+		Runtime: updatedMonitor.Edges.Runtime,
+		Check:   latestCheck,
+	}, nil
 }
 
 func (w *Worker) tick(ctx context.Context, startupCutoff *time.Time) {

@@ -34,6 +34,12 @@ bun run gen:ent
 bun run gen:api
 ```
 
+## Configuration
+
+- `GOANNA_MAX_RESPONSE_BODY_BYTES` (optional): max API response body size for monitor checks and selector payload caching
+- default: `25165824` (24 MB)
+- example: `GOANNA_MAX_RESPONSE_BODY_BYTES=33554432 bun run dev:api`
+
 ## Layout
 
 ```text

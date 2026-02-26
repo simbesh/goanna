@@ -16,6 +16,7 @@ export type CreateMonitorRequest = {
     expectedResponse?: string;
     cron: string;
     enabled?: boolean;
+    triggerOnCreate?: boolean;
 };
 export namespace CreateMonitorRequest {
     export enum expectedType {

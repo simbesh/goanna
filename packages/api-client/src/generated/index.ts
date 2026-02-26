@@ -11,6 +11,7 @@ export { CreateMonitorRequest } from './models/CreateMonitorRequest';
 export type { HealthResponse } from './models/HealthResponse';
 export { Monitor } from './models/Monitor';
 export { MonitorCheck } from './models/MonitorCheck';
+export type { MonitorTriggerResult } from './models/MonitorTriggerResult';
 export type { RuntimeSettings } from './models/RuntimeSettings';
 export type { SelectorPreviewRequest } from './models/SelectorPreviewRequest';
 export type { SelectorPreviewResponse } from './models/SelectorPreviewResponse';

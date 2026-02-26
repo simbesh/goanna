@@ -68,6 +68,7 @@ type ConfiguredMonitorsCardProps = {
   deletingMonitorId: number | null
   editingMonitorId: number | null
   onToggleChecks: (monitorId: number) => Promise<void>
+  onRefreshMonitors: () => Promise<void>
   onRefreshChecks: (monitorId: number) => Promise<void>
   onTriggerMonitor: (monitor: MonitorRecord) => Promise<void>
   onDeleteMonitor: (monitor: MonitorRecord) => Promise<void>
@@ -89,6 +90,7 @@ export const ConfiguredMonitorsTableCard = memo(
     triggeringMonitorId,
     deletingMonitorId,
     editingMonitorId,
+    onRefreshMonitors,
     onRefreshChecks,
     onTriggerMonitor,
     onDeleteMonitor,
@@ -435,14 +437,25 @@ export const ConfiguredMonitorsTableCard = memo(
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          <Input
-            value={tableFilterValue}
-            onChange={(event) => {
-              table.getColumn('name')?.setFilterValue(event.target.value)
-              table.setPageIndex(0)
-            }}
-            placeholder="Filter table..."
-          />
+          <div className="flex items-center gap-2">
+            <Input
+              value={tableFilterValue}
+              onChange={(event) => {
+                table.getColumn('name')?.setFilterValue(event.target.value)
+                table.setPageIndex(0)
+              }}
+              placeholder="Filter table..."
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={loading}
+              onClick={() => void onRefreshMonitors()}
+            >
+              {loading ? 'Refreshing...' : 'Refresh'}
+            </Button>
+          </div>
 
           <div className="rounded-lg border border-zinc-800 bg-zinc-950">
             <Table>
@@ -549,7 +562,18 @@ export const ConfiguredMonitorsTableCard = memo(
                       loading={loadingChecksFor === checksDialogMonitor.id}
                     />
                   </div>
-                  <div className="flex justify-end">
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      disabled={triggeringMonitorId === checksDialogMonitor.id}
+                      onClick={() => void onTriggerMonitor(checksDialogMonitor)}
+                    >
+                      {triggeringMonitorId === checksDialogMonitor.id
+                        ? 'Triggering...'
+                        : 'Trigger'}
+                    </Button>
                     <Button
                       type="button"
                       variant="outline"
@@ -583,6 +607,7 @@ export const ConfiguredMonitorsCard = memo(function ConfiguredMonitorsCard({
   deletingMonitorId,
   editingMonitorId,
   onToggleChecks,
+  onRefreshMonitors,
   onRefreshChecks,
   onTriggerMonitor,
   onDeleteMonitor,
@@ -611,11 +636,22 @@ export const ConfiguredMonitorsCard = memo(function ConfiguredMonitorsCard({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        <Input
-          value={cardFilterQuery}
-          onChange={(event) => setCardFilterQuery(event.target.value)}
-          placeholder="Filter cards..."
-        />
+        <div className="flex items-center gap-2">
+          <Input
+            value={cardFilterQuery}
+            onChange={(event) => setCardFilterQuery(event.target.value)}
+            placeholder="Filter cards..."
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={loading}
+            onClick={() => void onRefreshMonitors()}
+          >
+            {loading ? 'Refreshing...' : 'Refresh'}
+          </Button>
+        </div>
 
         {filteredCardMonitors.map((monitor) => (
           <div

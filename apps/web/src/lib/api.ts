@@ -2,6 +2,7 @@ import { DefaultService, OpenAPI } from '@goanna/api-client'
 import type {
   CreateMonitorRequest,
   Monitor,
+  MonitorCheck,
   SelectorPreviewRequest,
   SelectorPreviewResponse,
   TestTelegramSettingsRequest,
@@ -12,20 +13,52 @@ type SelectorPreviewRequestPayload = SelectorPreviewRequest & {
   token?: string
 }
 
+export type MonitorTriggerResult = {
+  monitor: Monitor
+  check?: MonitorCheck | null
+}
+
 OpenAPI.BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080'
 
 export { DefaultService }
 
-export async function triggerMonitor(monitorId: number): Promise<Monitor> {
+export async function createMonitor(
+  requestBody: CreateMonitorRequest,
+): Promise<MonitorTriggerResult> {
   const service = DefaultService as {
-    triggerMonitor?: (args: { monitorId: number }) => Promise<Monitor>
+    createMonitor?: (args: {
+      requestBody: CreateMonitorRequest
+    }) => Promise<MonitorTriggerResult | Monitor>
+  }
+
+  if (typeof service.createMonitor === 'function') {
+    const response = await service.createMonitor({ requestBody })
+    return normalizeMonitorTriggerResult(response)
+  }
+
+  return requestMonitorTriggerResult('/v1/monitors', {
+    method: 'POST',
+    body: JSON.stringify(requestBody),
+  })
+}
+
+export async function triggerMonitor(
+  monitorId: number,
+): Promise<MonitorTriggerResult> {
+  const service = DefaultService as {
+    triggerMonitor?: (args: {
+      monitorId: number
+    }) => Promise<MonitorTriggerResult | Monitor>
   }
 
   if (typeof service.triggerMonitor === 'function') {
-    return service.triggerMonitor({ monitorId })
+    const response = await service.triggerMonitor({ monitorId })
+    return normalizeMonitorTriggerResult(response)
   }
 
-  return requestMonitor(`/v1/monitors/${monitorId}/trigger`, { method: 'POST' })
+  return requestMonitorTriggerResult(`/v1/monitors/${monitorId}/trigger`, {
+    method: 'POST',
+  })
 }
 
 export async function deleteMonitor(monitorId: number): Promise<void> {
@@ -110,6 +143,14 @@ async function requestMonitor(
   return requestJSON<Monitor>(path, init)
 }
 
+async function requestMonitorTriggerResult(
+  path: string,
+  init: RequestInit,
+): Promise<MonitorTriggerResult> {
+  const payload = await requestJSON<MonitorTriggerResult | Monitor>(path, init)
+  return normalizeMonitorTriggerResult(payload)
+}
+
 async function requestNoContent(path: string, init: RequestInit): Promise<void> {
   await request(path, init)
 }
@@ -143,4 +184,17 @@ async function request(path: string, init: RequestInit): Promise<Response> {
   }
 
   return response
+}
+
+function normalizeMonitorTriggerResult(
+  payload: MonitorTriggerResult | Monitor,
+): MonitorTriggerResult {
+  if ('monitor' in payload) {
+    return payload
+  }
+
+  return {
+    monitor: payload,
+    check: null,
+  }
 }

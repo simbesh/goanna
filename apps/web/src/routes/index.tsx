@@ -5,13 +5,18 @@ import type {
   MonitorCheck as MonitorCheckRecord,
   Monitor as MonitorRecord,
 } from '@goanna/api-client'
+import type { MonitorTriggerResult } from '@/lib/api'
+import {
+  DefaultService,
+  deleteMonitor,
+  triggerMonitor,
+} from '@/lib/api'
 
 import {
   ConfiguredMonitorsCard,
   ConfiguredMonitorsTableCard,
 } from '@/components/monitors/configured-monitors-card'
 import { CreateEditMonitorCard } from '@/components/monitors/create-edit-monitor-card'
-import { DefaultService, deleteMonitor, triggerMonitor } from '@/lib/api'
 
 export const Route = createFileRoute('/')({
   component: MonitorsPage,
@@ -118,15 +123,53 @@ function MonitorsPage() {
     setEditingMonitorId(null)
   }, [])
 
+  const applyMonitorTriggerResult = useCallback(
+    (result: MonitorTriggerResult) => {
+      const { monitor, check } = result
+
+      setMonitors((current) => {
+        const index = current.findIndex((entry) => entry.id === monitor.id)
+        if (index === -1) {
+          return [monitor, ...current]
+        }
+
+        const next = [...current]
+        next[index] = monitor
+        return next
+      })
+
+      if (!check) {
+        return
+      }
+
+      setChecksByMonitor((current) => {
+        const existing = current[monitor.id] ?? []
+        const deduped = existing.filter((entry) => entry.id !== check.id)
+        return {
+          ...current,
+          [monitor.id]: [check, ...deduped],
+        }
+      })
+      setChecksErrors((current) => ({
+        ...current,
+        [monitor.id]: '',
+      }))
+    },
+    [],
+  )
+
   const onTriggerMonitor = useCallback(
     async (monitor: MonitorRecord) => {
       setTriggeringMonitorId(monitor.id)
       setError('')
       try {
-        await triggerMonitor(monitor.id)
-        await loadMonitors()
+        const triggerResult = await triggerMonitor(monitor.id)
+        applyMonitorTriggerResult(triggerResult)
 
-        if (expandedMonitorId === monitor.id) {
+        if (
+          !triggerResult.check &&
+          (expandedMonitorId === monitor.id || checksByMonitor[monitor.id])
+        ) {
           await loadMonitorChecks(monitor.id)
         }
       } catch (caughtError) {
@@ -140,7 +183,29 @@ function MonitorsPage() {
         setTriggeringMonitorId(null)
       }
     },
-    [expandedMonitorId, loadMonitorChecks, loadMonitors],
+    [
+      applyMonitorTriggerResult,
+      checksByMonitor,
+      expandedMonitorId,
+      loadMonitorChecks,
+    ],
+  )
+
+  const onSavedMonitor = useCallback(
+    ({
+      monitor,
+      check,
+    }: {
+      monitor: MonitorRecord
+      check?: MonitorCheckRecord | null
+    }) => {
+      setError('')
+      applyMonitorTriggerResult({
+        monitor,
+        check,
+      })
+    },
+    [applyMonitorTriggerResult],
   )
 
   const onDeleteMonitor = useCallback(
@@ -199,6 +264,7 @@ function MonitorsPage() {
         monitors={monitors}
         onDeleteMonitor={onDeleteMonitor}
         onEditMonitor={onEditMonitor}
+        onRefreshMonitors={loadMonitors}
         onRefreshChecks={loadMonitorChecks}
         onTriggerMonitor={onTriggerMonitor}
         deletingMonitorId={deletingMonitorId}
@@ -209,7 +275,7 @@ function MonitorsPage() {
         <CreateEditMonitorCard
           editingMonitor={editingMonitor}
           onCancelEdit={onCancelEdit}
-          onSaved={loadMonitors}
+          onSaved={onSavedMonitor}
         />
 
         <ConfiguredMonitorsCard
@@ -221,6 +287,7 @@ function MonitorsPage() {
           loadingChecksFor={loadingChecksFor}
           monitors={monitors}
           onEditMonitor={onEditMonitor}
+          onRefreshMonitors={loadMonitors}
           onRefreshChecks={loadMonitorChecks}
           onToggleChecks={toggleMonitorChecks}
           onDeleteMonitor={onDeleteMonitor}

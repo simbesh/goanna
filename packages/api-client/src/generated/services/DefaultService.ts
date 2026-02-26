@@ -6,6 +6,7 @@ import type { CreateMonitorRequest } from '../models/CreateMonitorRequest';
 import type { HealthResponse } from '../models/HealthResponse';
 import type { Monitor } from '../models/Monitor';
 import type { MonitorCheck } from '../models/MonitorCheck';
+import type { MonitorTriggerResult } from '../models/MonitorTriggerResult';
 import type { RuntimeSettings } from '../models/RuntimeSettings';
 import type { SelectorPreviewRequest } from '../models/SelectorPreviewRequest';
 import type { SelectorPreviewResponse } from '../models/SelectorPreviewResponse';
@@ -44,14 +45,14 @@ export class DefaultService {
     }
     /**
      * Create monitor
-     * @returns Monitor Monitor created
+     * @returns MonitorTriggerResult Monitor created
      * @throws ApiError
      */
     public static createMonitor({
         requestBody,
     }: {
         requestBody: CreateMonitorRequest,
-    }): CancelablePromise<Monitor> {
+    }): CancelablePromise<MonitorTriggerResult> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/v1/monitors',
@@ -111,14 +112,14 @@ export class DefaultService {
     }
     /**
      * Trigger monitor to run immediately
-     * @returns Monitor Monitor trigger scheduled
+     * @returns MonitorTriggerResult Monitor trigger completed
      * @throws ApiError
      */
     public static triggerMonitor({
         monitorId,
     }: {
         monitorId: number,
-    }): CancelablePromise<Monitor> {
+    }): CancelablePromise<MonitorTriggerResult> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/v1/monitors/{monitorId}/trigger',

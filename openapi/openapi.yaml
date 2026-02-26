@@ -47,7 +47,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Monitor'
+                $ref: '#/components/schemas/MonitorTriggerResult'
         '400':
           description: Invalid request body
 
@@ -109,11 +109,11 @@ paths:
             format: int64
       responses:
         '200':
-          description: Monitor trigger scheduled
+          description: Monitor trigger completed
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Monitor'
+                $ref: '#/components/schemas/MonitorTriggerResult'
         '400':
           description: Monitor cannot be triggered
         '404':
@@ -432,6 +432,9 @@ components:
         enabled:
           type: boolean
           default: true
+        triggerOnCreate:
+          type: boolean
+          default: false
 
     TestMonitorRequest:
       type: object
@@ -643,3 +646,15 @@ components:
         checkedAt:
           type: string
           format: date-time
+
+    MonitorTriggerResult:
+      type: object
+      required:
+        - monitor
+      properties:
+        monitor:
+          $ref: '#/components/schemas/Monitor'
+        check:
+          allOf:
+            - $ref: '#/components/schemas/MonitorCheck'
+          nullable: true

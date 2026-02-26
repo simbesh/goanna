@@ -32,6 +32,12 @@ go generate ./internal/api/gen
 go run ./cmd/server
 ```
 
+## Environment
+
+- `GOANNA_MAX_RESPONSE_BODY_BYTES` (optional): max response size in bytes used by worker checks and selector payload caching
+- default: `25165824` (24 MB)
+- value must be a positive integer; invalid values fall back to default
+
 Server defaults:
 
 - address: `:8080`

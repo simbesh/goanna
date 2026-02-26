@@ -24,6 +24,7 @@ import (
 	"goanna/apps/api/ent/notificationevent"
 	"goanna/apps/api/ent/systemconfig"
 	selectorutil "goanna/apps/api/internal/selector"
+	"goanna/apps/api/internal/worker"
 
 	"github.com/go-telegram/bot"
 	"github.com/robfig/cron/v3"
@@ -54,6 +55,7 @@ type Config struct {
 type Server struct {
 	db                      *ent.Client
 	maxSelectorPayloadBytes int
+	triggerWorker           *worker.Worker
 
 	selectorPayloadsMu sync.Mutex
 	selectorPayloads   map[string]selectorPayloadEntry
@@ -77,7 +79,10 @@ func NewWithConfig(db *ent.Client, config Config) *Server {
 	return &Server{
 		db:                      db,
 		maxSelectorPayloadBytes: maxSelectorPayloadBytes,
-		selectorPayloads:        map[string]selectorPayloadEntry{},
+		triggerWorker: worker.NewWithConfig(db, worker.Config{
+			MaxResponseBodyBytes: maxSelectorPayloadBytes,
+		}),
+		selectorPayloads: map[string]selectorPayloadEntry{},
 	}
 }
 
@@ -144,6 +149,12 @@ type createMonitorRequest struct {
 	ExpectedResponse     *string           `json:"expectedResponse"`
 	Cron                 string            `json:"cron"`
 	Enabled              *bool             `json:"enabled"`
+	TriggerOnCreate      *bool             `json:"triggerOnCreate"`
+}
+
+type monitorTriggerResponse struct {
+	Monitor monitorResponse       `json:"monitor"`
+	Check   *monitorCheckResponse `json:"check,omitempty"`
 }
 
 type normalizedMonitorRequest struct {
@@ -340,7 +351,21 @@ func (s *Server) handleCreateMonitor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusCreated, mapMonitor(created, runtime))
+	triggerOnCreate := req.TriggerOnCreate != nil && *req.TriggerOnCreate
+	if !triggerOnCreate {
+		writeJSON(w, http.StatusCreated, monitorTriggerResponse{
+			Monitor: mapMonitor(created, runtime),
+		})
+		return
+	}
+
+	triggerResult, triggerErr := s.triggerWorker.TriggerMonitorNow(r.Context(), created.ID)
+	if triggerErr != nil {
+		writeError(w, http.StatusInternalServerError, "failed to trigger monitor")
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, mapTriggerResponse(triggerResult))
 }
 
 func (s *Server) handleUpdateMonitor(w http.ResponseWriter, r *http.Request) {
@@ -526,39 +551,17 @@ func (s *Server) handleTriggerMonitor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	row, err := s.db.Monitor.Query().
-		Where(monitor.IDEQ(monitorID)).
-		WithRuntime().
-		Only(r.Context())
+	triggerResult, err := s.triggerWorker.TriggerMonitorNow(r.Context(), monitorID)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			writeError(w, http.StatusNotFound, "monitor not found")
 			return
 		}
-		writeError(w, http.StatusInternalServerError, "failed to load monitor")
-		return
-	}
-
-	now := time.Now().UTC()
-	runtime := row.Edges.Runtime
-	if runtime == nil {
-		runtime, err = s.db.MonitorRuntime.Create().
-			SetMonitor(row).
-			SetStatus(monitorruntime.StatusPending).
-			SetNextRunAt(now).
-			Save(r.Context())
-	} else {
-		runtime, err = s.db.MonitorRuntime.UpdateOneID(runtime.ID).
-			SetStatus(monitorruntime.StatusPending).
-			SetNextRunAt(now).
-			Save(r.Context())
-	}
-	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to trigger monitor")
 		return
 	}
 
-	writeJSON(w, http.StatusOK, mapMonitor(row, runtime))
+	writeJSON(w, http.StatusOK, mapTriggerResponse(triggerResult))
 }
 
 func (s *Server) handleTestMonitorURL(w http.ResponseWriter, r *http.Request) {
@@ -1297,6 +1300,28 @@ func mapMonitor(row *ent.Monitor, runtime *ent.MonitorRuntime) monitorResponse {
 		CreatedAt:            row.CreatedAt,
 		UpdatedAt:            row.UpdatedAt,
 	}
+}
+
+func mapTriggerResponse(result *worker.TriggerMonitorResult) monitorTriggerResponse {
+	if result == nil || result.Monitor == nil {
+		return monitorTriggerResponse{}
+	}
+
+	runtime := result.Runtime
+	if runtime == nil {
+		runtime = result.Monitor.Edges.Runtime
+	}
+
+	response := monitorTriggerResponse{
+		Monitor: mapMonitor(result.Monitor, runtime),
+	}
+
+	if result.Check != nil {
+		mappedCheck := mapMonitorCheck(result.Check)
+		response.Check = &mappedCheck
+	}
+
+	return response
 }
 
 func mapMonitorCheck(row *ent.CheckResult) monitorCheckResponse {

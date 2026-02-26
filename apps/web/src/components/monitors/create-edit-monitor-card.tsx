@@ -13,6 +13,7 @@ import { Maximize2, Minimize2 } from 'lucide-react'
 import { sileo } from 'sileo'
 import type {
   CreateMonitorRequest,
+  MonitorCheck as MonitorCheckRecord,
   Monitor as MonitorRecord,
   SelectorPreviewResponse,
   TestMonitorResponse,
@@ -47,8 +48,8 @@ import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import {
   DefaultService,
+  createMonitor,
   previewMonitorSelector,
-  triggerMonitor,
   updateMonitor,
 } from '@/lib/api'
 
@@ -74,7 +75,10 @@ type TestResult = TestMonitorResponse
 type CreateEditMonitorCardProps = {
   editingMonitor: MonitorRecord | null
   onCancelEdit: () => void
-  onSaved: () => Promise<void>
+  onSaved: (result: {
+    monitor: MonitorRecord
+    check?: MonitorCheckRecord | null
+  }) => Promise<void> | void
 }
 
 const defaultHeaders = '{\n  "Accept": "application/json"\n}'
@@ -298,26 +302,21 @@ export function CreateEditMonitorCard({
         enabled: form.enabled,
       }
 
+      let savedMonitor: MonitorRecord
+      let savedCheck: MonitorCheckRecord | null = null
+
       if (editingMonitor) {
-        await updateMonitor(editingMonitor.id, requestBody)
+        savedMonitor = await updateMonitor(editingMonitor.id, requestBody)
       } else {
-        const createdMonitor = await DefaultService.createMonitor({
-          requestBody,
+        const createdResult = await createMonitor({
+          ...requestBody,
+          triggerOnCreate: form.triggerOnCreate,
         })
-        if (form.triggerOnCreate) {
-          try {
-            await triggerMonitor(createdMonitor.id)
-          } catch (caughtError) {
-            const message = getErrorMessage(caughtError)
-            const errorMessage =
-              message.trim() === ''
-                ? 'Monitor created, but initial trigger failed.'
-                : `Monitor created, but initial trigger failed: ${message}`
-            setError(errorMessage)
-            sileo.error({ title: errorMessage })
-          }
-        }
+        savedMonitor = createdResult.monitor
+        savedCheck = createdResult.check ?? null
       }
+
+      await onSaved({ monitor: savedMonitor, check: savedCheck })
 
       if (editingMonitor) {
         onCancelEdit()
@@ -325,11 +324,11 @@ export function CreateEditMonitorCard({
         setForm({ ...defaultForm, auth: form.auth, headers: form.headers })
       }
 
-      await onSaved()
-    } catch {
-      const message = editingMonitor
+    } catch (caughtError) {
+      const fallback = editingMonitor
         ? 'Failed to update monitor. Check fields and try again.'
         : 'Failed to create monitor. Check fields and try again.'
+      const message = getErrorMessage(caughtError).trim() || fallback
       setError(message)
       sileo.error({ title: message })
     } finally {
