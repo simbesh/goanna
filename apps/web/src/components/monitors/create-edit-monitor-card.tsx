@@ -11,7 +11,7 @@ import {
 } from 'react'
 import {
   createMonitorMutation,
-  previewMonitorSelectorMutation,
+  previewMonitorSelector,
   testMonitorUrlMutation,
   updateMonitorMutation,
 } from '@goanna/api-client'
@@ -131,7 +131,6 @@ export function CreateEditMonitorCard({
   const createMonitorRequest = useMutation(createMonitorMutation())
   const updateMonitorRequest = useMutation(updateMonitorMutation())
   const testMonitorURLRequest = useMutation(testMonitorUrlMutation())
-  const previewSelectorRequest = useMutation(previewMonitorSelectorMutation())
 
   useEffect(() => {
     if (editingMonitor) {
@@ -223,16 +222,16 @@ export function CreateEditMonitorCard({
             selector: emptyToUndefined(deferredSelector),
           }
 
-      void previewSelectorRequest
-        .mutateAsync({
-          body: previewRequest,
-        })
-        .then((preview: SelectorPreviewResponse) => {
+      void previewMonitorSelector({
+        body: previewRequest,
+        throwOnError: true,
+      })
+        .then(({ data }) => {
           if (selectorPreviewRequestID.current !== requestID) {
             return
           }
 
-          setSelectorPreview(preview)
+          setSelectorPreview(data)
         })
         .catch((caughtError: unknown) => {
           if (selectorPreviewRequestID.current !== requestID) {
@@ -261,7 +260,6 @@ export function CreateEditMonitorCard({
     }
   }, [
     deferredSelector,
-    previewSelectorRequest,
     selectorPayloadToken,
     selectorPreviewUnavailable,
     testResponse,
