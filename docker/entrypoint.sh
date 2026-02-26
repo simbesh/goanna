@@ -30,12 +30,12 @@ HOST='127.0.0.1' \
 PORT="$GOANNA_WEB_INTERNAL_PORT" \
 NITRO_HOST='127.0.0.1' \
 NITRO_PORT="$GOANNA_WEB_INTERNAL_PORT" \
-node /app/web/.output/server/index.mjs &
+bun /app/web/.output/server/index.mjs &
 web_pid=$!
 
 GOANNA_WEB_INTERNAL_URL="http://127.0.0.1:${GOANNA_WEB_INTERNAL_PORT}" \
 GOANNA_API_INTERNAL_URL="${GOANNA_API_INTERNAL_URL:-http://127.0.0.1:8080}" \
-node /app/docker/gateway.mjs &
+bun /app/docker/gateway.mjs &
 gateway_pid=$!
 
 status=0

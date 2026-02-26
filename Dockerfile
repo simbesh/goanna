@@ -30,6 +30,8 @@ RUN go build -o /out/goanna-api ./cmd/server
 FROM node:22-bookworm-slim AS runtime
 WORKDIR /app
 
+COPY --from=web-builder /usr/local/bin/bun /usr/local/bin/bun
+
 RUN apt-get update \
   && apt-get install -y --no-install-recommends tini \
   && rm -rf /var/lib/apt/lists/*
