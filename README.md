@@ -72,7 +72,7 @@ By default, only the web port is published. The API stays internal and is proxie
 ```yaml
 services:
   goanna:
-    image: ghcr.io/<owner>/<repo>:latest
+    image: ghcr.io/simbesh/goanna:latest
     # Optional: build locally instead of pulling
     build:
       context: .
@@ -108,7 +108,7 @@ To expose the API later, add `-p 8080:8080` to `docker run` (or uncomment it in 
 CI is configured in `.github/workflows/docker-image.yml`:
 
 - Pull requests: build-only validation
-- `main`/tags: build and push to `ghcr.io/<owner>/<repo>`
+- `main`/tags: build and push to `ghcr.io/simbesh/goanna`
 - Optional repo variable for frontend API URL: `VITE_API_BASE_URL`
 
 ## Layout
