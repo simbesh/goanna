@@ -7,12 +7,14 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
+import { Link } from '@tanstack/react-router'
 import {
   ChevronDown,
   ChevronUp,
   ChevronsUpDown,
   Download,
   MoreHorizontal,
+  TriangleAlert,
   Upload,
 } from 'lucide-react'
 import { sileo } from 'sileo'
@@ -113,6 +115,10 @@ type ConfiguredMonitorsTableCardProps = Omit<
   ConfiguredMonitorsCardProps,
   'expandedMonitorId' | 'onToggleChecks'
 > & {
+  batchTriggering: boolean
+  batchDeleting: boolean
+  onBatchTriggerMonitors: (monitors: Array<MonitorRecord>) => Promise<void>
+  onBatchDeleteMonitors: (monitors: Array<MonitorRecord>) => Promise<void>
   onImportMonitorConfigs: (
     monitorConfigs: Array<CreateMonitorRequest>,
     triggerOnCreate: boolean,
@@ -143,14 +149,18 @@ export const ConfiguredMonitorsTableCard = memo(
     checksErrors,
     loadingChecksFor,
     triggeringMonitorId,
+    batchTriggering,
     deletingMonitorId,
+    batchDeleting,
     togglingMonitorId,
     editingMonitorId,
     onToggleMonitorEnabled,
     onRefreshMonitors,
     onRefreshChecks,
     onTriggerMonitor,
+    onBatchTriggerMonitors,
     onDeleteMonitor,
+    onBatchDeleteMonitors,
     onEditMonitor,
     onImportMonitorConfigs,
   }: ConfiguredMonitorsTableCardProps) {
@@ -171,6 +181,8 @@ export const ConfiguredMonitorsTableCard = memo(
     const [checksDialogMonitorId, setChecksDialogMonitorId] = useState<
       number | null
     >(null)
+    const [batchTriggerConfirmOpen, setBatchTriggerConfirmOpen] = useState(false)
+    const [batchDeleteConfirmOpen, setBatchDeleteConfirmOpen] = useState(false)
     const [exportWarningOpen, setExportWarningOpen] = useState(false)
     const [pendingExportConfigs, setPendingExportConfigs] = useState<
       Array<CreateMonitorRequest>
@@ -355,9 +367,12 @@ export const ConfiguredMonitorsTableCard = memo(
                   <div className="size-5 rounded bg-zinc-800" />
                 )}
                 <div className="min-w-0">
-                  <p className="font-medium text-zinc-100">
-                    {getMonitorDisplayLabel(monitor)}
-                  </p>
+                  <div className="flex items-center gap-1">
+                    <p className="font-medium text-zinc-100">
+                      {getMonitorDisplayLabel(monitor)}
+                    </p>
+                    <MonitorNotificationIssuesIndicator monitor={monitor} />
+                  </div>
                   <p className="max-w-72 truncate text-zinc-400">
                     {monitor.url}
                   </p>
@@ -499,13 +514,15 @@ export const ConfiguredMonitorsTableCard = memo(
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-36">
                     <DropdownMenuItem
-                      disabled={triggeringMonitorId === monitor.id}
+                      disabled={
+                        triggeringMonitorId === monitor.id || batchTriggering
+                      }
                       onClick={(event) => {
                         event.stopPropagation()
                         void onTriggerMonitor(monitor)
                       }}
                     >
-                      {triggeringMonitorId === monitor.id
+                      {triggeringMonitorId === monitor.id || batchTriggering
                         ? 'Triggering...'
                         : 'Trigger'}
                     </DropdownMenuItem>
@@ -519,13 +536,13 @@ export const ConfiguredMonitorsTableCard = memo(
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       variant="destructive"
-                      disabled={deletingMonitorId === monitor.id}
+                      disabled={deletingMonitorId === monitor.id || batchDeleting}
                       onClick={(event) => {
                         event.stopPropagation()
                         void onDeleteMonitor(monitor)
                       }}
                     >
-                      {deletingMonitorId === monitor.id
+                      {deletingMonitorId === monitor.id || batchDeleting
                         ? 'Deleting...'
                         : 'Delete'}
                     </DropdownMenuItem>
@@ -538,6 +555,8 @@ export const ConfiguredMonitorsTableCard = memo(
       ],
       [
         allRowsSelected,
+        batchDeleting,
+        batchTriggering,
         deletingMonitorId,
         editingMonitorId,
         loadingChecksFor,
@@ -587,6 +606,28 @@ export const ConfiguredMonitorsTableCard = memo(
 
     const rowsToExport =
       selectedMonitors.length > 0 ? selectedMonitors : sortedMonitors
+
+    const selectedMonitorsCount = selectedMonitors.length
+
+    const onConfirmBatchTrigger = useCallback(async () => {
+      if (selectedMonitorsCount === 0) {
+        return
+      }
+
+      setBatchTriggerConfirmOpen(false)
+      await onBatchTriggerMonitors(selectedMonitors)
+    }, [onBatchTriggerMonitors, selectedMonitors, selectedMonitorsCount])
+
+    const onConfirmBatchDelete = useCallback(async () => {
+      if (selectedMonitorsCount === 0) {
+        return
+      }
+
+      const monitorsToDelete = [...selectedMonitors]
+      setBatchDeleteConfirmOpen(false)
+      await onBatchDeleteMonitors(monitorsToDelete)
+      setSelectedMonitorRows({})
+    }, [onBatchDeleteMonitors, selectedMonitors, selectedMonitorsCount])
 
     const importPreviewColumns = useMemo<Array<ColumnDef<ImportPreviewRow>>>(
       () => [
@@ -897,6 +938,32 @@ export const ConfiguredMonitorsTableCard = memo(
                 void onImportFileSelected(event)
               }}
             />
+            {selectedMonitorsCount > 0 ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={batchTriggering || batchDeleting}
+                onClick={() => {
+                  setBatchTriggerConfirmOpen(true)
+                }}
+              >
+                {batchTriggering ? 'Triggering selected...' : 'Trigger selected'}
+              </Button>
+            ) : null}
+            {selectedMonitorsCount > 0 ? (
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                disabled={batchDeleting || batchTriggering}
+                onClick={() => {
+                  setBatchDeleteConfirmOpen(true)
+                }}
+              >
+                {batchDeleting ? 'Deleting selected...' : 'Delete selected'}
+              </Button>
+            ) : null}
             <Button
               type="button"
               variant="outline"
@@ -922,8 +989,8 @@ export const ConfiguredMonitorsTableCard = memo(
           </div>
 
           <p className="text-xs text-zinc-400">
-            Selected for export: {selectedMonitors.length}. Export uses selected
-            rows when any are selected; otherwise all rows.
+            Selected rows: {selectedMonitorsCount}. Batch actions and export use
+            selected rows when any are selected; otherwise export includes all rows.
           </p>
 
           <div className="rounded-lg border border-zinc-800 bg-zinc-950">
@@ -1044,6 +1111,74 @@ export const ConfiguredMonitorsTableCard = memo(
               </Button>
             </div>
           </div>
+
+          <AlertDialog
+            open={batchTriggerConfirmOpen}
+            onOpenChange={(open) => {
+              if (batchTriggering) {
+                return
+              }
+
+              setBatchTriggerConfirmOpen(open)
+            }}
+          >
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Trigger selected monitors</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Trigger {selectedMonitorsCount} selected monitor
+                  {selectedMonitorsCount === 1 ? '' : 's'} now? This runs checks
+                  immediately.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={batchTriggering}>
+                  Cancel
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  disabled={batchTriggering || selectedMonitorsCount === 0}
+                  onClick={() => {
+                    void onConfirmBatchTrigger()
+                  }}
+                >
+                  {batchTriggering ? 'Triggering...' : 'Trigger selected'}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          <AlertDialog
+            open={batchDeleteConfirmOpen}
+            onOpenChange={(open) => {
+              if (batchDeleting) {
+                return
+              }
+
+              setBatchDeleteConfirmOpen(open)
+            }}
+          >
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete selected monitors</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Delete {selectedMonitorsCount} selected monitor
+                  {selectedMonitorsCount === 1 ? '' : 's'}? This cannot be
+                  undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={batchDeleting}>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  disabled={batchDeleting || selectedMonitorsCount === 0}
+                  onClick={() => {
+                    void onConfirmBatchDelete()
+                  }}
+                >
+                  {batchDeleting ? 'Deleting...' : 'Delete selected'}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
 
           <AlertDialog
             open={exportWarningOpen}
@@ -1315,9 +1450,12 @@ export const ConfiguredMonitorsCard = memo(function ConfiguredMonitorsCard({
                   <div className="size-6 rounded bg-zinc-800" />
                 )}
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-zinc-100">
-                    {getMonitorDisplayLabel(monitor)}
-                  </p>
+                  <div className="flex items-center gap-1">
+                    <p className="truncate text-sm font-medium text-zinc-100">
+                      {getMonitorDisplayLabel(monitor)}
+                    </p>
+                    <MonitorNotificationIssuesIndicator monitor={monitor} />
+                  </div>
                   <p className="truncate text-xs text-zinc-400">
                     {monitor.url}
                   </p>
@@ -1486,6 +1624,55 @@ function RelativeTimestampCell({ timestamp }: { timestamp: Date | null }) {
       </HybridTooltipTrigger>
       <HybridTooltipContent side="top">
         {formatLocalTimestamp(timestamp)}
+      </HybridTooltipContent>
+    </HybridTooltip>
+  )
+}
+
+function MonitorNotificationIssuesIndicator({
+  monitor,
+}: {
+  monitor: MonitorRecord
+}) {
+  const issues = getMonitorNotificationIssues(monitor)
+  if (issues.length === 0) {
+    return null
+  }
+
+  return (
+    <HybridTooltip>
+      <HybridTooltipTrigger
+        render={
+          <span className="inline-flex size-5 items-center justify-center rounded-sm text-amber-300 hover:bg-amber-500/10" />
+        }
+        onClick={(event) => {
+          event.stopPropagation()
+        }}
+        aria-label="Notification channel warnings"
+      >
+        <TriangleAlert className="size-4" />
+      </HybridTooltipTrigger>
+      <HybridTooltipContent
+        side="top"
+        className="max-w-80 space-y-1 border border-zinc-700/80 bg-zinc-900 text-zinc-100 shadow-lg"
+      >
+        <p className="text-xs font-medium text-amber-200">
+          Notifications need attention
+        </p>
+        {issues.map((issue) => (
+          <p key={`${issue.channel}-${issue.code}`} className="text-xs text-zinc-100">
+            {issue.message}
+          </p>
+        ))}
+        <Link
+          to="/settings"
+          className="inline-flex text-xs font-medium text-amber-200 underline decoration-dotted underline-offset-3 hover:text-amber-100"
+          onClick={(event) => {
+            event.stopPropagation()
+          }}
+        >
+          Go to Settings
+        </Link>
       </HybridTooltipContent>
     </HybridTooltip>
   )
@@ -1980,6 +2167,43 @@ function getMonitorNotificationChannels(monitor: MonitorRecord): Array<string> {
   return values.filter(
     (channel): channel is string => typeof channel === 'string',
   )
+}
+
+type MonitorNotificationIssue = {
+  channel: string
+  code: string
+  message: string
+}
+
+function getMonitorNotificationIssues(
+  monitor: MonitorRecord,
+): Array<MonitorNotificationIssue> {
+  const notificationIssues = (monitor as { notificationIssues?: unknown })
+    .notificationIssues
+  if (!Array.isArray(notificationIssues)) {
+    return []
+  }
+
+  const parsed: Array<MonitorNotificationIssue> = []
+
+  for (const issue of notificationIssues) {
+    if (!issue || Array.isArray(issue) || typeof issue !== 'object') {
+      continue
+    }
+
+    const issueRecord = issue as Record<string, unknown>
+    const channel = asNonEmptyString(issueRecord.channel)
+    const code = asNonEmptyString(issueRecord.code)
+    const message = asNonEmptyString(issueRecord.message)
+
+    if (!channel || !code || !message) {
+      continue
+    }
+
+    parsed.push({ channel, code, message })
+  }
+
+  return parsed
 }
 
 function buildMonitorConfigForExport(monitor: MonitorRecord): CreateMonitorRequest {

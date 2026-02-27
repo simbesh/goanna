@@ -298,6 +298,7 @@ components:
         - enabled
         - status
         - checkCount
+        - notificationIssues
         - createdAt
         - updatedAt
       properties:
@@ -332,6 +333,10 @@ components:
           items:
             type: string
             enum: [telegram]
+        notificationIssues:
+          type: array
+          items:
+            $ref: '#/components/schemas/MonitorNotificationIssue'
         selector:
           type: string
           nullable: true
@@ -385,6 +390,20 @@ components:
         updatedAt:
           type: string
           format: date-time
+
+    MonitorNotificationIssue:
+      type: object
+      required:
+        - channel
+        - code
+        - message
+      properties:
+        channel:
+          type: string
+        code:
+          type: string
+        message:
+          type: string
 
     CreateMonitorRequest:
       type: object

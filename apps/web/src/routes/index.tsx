@@ -49,6 +49,8 @@ function MonitorsPage() {
     null,
   )
   const [deletingMonitorId, setDeletingMonitorId] = useState<number | null>(null)
+  const [batchTriggering, setBatchTriggering] = useState(false)
+  const [batchDeleting, setBatchDeleting] = useState(false)
   const [togglingMonitorId, setTogglingMonitorId] = useState<number | null>(
     null,
   )
@@ -181,10 +183,9 @@ function MonitorsPage() {
     [queryClient],
   )
 
-  const onTriggerMonitor = useCallback(
-    async (monitor: MonitorRecord) => {
+  const triggerMonitorNow = useCallback(
+    async (monitor: MonitorRecord, failureMessage: string): Promise<boolean> => {
       setTriggeringMonitorId(monitor.id)
-      setError('')
 
       try {
         const triggerResult = await triggerMonitorRequest.mutateAsync({
@@ -198,10 +199,13 @@ function MonitorsPage() {
         ) {
           await loadMonitorChecks(monitor.id)
         }
+
+        return true
       } catch (caughtError) {
-        const message = getApiErrorMessage(caughtError, 'Failed to trigger monitor.')
+        const message = getApiErrorMessage(caughtError, failureMessage)
         setError(message)
         sileo.error({ title: message })
+        return false
       } finally {
         setTriggeringMonitorId(null)
       }
@@ -213,6 +217,53 @@ function MonitorsPage() {
       loadMonitorChecks,
       triggerMonitorRequest,
     ],
+  )
+
+  const onTriggerMonitor = useCallback(
+    async (monitor: MonitorRecord) => {
+      setError('')
+      await triggerMonitorNow(monitor, 'Failed to trigger monitor.')
+    },
+    [triggerMonitorNow],
+  )
+
+  const onBatchTriggerMonitors = useCallback(
+    async (monitorsToTrigger: Array<MonitorRecord>) => {
+      if (monitorsToTrigger.length === 0) {
+        return
+      }
+
+      setBatchTriggering(true)
+      setError('')
+
+      let succeeded = 0
+
+      for (const monitor of monitorsToTrigger) {
+        const success = await triggerMonitorNow(
+          monitor,
+          `Failed to trigger monitor for ${monitor.url}.`,
+        )
+
+        if (success) {
+          succeeded += 1
+        }
+      }
+
+      const failed = monitorsToTrigger.length - succeeded
+
+      if (failed === 0) {
+        sileo.success({
+          description: `Triggered ${succeeded} monitor${succeeded === 1 ? '' : 's'}.`,
+        })
+      } else {
+        const summary = `Triggered ${succeeded}, failed ${failed}.`
+        setError(summary)
+        sileo.error({ title: summary })
+      }
+
+      setBatchTriggering(false)
+    },
+    [triggerMonitorNow],
   )
 
   const onSavedMonitor = useCallback(
@@ -232,6 +283,53 @@ function MonitorsPage() {
     [applyMonitorTriggerResult],
   )
 
+  const clearDeletedMonitorState = useCallback(
+    (monitorId: number) => {
+      queryClient.setQueryData<Array<MonitorRecord>>(
+        listMonitorsQueryKey(),
+        (current) =>
+          (current ?? []).filter((existingMonitor) => existingMonitor.id !== monitorId),
+      )
+
+      setExpandedMonitorId((current) => (current === monitorId ? null : current))
+      setEditingMonitorId((current) => (current === monitorId ? null : current))
+      setChecksByMonitor((current) => {
+        const next = { ...current }
+        delete next[monitorId]
+        return next
+      })
+      setChecksErrors((current) => {
+        const next = { ...current }
+        delete next[monitorId]
+        return next
+      })
+    },
+    [queryClient],
+  )
+
+  const deleteMonitorNow = useCallback(
+    async (monitor: MonitorRecord, failureMessage: string): Promise<boolean> => {
+      setDeletingMonitorId(monitor.id)
+
+      try {
+        await deleteMonitorRequest.mutateAsync({
+          path: { monitorId: monitor.id },
+        })
+
+        clearDeletedMonitorState(monitor.id)
+        return true
+      } catch (caughtError) {
+        const message = getApiErrorMessage(caughtError, failureMessage)
+        setError(message)
+        sileo.error({ title: message })
+        return false
+      } finally {
+        setDeletingMonitorId(null)
+      }
+    },
+    [clearDeletedMonitorState, deleteMonitorRequest],
+  )
+
   const onDeleteMonitor = useCallback(
     async (monitor: MonitorRecord) => {
       const shouldDelete = globalThis.confirm(
@@ -241,41 +339,56 @@ function MonitorsPage() {
         return
       }
 
-      setDeletingMonitorId(monitor.id)
       setError('')
-
-      try {
-        await deleteMonitorRequest.mutateAsync({
-          path: { monitorId: monitor.id },
-        })
-
-        setExpandedMonitorId((current) =>
-          current === monitor.id ? null : current,
-        )
-        setEditingMonitorId((current) =>
-          current === monitor.id ? null : current,
-        )
-        setChecksByMonitor((current) => {
-          const next = { ...current }
-          delete next[monitor.id]
-          return next
-        })
-        setChecksErrors((current) => {
-          const next = { ...current }
-          delete next[monitor.id]
-          return next
-        })
-
+      const success = await deleteMonitorNow(monitor, 'Failed to delete monitor.')
+      if (success) {
         await loadMonitors()
-      } catch (caughtError) {
-        const message = getApiErrorMessage(caughtError, 'Failed to delete monitor.')
-        setError(message)
-        sileo.error({ title: message })
-      } finally {
-        setDeletingMonitorId(null)
       }
     },
-    [deleteMonitorRequest, loadMonitors],
+    [deleteMonitorNow, loadMonitors],
+  )
+
+  const onBatchDeleteMonitors = useCallback(
+    async (monitorsToDelete: Array<MonitorRecord>) => {
+      if (monitorsToDelete.length === 0) {
+        return
+      }
+
+      setBatchDeleting(true)
+      setError('')
+
+      let deletedCount = 0
+
+      for (const monitor of monitorsToDelete) {
+        const success = await deleteMonitorNow(
+          monitor,
+          `Failed to delete monitor for ${monitor.url}.`,
+        )
+
+        if (success) {
+          deletedCount += 1
+        }
+      }
+
+      if (deletedCount > 0) {
+        await loadMonitors()
+      }
+
+      const failedCount = monitorsToDelete.length - deletedCount
+
+      if (failedCount === 0) {
+        sileo.success({
+          description: `Deleted ${deletedCount} monitor${deletedCount === 1 ? '' : 's'}.`,
+        })
+      } else {
+        const summary = `Deleted ${deletedCount}, failed ${failedCount}.`
+        setError(summary)
+        sileo.error({ title: summary })
+      }
+
+      setBatchDeleting(false)
+    },
+    [deleteMonitorNow, loadMonitors],
   )
 
   const onToggleMonitorEnabled = useCallback(
@@ -373,11 +486,15 @@ function MonitorsPage() {
         onRefreshMonitors={loadMonitors}
         onRefreshChecks={loadMonitorChecks}
         onTriggerMonitor={onTriggerMonitor}
+        onBatchTriggerMonitors={onBatchTriggerMonitors}
+        onBatchDeleteMonitors={onBatchDeleteMonitors}
         onToggleMonitorEnabled={onToggleMonitorEnabled}
         onImportMonitorConfigs={onImportMonitorConfigs}
         deletingMonitorId={deletingMonitorId}
+        batchDeleting={batchDeleting}
         togglingMonitorId={togglingMonitorId}
         triggeringMonitorId={triggeringMonitorId}
+        batchTriggering={batchTriggering}
       />
 
       <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">

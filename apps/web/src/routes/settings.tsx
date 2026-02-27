@@ -107,18 +107,49 @@ function SettingsPage() {
     event.preventDefault()
     setTelegramMessage('')
 
+    const trimmedBotToken = botToken.trim()
+    const trimmedChatID = chatId.trim()
+
+    if (enabled && (trimmedBotToken === '' || trimmedChatID === '')) {
+      setTelegramMessage(
+        'Bot token and chat ID are required when the Telegram channel is enabled.',
+      )
+      return
+    }
+
+    if (
+      (trimmedBotToken === '' && trimmedChatID !== '') ||
+      (trimmedBotToken !== '' && trimmedChatID === '')
+    ) {
+      setTelegramMessage(
+        'Bot token and chat ID must both be filled, or both left empty to clear credentials.',
+      )
+      return
+    }
+
     try {
       const settings = await saveTelegramSettings.mutateAsync({
         body: {
           enabled,
-          botToken,
-          chatId,
+          botToken: trimmedBotToken,
+          chatId: trimmedChatID,
         },
       })
 
       queryClient.setQueryData(getTelegramSettingsQueryKey(), settings)
       setEnabled(settings.enabled)
-      setTelegramMessage('Telegram settings saved.')
+      setBotToken(settings.botToken)
+      setChatId(settings.chatId)
+
+      const clearedCredentials =
+        !settings.enabled &&
+        settings.botToken.trim() === '' &&
+        settings.chatId.trim() === ''
+      setTelegramMessage(
+        clearedCredentials
+          ? 'Telegram credentials cleared. Monitors using Telegram will show a warning until reconfigured.'
+          : 'Telegram settings saved.',
+      )
     } catch (error) {
       setTelegramMessage(
         getApiErrorMessage(
@@ -212,7 +243,6 @@ function SettingsPage() {
                   <Label htmlFor="telegram-token">Bot Token</Label>
                   <Input
                     id="telegram-token"
-                    required
                     value={botToken}
                     onChange={(event) => setBotToken(event.target.value)}
                     className="bg-zinc-950"
@@ -224,7 +254,6 @@ function SettingsPage() {
                   <Label htmlFor="telegram-chat-id">Chat ID</Label>
                   <Input
                     id="telegram-chat-id"
-                    required
                     value={chatId}
                     onChange={(event) => setChatId(event.target.value)}
                     className="bg-zinc-950"
@@ -245,6 +274,11 @@ function SettingsPage() {
                     onCheckedChange={setEnabled}
                   />
                 </div>
+
+                <p className="text-xs text-zinc-400">
+                  To remove credentials, disable the channel, clear both fields,
+                  and save.
+                </p>
 
                 {telegramMessage ? (
                   <p className="text-sm text-zinc-300">{telegramMessage}</p>

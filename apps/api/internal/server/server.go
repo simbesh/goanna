@@ -108,31 +108,43 @@ type healthResponse struct {
 }
 
 type monitorResponse struct {
-	ID                   int64      `json:"id"`
-	Label                *string    `json:"label,omitempty"`
-	Method               string     `json:"method"`
-	URL                  string     `json:"url"`
-	IconURL              string     `json:"iconUrl"`
-	Body                 *string    `json:"body,omitempty"`
-	Headers              kvMap      `json:"headers"`
-	Auth                 kvMap      `json:"auth"`
-	NotificationChannels []string   `json:"notificationChannels"`
-	Selector             *string    `json:"selector,omitempty"`
-	ExpectedType         string     `json:"expectedType"`
-	ExpectedResponse     *string    `json:"expectedResponse,omitempty"`
-	Cron                 string     `json:"cron"`
-	Enabled              bool       `json:"enabled"`
-	Status               string     `json:"status"`
-	CheckCount           int64      `json:"checkCount"`
-	NextRunAt            *time.Time `json:"nextRunAt,omitempty"`
-	LastCheckAt          *time.Time `json:"lastCheckAt,omitempty"`
-	LastSuccessAt        *time.Time `json:"lastSuccessAt,omitempty"`
-	LastErrorAt          *time.Time `json:"lastErrorAt,omitempty"`
-	LastStatusCode       *int       `json:"lastStatusCode,omitempty"`
-	LastDurationMs       *int       `json:"lastDurationMs,omitempty"`
-	LastErrorMessage     *string    `json:"lastErrorMessage,omitempty"`
-	CreatedAt            time.Time  `json:"createdAt"`
-	UpdatedAt            time.Time  `json:"updatedAt"`
+	ID                   int64                              `json:"id"`
+	Label                *string                            `json:"label,omitempty"`
+	Method               string                             `json:"method"`
+	URL                  string                             `json:"url"`
+	IconURL              string                             `json:"iconUrl"`
+	Body                 *string                            `json:"body,omitempty"`
+	Headers              kvMap                              `json:"headers"`
+	Auth                 kvMap                              `json:"auth"`
+	NotificationChannels []string                           `json:"notificationChannels"`
+	NotificationIssues   []monitorNotificationIssueResponse `json:"notificationIssues"`
+	Selector             *string                            `json:"selector,omitempty"`
+	ExpectedType         string                             `json:"expectedType"`
+	ExpectedResponse     *string                            `json:"expectedResponse,omitempty"`
+	Cron                 string                             `json:"cron"`
+	Enabled              bool                               `json:"enabled"`
+	Status               string                             `json:"status"`
+	CheckCount           int64                              `json:"checkCount"`
+	NextRunAt            *time.Time                         `json:"nextRunAt,omitempty"`
+	LastCheckAt          *time.Time                         `json:"lastCheckAt,omitempty"`
+	LastSuccessAt        *time.Time                         `json:"lastSuccessAt,omitempty"`
+	LastErrorAt          *time.Time                         `json:"lastErrorAt,omitempty"`
+	LastStatusCode       *int                               `json:"lastStatusCode,omitempty"`
+	LastDurationMs       *int                               `json:"lastDurationMs,omitempty"`
+	LastErrorMessage     *string                            `json:"lastErrorMessage,omitempty"`
+	CreatedAt            time.Time                          `json:"createdAt"`
+	UpdatedAt            time.Time                          `json:"updatedAt"`
+}
+
+type monitorNotificationIssueResponse struct {
+	Channel string `json:"channel"`
+	Code    string `json:"code"`
+	Message string `json:"message"`
+}
+
+type notificationChannelState struct {
+	enabled               bool
+	credentialsConfigured bool
 }
 
 type createMonitorRequest struct {
@@ -273,9 +285,15 @@ func (s *Server) handleListMonitors(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	channelStates := s.loadNotificationChannelStates(r.Context())
+
 	response := make([]monitorResponse, 0, len(rows))
 	for _, row := range rows {
-		response = append(response, mapMonitor(row, row.Edges.Runtime))
+		response = append(response, mapMonitor(
+			row,
+			row.Edges.Runtime,
+			buildMonitorNotificationIssues(row.NotificationChannels, channelStates),
+		))
 	}
 
 	writeJSON(w, http.StatusOK, response)
@@ -352,9 +370,14 @@ func (s *Server) handleCreateMonitor(w http.ResponseWriter, r *http.Request) {
 	}
 
 	triggerOnCreate := req.TriggerOnCreate != nil && *req.TriggerOnCreate
+	channelStates := s.loadNotificationChannelStates(r.Context())
 	if !triggerOnCreate {
 		writeJSON(w, http.StatusCreated, monitorTriggerResponse{
-			Monitor: mapMonitor(created, runtime),
+			Monitor: mapMonitor(
+				created,
+				runtime,
+				buildMonitorNotificationIssues(created.NotificationChannels, channelStates),
+			),
 		})
 		return
 	}
@@ -365,7 +388,7 @@ func (s *Server) handleCreateMonitor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusCreated, mapTriggerResponse(triggerResult))
+	writeJSON(w, http.StatusCreated, mapTriggerResponse(triggerResult, channelStates))
 }
 
 func (s *Server) handleUpdateMonitor(w http.ResponseWriter, r *http.Request) {
@@ -486,7 +509,12 @@ func (s *Server) handleUpdateMonitor(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	writeJSON(w, http.StatusOK, mapMonitor(updated, runtime))
+	channelStates := s.loadNotificationChannelStates(r.Context())
+	writeJSON(w, http.StatusOK, mapMonitor(
+		updated,
+		runtime,
+		buildMonitorNotificationIssues(updated.NotificationChannels, channelStates),
+	))
 }
 
 func (s *Server) handleDeleteMonitor(w http.ResponseWriter, r *http.Request) {
@@ -561,7 +589,8 @@ func (s *Server) handleTriggerMonitor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, mapTriggerResponse(triggerResult))
+	channelStates := s.loadNotificationChannelStates(r.Context())
+	writeJSON(w, http.StatusOK, mapTriggerResponse(triggerResult, channelStates))
 }
 
 func (s *Server) handleTestMonitorURL(w http.ResponseWriter, r *http.Request) {
@@ -776,14 +805,16 @@ func (s *Server) handleUpsertTelegramSettings(w http.ResponseWriter, r *http.Req
 
 	botToken := strings.TrimSpace(req.BotToken)
 	chatID := strings.TrimSpace(req.ChatID)
-	if botToken == "" || chatID == "" {
-		writeError(w, http.StatusBadRequest, "botToken and chatId are required")
-		return
-	}
 
 	enabled := true
 	if req.Enabled != nil {
 		enabled = *req.Enabled
+	}
+
+	clearChannel, validationErr := shouldClearTelegramChannel(enabled, botToken, chatID)
+	if validationErr != nil {
+		writeError(w, http.StatusBadRequest, validationErr.Error())
+		return
 	}
 
 	existing, err := s.db.NotificationChannel.Query().
@@ -791,6 +822,22 @@ func (s *Server) handleUpsertTelegramSettings(w http.ResponseWriter, r *http.Req
 		Only(r.Context())
 	if err != nil && !ent.IsNotFound(err) {
 		writeError(w, http.StatusInternalServerError, "failed to load telegram settings")
+		return
+	}
+
+	if clearChannel {
+		if !ent.IsNotFound(err) {
+			if deleteErr := s.db.NotificationChannel.DeleteOneID(existing.ID).Exec(r.Context()); deleteErr != nil {
+				writeError(w, http.StatusInternalServerError, "failed to clear telegram settings")
+				return
+			}
+		}
+
+		writeJSON(w, http.StatusOK, telegramSettingsResponse{
+			Enabled:  false,
+			BotToken: "",
+			ChatID:   "",
+		})
 		return
 	}
 
@@ -822,6 +869,22 @@ func (s *Server) handleUpsertTelegramSettings(w http.ResponseWriter, r *http.Req
 		ChatID:    channel.ChatID,
 		UpdatedAt: &updatedAt,
 	})
+}
+
+func shouldClearTelegramChannel(enabled bool, botToken string, chatID string) (bool, error) {
+	if botToken == "" && chatID == "" {
+		if enabled {
+			return false, errors.New("botToken and chatId are required when channel is enabled")
+		}
+
+		return true, nil
+	}
+
+	if botToken == "" || chatID == "" {
+		return false, errors.New("botToken and chatId must both be provided or both be empty")
+	}
+
+	return false, nil
 }
 
 func (s *Server) handleTestTelegramSettings(w http.ResponseWriter, r *http.Request) {
@@ -1064,6 +1127,102 @@ func normalizeNotificationChannels(rawChannels []string) ([]string, error) {
 	return normalized, nil
 }
 
+func normalizeNotificationChannelKind(rawKind string) string {
+	return strings.ToLower(strings.TrimSpace(rawKind))
+}
+
+func (s *Server) loadNotificationChannelStates(ctx context.Context) map[string]notificationChannelState {
+	channels, err := s.db.NotificationChannel.Query().All(ctx)
+	if err != nil {
+		return map[string]notificationChannelState{}
+	}
+
+	states := make(map[string]notificationChannelState, len(channels))
+	for _, channel := range channels {
+		kind := normalizeNotificationChannelKind(channel.Kind.String())
+		if kind == "" {
+			continue
+		}
+
+		states[kind] = notificationChannelState{
+			enabled:               channel.Enabled,
+			credentialsConfigured: notificationChannelHasConfiguredCredentials(channel),
+		}
+	}
+
+	return states
+}
+
+func notificationChannelHasConfiguredCredentials(channel *ent.NotificationChannel) bool {
+	if channel == nil {
+		return false
+	}
+
+	switch channel.Kind {
+	case notificationchannel.KindTelegram:
+		return strings.TrimSpace(channel.BotToken) != "" && strings.TrimSpace(channel.ChatID) != ""
+	default:
+		return true
+	}
+}
+
+func buildMonitorNotificationIssues(
+	rawChannels []string,
+	channelStates map[string]notificationChannelState,
+) []monitorNotificationIssueResponse {
+	if len(rawChannels) == 0 {
+		return []monitorNotificationIssueResponse{}
+	}
+
+	issues := make([]monitorNotificationIssueResponse, 0, len(rawChannels))
+	seenChannels := make(map[string]struct{}, len(rawChannels))
+
+	for _, rawChannel := range rawChannels {
+		channel := normalizeNotificationChannelKind(rawChannel)
+		if channel == "" {
+			continue
+		}
+
+		if _, alreadyAdded := seenChannels[channel]; alreadyAdded {
+			continue
+		}
+		seenChannels[channel] = struct{}{}
+
+		state, exists := channelStates[channel]
+		switch {
+		case !exists:
+			issues = append(issues, monitorNotificationIssueResponse{
+				Channel: channel,
+				Code:    "channel_not_configured",
+				Message: fmt.Sprintf(
+					"Monitor notifications include %q, but this channel is not configured in Settings.",
+					channel,
+				),
+			})
+		case !state.enabled:
+			issues = append(issues, monitorNotificationIssueResponse{
+				Channel: channel,
+				Code:    "channel_disabled",
+				Message: fmt.Sprintf(
+					"Monitor notifications include %q, but this channel is currently disabled in Settings.",
+					channel,
+				),
+			})
+		case !state.credentialsConfigured:
+			issues = append(issues, monitorNotificationIssueResponse{
+				Channel: channel,
+				Code:    "channel_credentials_missing",
+				Message: fmt.Sprintf(
+					"Monitor notifications include %q, but required credentials for this channel are missing.",
+					channel,
+				),
+			})
+		}
+	}
+
+	return issues
+}
+
 func normalizeOptionalString(raw *string) *string {
 	if raw == nil {
 		return nil
@@ -1241,7 +1400,11 @@ func realignEnabledMonitorRuntimes(ctx context.Context, db *ent.Client, now time
 	return nil
 }
 
-func mapMonitor(row *ent.Monitor, runtime *ent.MonitorRuntime) monitorResponse {
+func mapMonitor(
+	row *ent.Monitor,
+	runtime *ent.MonitorRuntime,
+	notificationIssues []monitorNotificationIssueResponse,
+) monitorResponse {
 	status := "pending"
 	checkCount := int64(0)
 	var nextRunAt *time.Time
@@ -1272,6 +1435,9 @@ func mapMonitor(row *ent.Monitor, runtime *ent.MonitorRuntime) monitorResponse {
 	if notificationChannels == nil {
 		notificationChannels = []string{}
 	}
+	if notificationIssues == nil {
+		notificationIssues = []monitorNotificationIssueResponse{}
+	}
 
 	return monitorResponse{
 		ID:                   int64(row.ID),
@@ -1283,6 +1449,7 @@ func mapMonitor(row *ent.Monitor, runtime *ent.MonitorRuntime) monitorResponse {
 		Headers:              kvMap(row.Headers),
 		Auth:                 kvMap(row.Auth),
 		NotificationChannels: notificationChannels,
+		NotificationIssues:   notificationIssues,
 		Selector:             row.Selector,
 		ExpectedType:         string(row.ExpectedType),
 		ExpectedResponse:     truncateOptionalResponseString(row.ExpectedResponse),
@@ -1302,7 +1469,10 @@ func mapMonitor(row *ent.Monitor, runtime *ent.MonitorRuntime) monitorResponse {
 	}
 }
 
-func mapTriggerResponse(result *worker.TriggerMonitorResult) monitorTriggerResponse {
+func mapTriggerResponse(
+	result *worker.TriggerMonitorResult,
+	channelStates map[string]notificationChannelState,
+) monitorTriggerResponse {
 	if result == nil || result.Monitor == nil {
 		return monitorTriggerResponse{}
 	}
@@ -1313,7 +1483,11 @@ func mapTriggerResponse(result *worker.TriggerMonitorResult) monitorTriggerRespo
 	}
 
 	response := monitorTriggerResponse{
-		Monitor: mapMonitor(result.Monitor, runtime),
+		Monitor: mapMonitor(
+			result.Monitor,
+			runtime,
+			buildMonitorNotificationIssues(result.Monitor.NotificationChannels, channelStates),
+		),
 	}
 
 	if result.Check != nil {

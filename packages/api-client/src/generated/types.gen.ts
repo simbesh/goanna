@@ -22,6 +22,7 @@ export type Monitor = {
         [key: string]: string;
     };
     notificationChannels?: Array<'telegram'>;
+    notificationIssues: Array<MonitorNotificationIssue>;
     selector?: string | null;
     expectedType: 'json' | 'html' | 'text';
     expectedResponse?: string | null;
@@ -38,6 +39,12 @@ export type Monitor = {
     lastErrorMessage?: string | null;
     createdAt: string;
     updatedAt: string;
+};
+
+export type MonitorNotificationIssue = {
+    channel: string;
+    code: string;
+    message: string;
 };
 
 export type CreateMonitorRequest = {
