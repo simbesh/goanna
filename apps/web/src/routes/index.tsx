@@ -38,7 +38,9 @@ function MonitorsPage() {
   const updateMonitorRequest = useMutation(updateMonitorMutation())
 
   const [error, setError] = useState('')
-  const [expandedMonitorId, setExpandedMonitorId] = useState<number | null>(null)
+  const [expandedMonitorId, setExpandedMonitorId] = useState<number | null>(
+    null,
+  )
   const [checksByMonitor, setChecksByMonitor] = useState<
     Partial<Record<number, Array<MonitorCheckRecord>>>
   >({})
@@ -48,12 +50,15 @@ function MonitorsPage() {
   const [triggeringMonitorId, setTriggeringMonitorId] = useState<number | null>(
     null,
   )
-  const [deletingMonitorId, setDeletingMonitorId] = useState<number | null>(null)
+  const [deletingMonitorId, setDeletingMonitorId] = useState<number | null>(
+    null,
+  )
   const [batchTriggering, setBatchTriggering] = useState(false)
   const [batchDeleting, setBatchDeleting] = useState(false)
   const [togglingMonitorId, setTogglingMonitorId] = useState<number | null>(
     null,
   )
+  const [showConfiguredMonitors, setShowConfiguredMonitors] = useState(false)
 
   const monitors = monitorsQuery.data ?? []
   const loading = monitorsQuery.isPending
@@ -184,7 +189,10 @@ function MonitorsPage() {
   )
 
   const triggerMonitorNow = useCallback(
-    async (monitor: MonitorRecord, failureMessage: string): Promise<boolean> => {
+    async (
+      monitor: MonitorRecord,
+      failureMessage: string,
+    ): Promise<boolean> => {
       setTriggeringMonitorId(monitor.id)
 
       try {
@@ -288,10 +296,14 @@ function MonitorsPage() {
       queryClient.setQueryData<Array<MonitorRecord>>(
         listMonitorsQueryKey(),
         (current) =>
-          (current ?? []).filter((existingMonitor) => existingMonitor.id !== monitorId),
+          (current ?? []).filter(
+            (existingMonitor) => existingMonitor.id !== monitorId,
+          ),
       )
 
-      setExpandedMonitorId((current) => (current === monitorId ? null : current))
+      setExpandedMonitorId((current) =>
+        current === monitorId ? null : current,
+      )
       setEditingMonitorId((current) => (current === monitorId ? null : current))
       setChecksByMonitor((current) => {
         const next = { ...current }
@@ -308,7 +320,10 @@ function MonitorsPage() {
   )
 
   const deleteMonitorNow = useCallback(
-    async (monitor: MonitorRecord, failureMessage: string): Promise<boolean> => {
+    async (
+      monitor: MonitorRecord,
+      failureMessage: string,
+    ): Promise<boolean> => {
       setDeletingMonitorId(monitor.id)
 
       try {
@@ -340,7 +355,10 @@ function MonitorsPage() {
       }
 
       setError('')
-      const success = await deleteMonitorNow(monitor, 'Failed to delete monitor.')
+      const success = await deleteMonitorNow(
+        monitor,
+        'Failed to delete monitor.',
+      )
       if (success) {
         await loadMonitors()
       }
@@ -497,32 +515,44 @@ function MonitorsPage() {
         batchTriggering={batchTriggering}
       />
 
-      <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
+      <div
+        className={
+          showConfiguredMonitors
+            ? 'grid gap-6 lg:grid-cols-[1.2fr_1fr]'
+            : 'grid gap-6'
+        }
+      >
         <CreateEditMonitorCard
           editingMonitor={editingMonitor}
           onCancelEdit={onCancelEdit}
+          showConfiguredMonitors={showConfiguredMonitors}
+          onToggleConfiguredMonitors={() =>
+            setShowConfiguredMonitors((current) => !current)
+          }
           onSaved={onSavedMonitor}
         />
 
-        <ConfiguredMonitorsCard
-          checksByMonitor={checksByMonitor}
-          checksErrors={checksErrors}
-          editingMonitorId={editingMonitorId}
-          expandedMonitorId={expandedMonitorId}
-          loading={loading}
-          loadingChecksFor={loadingChecksFor}
-          monitors={monitors}
-          onEditMonitor={onEditMonitor}
-          onRefreshMonitors={loadMonitors}
-          onRefreshChecks={loadMonitorChecks}
-          onToggleChecks={toggleMonitorChecks}
-          onToggleMonitorEnabled={onToggleMonitorEnabled}
-          onDeleteMonitor={onDeleteMonitor}
-          onTriggerMonitor={onTriggerMonitor}
-          deletingMonitorId={deletingMonitorId}
-          togglingMonitorId={togglingMonitorId}
-          triggeringMonitorId={triggeringMonitorId}
-        />
+        {showConfiguredMonitors ? (
+          <ConfiguredMonitorsCard
+            checksByMonitor={checksByMonitor}
+            checksErrors={checksErrors}
+            editingMonitorId={editingMonitorId}
+            expandedMonitorId={expandedMonitorId}
+            loading={loading}
+            loadingChecksFor={loadingChecksFor}
+            monitors={monitors}
+            onEditMonitor={onEditMonitor}
+            onRefreshMonitors={loadMonitors}
+            onRefreshChecks={loadMonitorChecks}
+            onToggleChecks={toggleMonitorChecks}
+            onToggleMonitorEnabled={onToggleMonitorEnabled}
+            onDeleteMonitor={onDeleteMonitor}
+            onTriggerMonitor={onTriggerMonitor}
+            deletingMonitorId={deletingMonitorId}
+            togglingMonitorId={togglingMonitorId}
+            triggeringMonitorId={triggeringMonitorId}
+          />
+        ) : null}
       </div>
     </div>
   )

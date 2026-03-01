@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 
 import { Input } from '@/components/ui/input'
 import {
@@ -8,8 +8,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { getCronDescription } from '@/lib/cron'
-import { cn } from '@/lib/utils'
 
 type CronUnit = 'minute' | 'hour' | 'day'
 
@@ -38,16 +36,6 @@ type CronPickerProps = {
 
 export function CronPicker({ id, value, onChange }: CronPickerProps) {
   const parsedRule = useMemo(() => parseCronRule(value), [value])
-  const cronDescription = useMemo(() => getCronDescription(value), [value])
-  const [mode, setMode] = useState<'builder' | 'custom'>(
-    parsedRule ? 'builder' : 'custom',
-  )
-
-  useEffect(() => {
-    if (!parsedRule && mode === 'builder') {
-      setMode('custom')
-    }
-  }, [mode, parsedRule])
 
   function updateRule(nextRule: Partial<CronRule>) {
     const currentRule = normalizeRule(parsedRule ?? DEFAULT_RULE)
@@ -55,161 +43,108 @@ export function CronPicker({ id, value, onChange }: CronPickerProps) {
     onChange(buildCronRule(merged))
   }
 
-  function onToggleMode(nextMode: 'builder' | 'custom') {
-    if (nextMode === 'builder') {
-      onChange(buildCronRule(parsedRule ?? DEFAULT_RULE))
-    }
-    setMode(nextMode)
-  }
-
   const rule = normalizeRule(parsedRule ?? DEFAULT_RULE)
   const intervalMax = getIntervalMax(rule.unit)
 
   return (
-    <div className="space-y-3 rounded-md border border-zinc-700 bg-zinc-900 p-3">
-      <div className="inline-flex rounded-md border border-zinc-700 bg-zinc-950 p-1">
-        <button
-          type="button"
-          className={cn(
-            'rounded px-2 py-1 text-xs transition-colors',
-            mode === 'builder'
-              ? 'bg-zinc-700 text-zinc-100'
-              : 'text-zinc-400 hover:text-zinc-200',
-          )}
-          onClick={() => onToggleMode('builder')}
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-center gap-2 text-sm text-zinc-200">
+        <Input
+          id={id}
+          className="h-7 w-44 bg-zinc-950 font-mono"
+          placeholder="*/5 * * * *"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+        />
+        <span className="text-zinc-400">Builder:</span>
+        <span>Every</span>
+        <Input
+          type="number"
+          min={1}
+          max={intervalMax}
+          className="h-7 w-20 bg-zinc-950 text-center"
+          value={String(rule.interval)}
+          onChange={(event) =>
+            updateRule({
+              interval: Number(event.target.value),
+            })
+          }
+        />
+        <Select
+          value={rule.unit}
+          onValueChange={(nextValue) => {
+            if (!isCronUnit(nextValue)) {
+              return
+            }
+            updateRule({ unit: nextValue })
+          }}
         >
-          Builder
-        </button>
-        <button
-          type="button"
-          className={cn(
-            'rounded px-2 py-1 text-xs transition-colors',
-            mode === 'custom'
-              ? 'bg-zinc-700 text-zinc-100'
-              : 'text-zinc-400 hover:text-zinc-200',
-          )}
-          onClick={() => onToggleMode('custom')}
-        >
-          Custom
-        </button>
-      </div>
+          <SelectTrigger className="h-7 min-w-28 bg-zinc-950 text-zinc-200">
+            <SelectValue placeholder="time unit" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="minute">minute(s)</SelectItem>
+            <SelectItem value="hour">hour(s)</SelectItem>
+            <SelectItem value="day">day(s)</SelectItem>
+          </SelectContent>
+        </Select>
 
-      {mode === 'builder' ? (
-        <>
-          <div className="flex flex-wrap items-center gap-2 text-sm text-zinc-200">
-            <span>Every</span>
-            <Input
-              id={id}
-              type="number"
-              min={1}
-              max={intervalMax}
-              className="h-8 w-20 bg-zinc-950 text-center"
-              value={String(rule.interval)}
-              onChange={(event) =>
-                updateRule({
-                  interval: Number(event.target.value),
-                })
-              }
-            />
+        {rule.unit === 'hour' || rule.unit === 'day' ? (
+          <>
+            <span>at minute</span>
             <Select
-              value={rule.unit}
+              value={String(rule.minute)}
               onValueChange={(nextValue) => {
-                if (!isCronUnit(nextValue)) {
+                if (nextValue == null) {
                   return
                 }
-                updateRule({ unit: nextValue })
+                updateRule({ minute: Number(nextValue) })
               }}
             >
-              <SelectTrigger className="h-8 min-w-28 bg-zinc-950 text-zinc-200">
-                <SelectValue placeholder="time unit" />
+              <SelectTrigger className="h-7 min-w-20 bg-zinc-950 text-zinc-200">
+                <SelectValue placeholder="minute" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="minute">minute(s)</SelectItem>
-                <SelectItem value="hour">hour(s)</SelectItem>
-                <SelectItem value="day">day(s)</SelectItem>
+                {MINUTES.map((minute) => (
+                  <SelectItem key={minute} value={String(minute)}>
+                    {formatTwoDigits(minute)}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
+          </>
+        ) : null}
 
-            {rule.unit === 'hour' || rule.unit === 'day' ? (
-              <>
-                <span>at minute</span>
-                <Select
-                  value={String(rule.minute)}
-                  onValueChange={(nextValue) => {
-                    if (nextValue == null) {
-                      return
-                    }
-                    updateRule({ minute: Number(nextValue) })
-                  }}
-                >
-                  <SelectTrigger className="h-8 min-w-20 bg-zinc-950 text-zinc-200">
-                    <SelectValue placeholder="minute" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {MINUTES.map((minute) => (
-                      <SelectItem key={minute} value={String(minute)}>
-                        {formatTwoDigits(minute)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </>
-            ) : null}
+        {rule.unit === 'day' ? (
+          <>
+            <span>hour</span>
+            <Select
+              value={String(rule.hour)}
+              onValueChange={(nextValue) => {
+                if (nextValue == null) {
+                  return
+                }
+                updateRule({ hour: Number(nextValue) })
+              }}
+            >
+              <SelectTrigger className="h-7 min-w-20 bg-zinc-950 text-zinc-200">
+                <SelectValue placeholder="hour" />
+              </SelectTrigger>
+              <SelectContent>
+                {HOURS.map((hour) => (
+                  <SelectItem key={hour} value={String(hour)}>
+                    {formatTwoDigits(hour)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </>
+        ) : null}
+      </div>
 
-            {rule.unit === 'day' ? (
-              <>
-                <span>hour</span>
-                <Select
-                  value={String(rule.hour)}
-                  onValueChange={(nextValue) => {
-                    if (nextValue == null) {
-                      return
-                    }
-                    updateRule({ hour: Number(nextValue) })
-                  }}
-                >
-                  <SelectTrigger className="h-8 min-w-20 bg-zinc-950 text-zinc-200">
-                    <SelectValue placeholder="hour" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {HOURS.map((hour) => (
-                      <SelectItem key={hour} value={String(hour)}>
-                        {formatTwoDigits(hour)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </>
-            ) : null}
-          </div>
-
-          <p className="text-xs text-zinc-400">
-            Cron expression:{' '}
-            <code className="rounded bg-zinc-950 px-1.5 py-0.5 font-mono text-zinc-300">
-              {buildCronRule(rule)}
-            </code>
-          </p>
-          <p className="text-xs text-zinc-400">
-            <span className="text-zinc-200">{cronDescription}</span>
-          </p>
-        </>
-      ) : (
-        <>
-          <Input
-            id={id}
-            className="h-9 bg-zinc-950 font-mono"
-            placeholder="*/5 * * * *"
-            value={value}
-            onChange={(event) => onChange(event.target.value)}
-          />
-          <p className="text-xs text-zinc-400">
-            Enter a 5-part cron expression: minute hour day month weekday.
-          </p>
-          <p className="text-xs text-zinc-400">
-            <span className="text-zinc-200">{cronDescription}</span>
-          </p>
-        </>
-      )}
+      <p className="text-xs text-zinc-400">
+        Enter a 5-part cron expression: minute hour day month weekday.
+      </p>
     </div>
   )
 }

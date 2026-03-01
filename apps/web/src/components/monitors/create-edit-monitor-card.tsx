@@ -54,6 +54,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { getApiErrorMessage } from '@/lib/api'
+import { getCronDescription } from '@/lib/cron'
 
 type FormState = {
   label: string
@@ -77,6 +78,8 @@ type TestResult = TestMonitorResponse
 type CreateEditMonitorCardProps = {
   editingMonitor: MonitorRecord | null
   onCancelEdit: () => void
+  showConfiguredMonitors: boolean
+  onToggleConfiguredMonitors: () => void
   onSaved: (result: {
     monitor: MonitorRecord
     check?: MonitorCheckRecord | null
@@ -106,6 +109,8 @@ const defaultForm: FormState = {
 export function CreateEditMonitorCard({
   editingMonitor,
   onCancelEdit,
+  showConfiguredMonitors,
+  onToggleConfiguredMonitors,
   onSaved,
 }: CreateEditMonitorCardProps) {
   const [form, setForm] = useState<FormState>(defaultForm)
@@ -173,6 +178,11 @@ export function CreateEditMonitorCard({
     () => getMonitorIconPreviewURL(form.iconUrl, form.url),
     [form.iconUrl, form.url],
   )
+  const cronDescription = useMemo(
+    () => getCronDescription(form.cron),
+    [form.cron],
+  )
+  const methodSupportsBody = form.method !== 'GET' && form.method !== 'HEAD'
 
   const toggleJSONResponseExpanded = useCallback(() => {
     setIsJsonResponseExpanded((current) => !current)
@@ -336,7 +346,6 @@ export function CreateEditMonitorCard({
       } else {
         setForm({ ...defaultForm, auth: form.auth, headers: form.headers })
       }
-
     } catch (caughtError) {
       const fallback = editingMonitor
         ? 'Failed to update monitor. Check fields and try again.'
@@ -420,7 +429,16 @@ export function CreateEditMonitorCard({
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="relative pr-32">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="absolute top-6 right-6"
+          onClick={onToggleConfiguredMonitors}
+        >
+          {showConfiguredMonitors ? 'Hide Configured' : 'Show Configured'}
+        </Button>
         <CardTitle>
           {editingMonitor
             ? `Edit Monitor #${editingMonitor.id}`
@@ -432,19 +450,11 @@ export function CreateEditMonitorCard({
       </CardHeader>
       <CardContent>
         <form className="space-y-4" onSubmit={onSubmitMonitor}>
-          <div className="space-y-2">
-            <Label htmlFor="cron">Schedule (Cron)</Label>
-            <CronPicker
-              id="cron"
-              value={form.cron}
-              onChange={(cronValue) =>
-                setForm((current) => ({ ...current, cron: cronValue }))
-              }
-            />
-          </div>
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="label">Label (optional)</Label>
+          <div className="grid gap-4 md:grid-cols-3 md:items-start">
+            <div className="space-y-2 md:col-span-1">
+              <Label htmlFor="label" className="h-4">
+                Label (optional)
+              </Label>
               <Input
                 id="label"
                 className="bg-zinc-950"
@@ -458,8 +468,27 @@ export function CreateEditMonitorCard({
                 }
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="method">Method</Label>
+
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="cron" className="h-4 flex items-center gap-2">
+                <span>Schedule (Cron)</span>
+                <span className="text-xs font-normal text-zinc-500">
+                  {cronDescription}
+                </span>
+              </Label>
+              <CronPicker
+                id="cron"
+                value={form.cron}
+                onChange={(cronValue) =>
+                  setForm((current) => ({ ...current, cron: cronValue }))
+                }
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="url">Method + URL</Label>
+            <div className="flex flex-col gap-2 md:flex-row md:items-center">
               <Select
                 value={form.method}
                 onValueChange={(value) => {
@@ -469,7 +498,7 @@ export function CreateEditMonitorCard({
                   setForm((current) => ({ ...current, method: value }))
                 }}
               >
-                <SelectTrigger id="method" className="bg-zinc-950">
+                <SelectTrigger id="method" className="bg-zinc-950 md:w-32">
                   <SelectValue placeholder="HTTP method" />
                 </SelectTrigger>
                 <SelectContent>
@@ -480,274 +509,288 @@ export function CreateEditMonitorCard({
                   <SelectItem value="DELETE">DELETE</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="expectedType">Expected Type</Label>
-              <Select
-                value={form.expectedType}
-                onValueChange={(value) => {
-                  if (
-                    value === 'json' ||
-                    value === 'html' ||
-                    value === 'text'
-                  ) {
-                    setForm((current) => ({
-                      ...current,
-                      expectedType: value,
-                    }))
-                  }
-                }}
-              >
-                <SelectTrigger id="expectedType" className="bg-zinc-950">
-                  <SelectValue placeholder="Expected type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="json">JSON</SelectItem>
-                  <SelectItem value="html">HTML</SelectItem>
-                  <SelectItem value="text">Text</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="url">URL</Label>
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <Input
-                  id="url"
-                  className="bg-zinc-950 sm:flex-1"
-                  placeholder="https://example.com/health"
-                  required
-                  value={form.url}
-                  onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      url: event.target.value,
-                    }))
-                  }
-                />
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => void onTestUrl()}
-                  disabled={testingUrl || form.url.trim() === ''}
-                >
-                  {testingUrl ? 'Testing...' : 'Test'}
-                </Button>
-              </div>
-
-              {testError ? (
-                <p className="text-sm text-red-300">{testError}</p>
-              ) : null}
-
-              {testResponse ? (
-                <TestResponsePanel
-                  bodyText={testResponseBodyText}
-                  isExpanded={isJsonResponseExpanded}
-                  onToggleExpanded={toggleJSONResponseExpanded}
-                  response={testResponse}
-                />
-              ) : null}
-            </div>
-
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="iconUrl">Icon URL (optional)</Label>
-              <div className="flex items-center gap-2">
-                <div className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded border border-zinc-800 bg-zinc-950">
-                  {iconPreviewURL ? (
-                    <img
-                      src={iconPreviewURL}
-                      alt=""
-                      className="size-5 rounded"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="size-4 rounded bg-zinc-700" />
-                  )}
-                </div>
-                <Input
-                  id="iconUrl"
-                  className="bg-zinc-950"
-                  placeholder="Auto-generated from URL when left blank"
-                  value={form.iconUrl}
-                  onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      iconUrl: event.target.value,
-                    }))
-                  }
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="selector">Selector (optional)</Label>
               <Input
-                id="selector"
-                className="bg-zinc-950"
-                placeholder="data.status or data.items.#.name"
-                value={form.selector}
+                id="url"
+                className="bg-zinc-950 md:flex-1"
+                placeholder="https://example.com/health"
+                required
+                value={form.url}
                 onChange={(event) =>
                   setForm((current) => ({
                     ...current,
-                    selector: event.target.value,
+                    url: event.target.value,
                   }))
                 }
               />
-              <p className="text-xs text-zinc-500">
-                gjson supports list mapping, e.g.{' '}
-                <span className="font-mono">data.items.#.name</span>
-              </p>
-
-              {testResponse && !testJSONBody ? (
-                <p className="text-xs text-zinc-500">
-                  Selector preview is available after a JSON test response.
-                </p>
-              ) : null}
-
-              {testJSONBody ? (
-                <SelectorPreviewPanel
-                  expectedResponse={form.expectedResponse.trim()}
-                  preview={selectorPreview}
-                  previewError={selectorPreviewError}
-                  previewRawText={selectorPreviewRawText}
-                  previewingSelector={previewingSelector}
-                  unavailable={selectorPreviewUnavailable}
-                />
-              ) : null}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="expectedResponse">
-                Expected Response (optional)
-              </Label>
-              <Input
-                id="expectedResponse"
-                className="bg-zinc-950"
-                placeholder="ok"
-                value={form.expectedResponse}
-                onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    expectedResponse: event.target.value,
-                  }))
-                }
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="headers">Headers JSON (optional)</Label>
-            <Textarea
-              id="headers"
-              className="min-h-24 bg-zinc-950 font-mono"
-              value={form.headers}
-              onChange={(event) =>
-                setForm((current) => ({
-                  ...current,
-                  headers: event.target.value,
-                }))
-              }
-            />
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center justify-between gap-2">
-              <Label htmlFor="auth">Auth JSON (optional)</Label>
               <Button
                 type="button"
-                variant="ghost"
-                size="xs"
-                onClick={() =>
-                  setForm((current) => ({
-                    ...current,
-                    auth: defaultAuth,
-                  }))
-                }
+                variant="secondary"
+                onClick={() => void onTestUrl()}
+                disabled={testingUrl || form.url.trim() === ''}
               >
-                <Copy aria-hidden="true" />
-                Use example
+                {testingUrl ? 'Testing...' : 'Test'}
               </Button>
             </div>
-            <Textarea
-              id="auth"
-              className="min-h-24 bg-zinc-950 font-mono"
-              placeholder={defaultAuth}
-              value={form.auth}
-              onChange={(event) =>
-                setForm((current) => ({
-                  ...current,
-                  auth: event.target.value,
-                }))
-              }
-            />
+
+            {testError ? (
+              <p className="text-sm text-red-300">{testError}</p>
+            ) : null}
+
+            {testResponse ? (
+              <TestResponsePanel
+                bodyText={testResponseBodyText}
+                isExpanded={isJsonResponseExpanded}
+                onToggleExpanded={toggleJSONResponseExpanded}
+                response={testResponse}
+              />
+            ) : null}
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="body">Request Body (optional)</Label>
-            <Textarea
-              id="body"
-              className="min-h-24 bg-zinc-950 font-mono"
-              value={form.body}
-              onChange={(event) =>
-                setForm((current) => ({
-                  ...current,
-                  body: event.target.value,
-                }))
-              }
-            />
-          </div>
-
-          <div className="flex items-center justify-between rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2">
-            <Label htmlFor="notifyTelegram" className="text-sm text-zinc-300">
-              Notify via Telegram channel
-            </Label>
-            <Switch
-              id="notifyTelegram"
-              checked={form.notifyTelegram}
-              onCheckedChange={(checked) =>
-                setForm((current) => ({ ...current, notifyTelegram: checked }))
-              }
-            />
-          </div>
-
-          <div className="flex items-center justify-between rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2">
-            <Label htmlFor="enabled" className="text-sm text-zinc-300">
-              Enable monitor immediately
-            </Label>
-            <Switch
-              id="enabled"
-              checked={form.enabled}
-              onCheckedChange={(checked) =>
-                setForm((current) => ({ ...current, enabled: checked }))
-              }
-            />
-          </div>
-
-          {!editingMonitor ? (
-            <div className="flex items-center justify-between rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2">
-              <Label
-                htmlFor="triggerOnCreate"
-                className="text-sm text-zinc-300"
-              >
-                Trigger first run immediately
-              </Label>
-              <input
-                id="triggerOnCreate"
-                type="checkbox"
-                className="size-4 cursor-pointer rounded border-zinc-700 bg-zinc-900 accent-zinc-200"
-                checked={form.triggerOnCreate}
+          {methodSupportsBody ? (
+            <div className="space-y-2">
+              <Label htmlFor="body">Request Body (optional)</Label>
+              <Textarea
+                id="body"
+                className="min-h-24 bg-zinc-950 font-mono"
+                value={form.body}
                 onChange={(event) =>
                   setForm((current) => ({
                     ...current,
-                    triggerOnCreate: event.target.checked,
+                    body: event.target.value,
                   }))
                 }
               />
             </div>
           ) : null}
+
+          <div className="space-y-2">
+            <Label htmlFor="selector">Selector (optional)</Label>
+            <Input
+              id="selector"
+              className="bg-zinc-950"
+              placeholder="data.status or data.items.#.name"
+              value={form.selector}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  selector: event.target.value,
+                }))
+              }
+            />
+            <p className="text-xs text-zinc-500">
+              gjson supports list mapping, e.g.{' '}
+              <span className="font-mono">data.items.#.name</span>
+            </p>
+
+            {testResponse && !testJSONBody ? (
+              <p className="text-xs text-zinc-500">
+                Selector preview is available after a JSON test response.
+              </p>
+            ) : null}
+
+            {testJSONBody ? (
+              <SelectorPreviewPanel
+                expectedResponse={form.expectedResponse.trim()}
+                preview={selectorPreview}
+                previewError={selectorPreviewError}
+                previewRawText={selectorPreviewRawText}
+                previewingSelector={previewingSelector}
+                unavailable={selectorPreviewUnavailable}
+              />
+            ) : null}
+          </div>
+
+          <Accordion
+            type="single"
+            collapsible
+            className="rounded-md border border-zinc-800 px-3"
+          >
+            <AccordionItem value="more-options" className="border-none">
+              <AccordionTrigger className="py-2 text-sm text-zinc-300 hover:no-underline">
+                More options
+              </AccordionTrigger>
+              <AccordionContent className="space-y-4 pb-2">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="expectedType">Expected Type</Label>
+                    <Select
+                      value={form.expectedType}
+                      onValueChange={(value) => {
+                        if (
+                          value === 'json' ||
+                          value === 'html' ||
+                          value === 'text'
+                        ) {
+                          setForm((current) => ({
+                            ...current,
+                            expectedType: value,
+                          }))
+                        }
+                      }}
+                    >
+                      <SelectTrigger id="expectedType" className="bg-zinc-950">
+                        <SelectValue placeholder="Expected type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="json">JSON</SelectItem>
+                        <SelectItem value="html">HTML</SelectItem>
+                        <SelectItem value="text">Text</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="expectedResponse">
+                      Expected Response (optional)
+                    </Label>
+                    <Input
+                      id="expectedResponse"
+                      className="bg-zinc-950"
+                      placeholder="ok"
+                      value={form.expectedResponse}
+                      onChange={(event) =>
+                        setForm((current) => ({
+                          ...current,
+                          expectedResponse: event.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="iconUrl">Icon URL (optional)</Label>
+                  <div className="flex items-center gap-2">
+                    <div className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded border border-zinc-800 bg-zinc-950">
+                      {iconPreviewURL ? (
+                        <img
+                          src={iconPreviewURL}
+                          alt=""
+                          className="size-5 rounded"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="size-4 rounded bg-zinc-700" />
+                      )}
+                    </div>
+                    <Input
+                      id="iconUrl"
+                      className="bg-zinc-950"
+                      placeholder="Auto-generated from URL when left blank"
+                      value={form.iconUrl}
+                      onChange={(event) =>
+                        setForm((current) => ({
+                          ...current,
+                          iconUrl: event.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="headers">Headers JSON (optional)</Label>
+                  <Textarea
+                    id="headers"
+                    className="min-h-24 bg-zinc-950 font-mono"
+                    value={form.headers}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        headers: event.target.value,
+                      }))
+                    }
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <Label htmlFor="auth">Auth JSON (optional)</Label>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="xs"
+                      onClick={() =>
+                        setForm((current) => ({
+                          ...current,
+                          auth: defaultAuth,
+                        }))
+                      }
+                    >
+                      <Copy aria-hidden="true" />
+                      Use example
+                    </Button>
+                  </div>
+                  <Textarea
+                    id="auth"
+                    className="min-h-24 bg-zinc-950 font-mono"
+                    placeholder={defaultAuth}
+                    value={form.auth}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        auth: event.target.value,
+                      }))
+                    }
+                  />
+                </div>
+
+                <div className="flex items-center justify-between rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2">
+                  <Label
+                    htmlFor="notifyTelegram"
+                    className="text-sm text-zinc-300"
+                  >
+                    Notify via Telegram channel
+                  </Label>
+                  <Switch
+                    id="notifyTelegram"
+                    checked={form.notifyTelegram}
+                    onCheckedChange={(checked) =>
+                      setForm((current) => ({
+                        ...current,
+                        notifyTelegram: checked,
+                      }))
+                    }
+                  />
+                </div>
+
+                <div className="flex items-center justify-between rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2">
+                  <Label htmlFor="enabled" className="text-sm text-zinc-300">
+                    Enable monitor immediately
+                  </Label>
+                  <Switch
+                    id="enabled"
+                    checked={form.enabled}
+                    onCheckedChange={(checked) =>
+                      setForm((current) => ({ ...current, enabled: checked }))
+                    }
+                  />
+                </div>
+
+                {!editingMonitor ? (
+                  <div className="flex items-center justify-between rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2">
+                    <Label
+                      htmlFor="triggerOnCreate"
+                      className="text-sm text-zinc-300"
+                    >
+                      Trigger first run immediately
+                    </Label>
+                    <input
+                      id="triggerOnCreate"
+                      type="checkbox"
+                      className="size-4 cursor-pointer rounded border-zinc-700 bg-zinc-900 accent-zinc-200"
+                      checked={form.triggerOnCreate}
+                      onChange={(event) =>
+                        setForm((current) => ({
+                          ...current,
+                          triggerOnCreate: event.target.checked,
+                        }))
+                      }
+                    />
+                  </div>
+                ) : null}
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
 
           {error ? <p className="text-sm text-red-300">{error}</p> : null}
 
