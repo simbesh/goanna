@@ -55,6 +55,7 @@ import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { getApiErrorMessage } from '@/lib/api'
 import { getCronDescription } from '@/lib/cron'
+import { formatPreviewRaw } from '@/lib/json-preview'
 
 type FormState = {
   label: string
@@ -160,9 +161,7 @@ export function CreateEditMonitorCard({
       return 'null'
     }
 
-    return testResponse.body === undefined
-      ? 'null'
-      : JSON.stringify(testResponse.body, null, 2)
+    return formatResponseBody(testResponse.body)
   }, [testResponse])
 
   const selectorPreviewRawText = useMemo(() => {
@@ -1135,15 +1134,19 @@ function getHeaderValue(
   return ''
 }
 
-function formatPreviewRaw(raw: string | null | undefined): string {
-  if (raw === undefined || raw === null) {
+function formatResponseBody(body: unknown): string {
+  if (body === undefined) {
     return 'null'
   }
 
+  if (typeof body === 'string') {
+    return formatPreviewRaw(body)
+  }
+
   try {
-    return JSON.stringify(JSON.parse(raw), null, 2)
+    return JSON.stringify(body, null, 2)
   } catch {
-    return raw
+    return String(body)
   }
 }
 

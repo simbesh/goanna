@@ -58,7 +58,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             <header className="sticky top-0 z-50 border-b border-border/80 bg-background/80 backdrop-blur">
               <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4">
                 <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.16em] text-primary">
-                  <Radar className="h-4 w-4" />
+                  <img src="favicon.ico" alt="Goanna" />
                   Goanna
                 </div>
                 <nav className="flex items-center gap-2 text-sm">
@@ -88,7 +88,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             </header>
             <Toaster position="bottom-right" theme="light" />
             <RuntimeSettingsRequiredDialog />
-            <main className="mx-auto w-full max-w-6xl px-4 py-8">
+            <main className="mx-auto w-full max-w-400 px-4 py-8">
               {children}
             </main>
 

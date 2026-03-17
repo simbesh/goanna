@@ -1,4 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
+import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import {
   flexRender,
   getCoreRowModel,
@@ -13,6 +15,7 @@ import {
   ChevronUp,
   ChevronsUpDown,
   Download,
+  Minimize2,
   MoreHorizontal,
   TriangleAlert,
   Upload,
@@ -453,6 +456,24 @@ export const ConfiguredMonitorsTableCard = memo(
           cell: ({ row }) => (
             <RelativeTimestampCell
               timestamp={parseTimestamp(row.original.lastCheckAt)}
+            />
+          ),
+        },
+        {
+          id: 'lastChanged',
+          accessorFn: (monitor) => {
+            const time = parseTimestamp(getMonitorLastChanged(monitor))
+            return time ? time.getTime() : -1
+          },
+          header: ({ column }) =>
+            formatSortLabel({
+              className: '-ml-2',
+              title: 'Last changed',
+              column,
+            }),
+          cell: ({ row }) => (
+            <RelativeTimestampCell
+              timestamp={parseTimestamp(getMonitorLastChanged(row.original))}
             />
           ),
         },
@@ -1695,6 +1716,12 @@ function parseTimestamp(value: string | null | undefined): Date | null {
   return parsed
 }
 
+function getMonitorLastChanged(monitor: MonitorRecord): string | undefined {
+  const lastChanged = (monitor as MonitorRecord & { lastChanged?: unknown })
+    .lastChanged
+  return typeof lastChanged === 'string' ? lastChanged : undefined
+}
+
 function getMonitorNextTriggerTime(monitor: MonitorRecord): Date | null {
   const nextRunAt = (monitor as MonitorRecord & { nextRunAt?: unknown })
     .nextRunAt
@@ -1770,6 +1797,22 @@ function MonitorChecksList({
   error,
   className,
 }: MonitorChecksListProps) {
+  const [expandedCheckId, setExpandedCheckId] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (expandedCheckId === null) {
+      return
+    }
+
+    if (!checks.some((check) => check.id === expandedCheckId)) {
+      setExpandedCheckId(null)
+    }
+  }, [checks, expandedCheckId])
+
+  const toggleExpandedCheck = useCallback((checkId: number) => {
+    setExpandedCheckId((current) => (current === checkId ? null : checkId))
+  }, [])
+
   return (
     <div className={className}>
       {loading ? (
@@ -1781,15 +1824,40 @@ function MonitorChecksList({
       {checks.map((check) => (
         <div
           key={check.id}
-          className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs"
+          role="button"
+          tabIndex={0}
+          aria-expanded={expandedCheckId === check.id}
+          className={cn(
+            'relative rounded border bg-zinc-950 px-2 py-1 text-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500',
+            expandedCheckId === check.id
+              ? 'border-zinc-500'
+              : 'cursor-pointer border-zinc-800 hover:border-zinc-600',
+          )}
+          onClick={() => toggleExpandedCheck(check.id)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault()
+              toggleExpandedCheck(check.id)
+            }
+          }}
         >
-          <div className="flex items-center justify-between gap-2">
-            <span className="font-medium uppercase text-zinc-200">
-              {check.status}
-            </span>
-            <span className="text-zinc-500">
-              {formatTimestamp(check.checkedAt)}
-            </span>
+          {expandedCheckId === check.id ? (
+            <button
+              type="button"
+              className="absolute top-2 right-2 inline-flex size-6 items-center justify-center rounded border border-zinc-700/80 bg-zinc-900/90 text-zinc-300 transition-colors hover:border-zinc-500 hover:text-zinc-100"
+              aria-label="Collapse check details"
+              onClick={(event) => {
+                event.stopPropagation()
+                setExpandedCheckId(null)
+              }}
+            >
+              <Minimize2 className="size-3.5" />
+            </button>
+          ) : null}
+
+          <div className="flex items-center justify-between gap-2 pr-7">
+            <span className="font-medium uppercase text-zinc-200">{check.status}</span>
+            <span className="text-zinc-500">{formatTimestamp(check.checkedAt)}</span>
           </div>
           <div className="mt-1 text-zinc-400">
             code: {check.statusCode ?? '-'} | duration:{' '}
@@ -1805,6 +1873,24 @@ function MonitorChecksList({
             <div className="mt-1 text-red-300">{check.errorMessage}</div>
           ) : null}
           <CheckDiffDetails check={check} />
+
+          {expandedCheckId === check.id ? (
+            <div className="mt-2 overflow-hidden rounded border border-zinc-800">
+              <SyntaxHighlighter
+                language="json"
+                style={oneDark}
+                customStyle={{
+                  margin: 0,
+                  borderRadius: 0,
+                  maxHeight: '16rem',
+                  fontSize: '0.75rem',
+                }}
+                wrapLongLines
+              >
+                {formatCheckJSONForViewer(check)}
+              </SyntaxHighlighter>
+            </div>
+          ) : null}
         </div>
       ))}
 
@@ -2444,6 +2530,48 @@ function getCheckDiffDetails(check: MonitorCheckRecord): string | null {
   const value = (check as MonitorCheckRecord & { diffDetails?: unknown })
     .diffDetails
   return typeof value === 'string' ? value : null
+}
+
+function formatCheckJSONForViewer(check: MonitorCheckRecord): string {
+  const selectionValue = getCheckSelectionValue(check)
+  const diffDetails = getCheckDiffDetails(check)
+  const parsedSelectionValue = tryParseJSONString(selectionValue)
+  const parsedDiffDetails = tryParseJSONString(diffDetails)
+
+  return JSON.stringify(
+    {
+      id: check.id,
+      status: check.status,
+      statusCode: check.statusCode ?? null,
+      responseTimeMs: check.responseTimeMs ?? null,
+      errorMessage: check.errorMessage ?? null,
+      selectionType: getCheckSelectionType(check),
+      selectionValue: parsedSelectionValue.ok
+        ? parsedSelectionValue.value
+        : selectionValue,
+      diffChanged: getCheckDiffChanged(check),
+      diffKind: getCheckDiffKind(check),
+      diffSummary: getCheckDiffSummary(check),
+      diffDetails: parsedDiffDetails.ok ? parsedDiffDetails.value : diffDetails,
+      checkedAt: check.checkedAt,
+    },
+    null,
+    2,
+  )
+}
+
+function tryParseJSONString(
+  value: string | null | undefined,
+): { ok: true; value: unknown } | { ok: false } {
+  if (typeof value !== 'string' || value.trim() === '') {
+    return { ok: false }
+  }
+
+  try {
+    return { ok: true, value: JSON.parse(value) as unknown }
+  } catch {
+    return { ok: false }
+  }
 }
 
 function formatTimestamp(value: string): string {

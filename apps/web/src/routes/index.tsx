@@ -9,7 +9,7 @@ import {
 } from '@goanna/api-client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { sileo } from 'sileo'
 import type {
   CreateMonitorRequest,
@@ -59,9 +59,60 @@ function MonitorsPage() {
     null,
   )
   const [showConfiguredMonitors, setShowConfiguredMonitors] = useState(false)
+  const monitorFirstFetchUpdatedAtRef =
+    useRef<Partial<Record<number, string>>>({})
 
   const monitors = monitorsQuery.data ?? []
   const loading = monitorsQuery.isPending
+
+  const monitorsWithLastChanged = useMemo(
+    () =>
+      monitors.map((monitor) => {
+        const existingLastChanged = (
+          monitor as MonitorRecord & { lastChanged?: unknown }
+        ).lastChanged
+
+        if (typeof existingLastChanged === 'string') {
+          return monitor
+        }
+
+        const firstFetchedUpdatedAt =
+          monitorFirstFetchUpdatedAtRef.current[monitor.id] ?? monitor.updatedAt
+
+        return {
+          ...monitor,
+          lastChanged:
+            firstFetchedUpdatedAt === monitor.updatedAt
+              ? undefined
+              : monitor.updatedAt,
+        }
+      }),
+    [monitors],
+  )
+
+  useEffect(() => {
+    const firstFetchedUpdatedAt = monitorFirstFetchUpdatedAtRef.current
+    const currentIds = new Set<number>()
+
+    for (const monitor of monitors) {
+      currentIds.add(monitor.id)
+
+      if (firstFetchedUpdatedAt[monitor.id] !== undefined) {
+        continue
+      }
+
+      firstFetchedUpdatedAt[monitor.id] = monitor.updatedAt
+    }
+
+    for (const monitorIdKey of Object.keys(firstFetchedUpdatedAt)) {
+      const monitorId = Number.parseInt(monitorIdKey, 10)
+      if (currentIds.has(monitorId)) {
+        continue
+      }
+
+      delete firstFetchedUpdatedAt[monitorId]
+    }
+  }, [monitors])
 
   useEffect(() => {
     if (!monitorsQuery.error) {
@@ -498,7 +549,7 @@ function MonitorsPage() {
         editingMonitorId={editingMonitorId}
         loading={loading}
         loadingChecksFor={loadingChecksFor}
-        monitors={monitors}
+        monitors={monitorsWithLastChanged}
         onDeleteMonitor={onDeleteMonitor}
         onEditMonitor={onEditMonitor}
         onRefreshMonitors={loadMonitors}
