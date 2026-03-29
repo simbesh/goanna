@@ -132,6 +132,7 @@ type monitorResponse struct {
 	LastStatusCode       *int                               `json:"lastStatusCode,omitempty"`
 	LastDurationMs       *int                               `json:"lastDurationMs,omitempty"`
 	LastErrorMessage     *string                            `json:"lastErrorMessage,omitempty"`
+	LastSelectionValue   *string                            `json:"lastSelectionValue,omitempty"`
 	CreatedAt            time.Time                          `json:"createdAt"`
 	UpdatedAt            time.Time                          `json:"updatedAt"`
 }
@@ -279,7 +280,14 @@ func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (s *Server) handleListMonitors(w http.ResponseWriter, r *http.Request) {
-	rows, err := s.db.Monitor.Query().WithRuntime().All(r.Context())
+	rows, err := s.db.Monitor.Query().
+		WithRuntime().
+		WithCheckResults(func(query *ent.CheckResultQuery) {
+			query.
+				Order(ent.Desc(checkresult.FieldCheckedAt), ent.Desc(checkresult.FieldID)).
+				Limit(1)
+		}).
+		All(r.Context())
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to list monitors")
 		return
@@ -289,9 +297,15 @@ func (s *Server) handleListMonitors(w http.ResponseWriter, r *http.Request) {
 
 	response := make([]monitorResponse, 0, len(rows))
 	for _, row := range rows {
+		var latestCheck *ent.CheckResult
+		if len(row.Edges.CheckResults) > 0 {
+			latestCheck = row.Edges.CheckResults[0]
+		}
+
 		response = append(response, mapMonitor(
 			row,
 			row.Edges.Runtime,
+			latestCheck,
 			buildMonitorNotificationIssues(row.NotificationChannels, channelStates),
 		))
 	}
@@ -376,6 +390,7 @@ func (s *Server) handleCreateMonitor(w http.ResponseWriter, r *http.Request) {
 			Monitor: mapMonitor(
 				created,
 				runtime,
+				nil,
 				buildMonitorNotificationIssues(created.NotificationChannels, channelStates),
 			),
 		})
@@ -513,6 +528,7 @@ func (s *Server) handleUpdateMonitor(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, mapMonitor(
 		updated,
 		runtime,
+		nil,
 		buildMonitorNotificationIssues(updated.NotificationChannels, channelStates),
 	))
 }
@@ -1403,6 +1419,7 @@ func realignEnabledMonitorRuntimes(ctx context.Context, db *ent.Client, now time
 func mapMonitor(
 	row *ent.Monitor,
 	runtime *ent.MonitorRuntime,
+	latestCheck *ent.CheckResult,
 	notificationIssues []monitorNotificationIssueResponse,
 ) monitorResponse {
 	status := "pending"
@@ -1414,6 +1431,7 @@ func mapMonitor(
 	var lastStatusCode *int
 	var lastDurationMs *int
 	var lastErrorMessage *string
+	var lastSelectionValue *string
 
 	if !row.Enabled {
 		status = "disabled"
@@ -1429,6 +1447,10 @@ func mapMonitor(
 		lastStatusCode = runtime.LastStatusCode
 		lastDurationMs = runtime.LastDurationMs
 		lastErrorMessage = runtime.LastErrorMessage
+	}
+
+	if latestCheck != nil {
+		lastSelectionValue = latestCheck.SelectionValue
 	}
 
 	notificationChannels := row.NotificationChannels
@@ -1464,6 +1486,7 @@ func mapMonitor(
 		LastStatusCode:       lastStatusCode,
 		LastDurationMs:       lastDurationMs,
 		LastErrorMessage:     truncateOptionalResponseString(lastErrorMessage),
+		LastSelectionValue:   truncateOptionalResponseString(lastSelectionValue),
 		CreatedAt:            row.CreatedAt,
 		UpdatedAt:            row.UpdatedAt,
 	}
@@ -1486,6 +1509,7 @@ func mapTriggerResponse(
 		Monitor: mapMonitor(
 			result.Monitor,
 			runtime,
+			result.Check,
 			buildMonitorNotificationIssues(result.Monitor.NotificationChannels, channelStates),
 		),
 	}

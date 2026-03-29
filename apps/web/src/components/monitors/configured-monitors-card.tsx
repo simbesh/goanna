@@ -478,6 +478,32 @@ export const ConfiguredMonitorsTableCard = memo(
           ),
         },
         {
+          id: 'latestValue',
+          accessorFn: (monitor) => monitor.lastSelectionValue ?? '',
+          header: ({ column }) =>
+            formatSortLabel({
+              className: '-ml-2',
+              title: 'Latest value',
+              column,
+            }),
+          cell: ({ row }) => {
+            const latestValue = row.original.lastSelectionValue
+
+            if (!latestValue) {
+              return <span className="text-zinc-500">-</span>
+            }
+
+            return (
+              <span
+                className="block max-w-[28rem] min-w-[18rem] truncate text-zinc-300"
+                title={latestValue}
+              >
+                {latestValue}
+              </span>
+            )
+          },
+        },
+        {
           id: 'recentChecks',
           header: 'History',
           enableSorting: false,
@@ -1020,7 +1046,10 @@ export const ConfiguredMonitorsTableCard = memo(
                 {table.getHeaderGroups().map((headerGroup) => (
                   <TableRow key={headerGroup.id}>
                     {headerGroup.headers.map((header) => (
-                      <TableHead key={header.id}>
+                      <TableHead
+                        key={header.id}
+                        className={getMonitorTableColumnClassName(header.id)}
+                      >
                         {header.isPlaceholder
                           ? null
                           : flexRender(
@@ -1049,7 +1078,10 @@ export const ConfiguredMonitorsTableCard = memo(
                       onClick={() => onEditMonitor(row.original)}
                     >
                       {row.getVisibleCells().map((cell) => (
-                        <TableCell key={cell.id}>
+                        <TableCell
+                          key={cell.id}
+                          className={getMonitorTableColumnClassName(cell.column.id)}
+                        >
                           {flexRender(
                             cell.column.columnDef.cell,
                             cell.getContext(),
@@ -1941,6 +1973,14 @@ function formatSortLabel({
       </Button>
     </div>
   )
+}
+
+function getMonitorTableColumnClassName(columnId: string): string | undefined {
+  if (columnId === 'latestValue') {
+    return 'w-[28rem] min-w-[18rem] max-w-[28rem]'
+  }
+
+  return undefined
 }
 
 function formatImportSortLabel({

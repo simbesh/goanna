@@ -384,6 +384,9 @@ components:
         lastErrorMessage:
           type: string
           nullable: true
+        lastSelectionValue:
+          type: string
+          nullable: true
         createdAt:
           type: string
           format: date-time

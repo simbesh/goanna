@@ -151,6 +151,18 @@ func TestMapMonitorCheckTruncatesLargeStringFields(t *testing.T) {
 	assertTruncatedPointer(t, mapped.DiffDetails)
 }
 
+func TestMapMonitorTruncatesLatestSelectionValue(t *testing.T) {
+	large := strings.Repeat("v", maxResponseStringBytes+64)
+	mapped := mapMonitor(
+		&ent.Monitor{},
+		nil,
+		&ent.CheckResult{SelectionValue: &large},
+		nil,
+	)
+
+	assertTruncatedPointer(t, mapped.LastSelectionValue)
+}
+
 func assertTruncatedPointer(t *testing.T, value *string) {
 	t.Helper()
 

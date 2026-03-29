@@ -37,6 +37,7 @@ export type Monitor = {
     lastStatusCode?: number | null;
     lastDurationMs?: number | null;
     lastErrorMessage?: string | null;
+    lastSelectionValue?: string | null;
     createdAt: string;
     updatedAt: string;
 };
