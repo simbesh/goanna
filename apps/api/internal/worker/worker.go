@@ -42,14 +42,15 @@ type Worker struct {
 }
 
 type executionResult struct {
-	status       string
-	statusCode   *int
-	durationMs   *int
-	errorMessage *string
-	selection    *selectionSnapshot
-	diff         *selectionDiff
-	checkedAt    time.Time
-	success      bool
+	status            string
+	statusCode        *int
+	durationMs        *int
+	errorMessage      *string
+	selection         *selectionSnapshot
+	previousSelection *selectionSnapshot
+	diff              *selectionDiff
+	checkedAt         time.Time
+	success           bool
 }
 
 type TriggerMonitorResult struct {
@@ -282,6 +283,7 @@ func (w *Worker) runMonitor(ctx context.Context, row *ent.Monitor, runtime *ent.
 		if err != nil {
 			return err
 		}
+		result.previousSelection = previousSelection
 		result.diff = buildSelectionDiff(previousSelection, result.selection)
 	}
 
@@ -562,9 +564,10 @@ func (w *Worker) insertCheckResult(ctx context.Context, monitorID int, result ex
 		create = create.SetErrorMessage(*result.errorMessage)
 	}
 	if result.selection != nil && result.selection.Exists {
-		create = create.
-			SetSelectionType(result.selection.Type).
-			SetSelectionValue(result.selection.Value)
+		create = create.SetSelectionType(result.selection.Type)
+		if shouldStoreSelectionValue(result.previousSelection, result.selection) {
+			create = create.SetSelectionValue(result.selection.Value)
+		}
 	}
 	if result.diff != nil {
 		create = create.
@@ -582,6 +585,18 @@ func (w *Worker) insertCheckResult(ctx context.Context, monitorID int, result ex
 
 	_, err := create.Save(ctx)
 	return err
+}
+
+func shouldStoreSelectionValue(previous *selectionSnapshot, current *selectionSnapshot) bool {
+	if current == nil || !current.Exists {
+		return false
+	}
+
+	if previous == nil || !previous.Exists {
+		return true
+	}
+
+	return previous.Value != current.Value
 }
 
 func (w *Worker) loadPreviousSelection(ctx context.Context, monitorID int) (*selectionSnapshot, error) {

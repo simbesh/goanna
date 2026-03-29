@@ -302,6 +302,16 @@ func (s *Server) handleListMonitors(w http.ResponseWriter, r *http.Request) {
 			latestCheck = row.Edges.CheckResults[0]
 		}
 
+		latestCheck, err = s.hydrateMonitorCheckSelectionValue(
+			r.Context(),
+			row.ID,
+			latestCheck,
+		)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to list monitors")
+			return
+		}
+
 		response = append(response, mapMonitor(
 			row,
 			row.Edges.Runtime,
@@ -403,7 +413,13 @@ func (s *Server) handleCreateMonitor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusCreated, mapTriggerResponse(triggerResult, channelStates))
+	response, err := s.mapTriggerResponse(r.Context(), triggerResult, channelStates)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to trigger monitor")
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, response)
 }
 
 func (s *Server) handleUpdateMonitor(w http.ResponseWriter, r *http.Request) {
@@ -606,7 +622,13 @@ func (s *Server) handleTriggerMonitor(w http.ResponseWriter, r *http.Request) {
 	}
 
 	channelStates := s.loadNotificationChannelStates(r.Context())
-	writeJSON(w, http.StatusOK, mapTriggerResponse(triggerResult, channelStates))
+	response, err := s.mapTriggerResponse(r.Context(), triggerResult, channelStates)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to trigger monitor")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, response)
 }
 
 func (s *Server) handleTestMonitorURL(w http.ResponseWriter, r *http.Request) {
@@ -1492,12 +1514,13 @@ func mapMonitor(
 	}
 }
 
-func mapTriggerResponse(
+func (s *Server) mapTriggerResponse(
+	ctx context.Context,
 	result *worker.TriggerMonitorResult,
 	channelStates map[string]notificationChannelState,
-) monitorTriggerResponse {
+) (monitorTriggerResponse, error) {
 	if result == nil || result.Monitor == nil {
-		return monitorTriggerResponse{}
+		return monitorTriggerResponse{}, nil
 	}
 
 	runtime := result.Runtime
@@ -1505,21 +1528,69 @@ func mapTriggerResponse(
 		runtime = result.Monitor.Edges.Runtime
 	}
 
+	check, err := s.hydrateMonitorCheckSelectionValue(ctx, result.Monitor.ID, result.Check)
+	if err != nil {
+		return monitorTriggerResponse{}, err
+	}
+
 	response := monitorTriggerResponse{
 		Monitor: mapMonitor(
 			result.Monitor,
 			runtime,
-			result.Check,
+			check,
 			buildMonitorNotificationIssues(result.Monitor.NotificationChannels, channelStates),
 		),
 	}
 
-	if result.Check != nil {
-		mappedCheck := mapMonitorCheck(result.Check)
+	if check != nil {
+		mappedCheck := mapMonitorCheck(check)
 		response.Check = &mappedCheck
 	}
 
-	return response
+	return response, nil
+}
+
+func (s *Server) hydrateMonitorCheckSelectionValue(
+	ctx context.Context,
+	monitorID int,
+	row *ent.CheckResult,
+) (*ent.CheckResult, error) {
+	if row == nil || row.SelectionValue != nil || row.SelectionType == nil {
+		return row, nil
+	}
+
+	selectionValue, err := s.loadLatestStoredSelectionValue(ctx, monitorID)
+	if err != nil {
+		return nil, err
+	}
+	if selectionValue == nil {
+		return row, nil
+	}
+
+	cloned := *row
+	cloned.SelectionValue = selectionValue
+	return &cloned, nil
+}
+
+func (s *Server) loadLatestStoredSelectionValue(
+	ctx context.Context,
+	monitorID int,
+) (*string, error) {
+	row, err := s.db.CheckResult.Query().
+		Where(
+			checkresult.HasMonitorWith(monitor.IDEQ(monitorID)),
+			checkresult.SelectionValueNotNil(),
+		).
+		Order(ent.Desc(checkresult.FieldCheckedAt), ent.Desc(checkresult.FieldID)).
+		First(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return row.SelectionValue, nil
 }
 
 func mapMonitorCheck(row *ent.CheckResult) monitorCheckResponse {

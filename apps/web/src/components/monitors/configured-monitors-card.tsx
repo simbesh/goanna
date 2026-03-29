@@ -1832,16 +1832,20 @@ function MonitorChecksList({
 }: MonitorChecksListProps) {
   const [expandedCheckId, setExpandedCheckId] = useState<number | null>(null)
   const [copiedCheckId, setCopiedCheckId] = useState<number | null>(null)
+  const displayChecks = useMemo(
+    () => backfillCheckSelectionValues(checks),
+    [checks],
+  )
 
   useEffect(() => {
     if (expandedCheckId === null) {
       return
     }
 
-    if (!checks.some((check) => check.id === expandedCheckId)) {
+    if (!displayChecks.some((check) => check.id === expandedCheckId)) {
       setExpandedCheckId(null)
     }
-  }, [checks, expandedCheckId])
+  }, [displayChecks, expandedCheckId])
 
   useEffect(() => {
     if (copiedCheckId === null) {
@@ -1874,7 +1878,7 @@ function MonitorChecksList({
 
       {error ? <p className="text-xs text-red-300">{error}</p> : null}
 
-      {checks.map((check) => (
+      {displayChecks.map((check) => (
         <div
           key={check.id}
           className={cn(
@@ -1948,26 +1952,26 @@ function MonitorChecksList({
                 {copiedCheckId === check.id ? 'Copied' : '\u00a0'}
               </div>
               <div className="overflow-hidden rounded border border-zinc-800">
-              <SyntaxHighlighter
-                language="json"
-                style={oneDark}
-                customStyle={{
-                  margin: 0,
-                  borderRadius: 0,
-                  maxHeight: '16rem',
-                  fontSize: '0.75rem',
-                }}
-                wrapLongLines
-              >
-                {formatCheckJSONForViewer(check)}
-              </SyntaxHighlighter>
+                <SyntaxHighlighter
+                  language="json"
+                  style={oneDark}
+                  customStyle={{
+                    margin: 0,
+                    borderRadius: 0,
+                    maxHeight: '16rem',
+                    fontSize: '0.75rem',
+                  }}
+                  wrapLongLines
+                >
+                  {formatCheckJSONForViewer(check)}
+                </SyntaxHighlighter>
               </div>
             </div>
           ) : null}
         </div>
       ))}
 
-      {!loading && checks.length === 0 ? (
+      {!loading && displayChecks.length === 0 ? (
         <p className="text-xs text-zinc-500">No checks yet for this monitor.</p>
       ) : null}
     </div>
@@ -2588,6 +2592,35 @@ function getCheckSelectionValue(check: MonitorCheckRecord): string | null {
   const value = (check as MonitorCheckRecord & { selectionValue?: unknown })
     .selectionValue
   return typeof value === 'string' ? value : null
+}
+
+function backfillCheckSelectionValues(
+  checks: Array<MonitorCheckRecord>,
+): Array<MonitorCheckRecord> {
+  let lastSelectionValue: string | null = null
+  let changed = false
+  const nextChecks = [...checks]
+
+  for (let index = checks.length - 1; index >= 0; index -= 1) {
+    const check = checks[index]
+    const selectionValue = getCheckSelectionValue(check)
+    if (selectionValue !== null) {
+      lastSelectionValue = selectionValue
+      continue
+    }
+
+    if (getCheckSelectionType(check) === null || lastSelectionValue === null) {
+      continue
+    }
+
+    nextChecks[index] = {
+      ...check,
+      selectionValue: lastSelectionValue,
+    }
+    changed = true
+  }
+
+  return changed ? nextChecks : checks
 }
 
 function getCheckDiffChanged(check: MonitorCheckRecord): boolean {
