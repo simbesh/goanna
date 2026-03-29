@@ -14,6 +14,7 @@ import {
   ChevronDown,
   ChevronUp,
   ChevronsUpDown,
+  Copy,
   Download,
   Minimize2,
   MoreHorizontal,
@@ -1830,6 +1831,7 @@ function MonitorChecksList({
   className,
 }: MonitorChecksListProps) {
   const [expandedCheckId, setExpandedCheckId] = useState<number | null>(null)
+  const [copiedCheckId, setCopiedCheckId] = useState<number | null>(null)
 
   useEffect(() => {
     if (expandedCheckId === null) {
@@ -1841,8 +1843,27 @@ function MonitorChecksList({
     }
   }, [checks, expandedCheckId])
 
+  useEffect(() => {
+    if (copiedCheckId === null) {
+      return
+    }
+
+    const timer = window.setTimeout(() => {
+      setCopiedCheckId((current) =>
+        current === copiedCheckId ? null : current,
+      )
+    }, 1500)
+
+    return () => window.clearTimeout(timer)
+  }, [copiedCheckId])
+
   const toggleExpandedCheck = useCallback((checkId: number) => {
     setExpandedCheckId((current) => (current === checkId ? null : checkId))
+  }, [])
+
+  const copyCheckJSON = useCallback(async (check: MonitorCheckRecord) => {
+    await navigator.clipboard.writeText(formatCheckJSONForViewer(check))
+    setCopiedCheckId(check.id)
   }, [])
 
   return (
@@ -1856,38 +1877,53 @@ function MonitorChecksList({
       {checks.map((check) => (
         <div
           key={check.id}
-          role="button"
-          tabIndex={0}
-          aria-expanded={expandedCheckId === check.id}
           className={cn(
-            'relative rounded border bg-zinc-950 px-2 py-1 text-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500',
+            'relative rounded border bg-zinc-950 px-2 py-1 text-xs transition-colors',
             expandedCheckId === check.id
               ? 'border-zinc-500'
-              : 'cursor-pointer border-zinc-800 hover:border-zinc-600',
+              : 'border-zinc-800 hover:border-zinc-600',
           )}
-          onClick={() => toggleExpandedCheck(check.id)}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' || event.key === ' ') {
-              event.preventDefault()
-              toggleExpandedCheck(check.id)
-            }
-          }}
         >
-          {expandedCheckId === check.id ? (
+          {expandedCheckId !== check.id ? (
             <button
               type="button"
-              className="absolute top-2 right-2 inline-flex size-6 items-center justify-center rounded border border-zinc-700/80 bg-zinc-900/90 text-zinc-300 transition-colors hover:border-zinc-500 hover:text-zinc-100"
-              aria-label="Collapse check details"
-              onClick={(event) => {
-                event.stopPropagation()
-                setExpandedCheckId(null)
-              }}
-            >
-              <Minimize2 className="size-3.5" />
-            </button>
+              className="absolute inset-0 rounded focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500"
+              aria-label={`Expand check ${check.id} details`}
+              aria-expanded={false}
+              onClick={() => toggleExpandedCheck(check.id)}
+            />
           ) : null}
 
-          <div className="flex items-center justify-between gap-2 pr-7">
+          {expandedCheckId === check.id ? (
+            <div className="absolute top-2 right-2 flex items-center gap-1">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="size-6 border-zinc-700/80 bg-zinc-900/90 text-zinc-300 hover:border-zinc-500 hover:bg-zinc-900 hover:text-zinc-100"
+                aria-label="Copy check JSON"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  void copyCheckJSON(check)
+                }}
+              >
+                <Copy className="size-3.5" />
+              </Button>
+              <button
+                type="button"
+                className="inline-flex size-6 items-center justify-center rounded border border-zinc-700/80 bg-zinc-900/90 text-zinc-300 transition-colors hover:border-zinc-500 hover:text-zinc-100"
+                aria-label="Collapse check details"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  setExpandedCheckId(null)
+                }}
+              >
+                <Minimize2 className="size-3.5" />
+              </button>
+            </div>
+          ) : null}
+
+          <div className="flex items-center justify-between gap-2 pr-16">
             <span className="font-medium uppercase text-zinc-200">{check.status}</span>
             <span className="text-zinc-500">{formatTimestamp(check.checkedAt)}</span>
           </div>
@@ -1907,7 +1943,11 @@ function MonitorChecksList({
           <CheckDiffDetails check={check} />
 
           {expandedCheckId === check.id ? (
-            <div className="mt-2 overflow-hidden rounded border border-zinc-800">
+            <div className="mt-2">
+              <div className="mb-1 text-right text-[11px] text-zinc-500">
+                {copiedCheckId === check.id ? 'Copied' : '\u00a0'}
+              </div>
+              <div className="overflow-hidden rounded border border-zinc-800">
               <SyntaxHighlighter
                 language="json"
                 style={oneDark}
@@ -1921,6 +1961,7 @@ function MonitorChecksList({
               >
                 {formatCheckJSONForViewer(check)}
               </SyntaxHighlighter>
+              </div>
             </div>
           ) : null}
         </div>
