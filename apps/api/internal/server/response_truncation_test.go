@@ -151,16 +151,23 @@ func TestMapMonitorCheckTruncatesLargeStringFields(t *testing.T) {
 	assertTruncatedPointer(t, mapped.DiffDetails)
 }
 
-func TestMapMonitorTruncatesLatestSelectionValue(t *testing.T) {
+func TestMapMonitorKeepsLatestSelectionValueUntruncated(t *testing.T) {
 	large := strings.Repeat("v", maxResponseStringBytes+64)
 	mapped := mapMonitor(
 		&ent.Monitor{},
 		nil,
-		&ent.CheckResult{SelectionValue: &large},
+		&large,
+		nil,
 		nil,
 	)
 
-	assertTruncatedPointer(t, mapped.LastSelectionValue)
+	if mapped.LastSelectionValue == nil {
+		t.Fatal("expected value to be present")
+	}
+
+	if *mapped.LastSelectionValue != large {
+		t.Fatalf("expected latest selection value to remain untruncated")
+	}
 }
 
 func assertTruncatedPointer(t *testing.T, value *string) {

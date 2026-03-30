@@ -92,6 +92,7 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /v1/monitors", s.handleCreateMonitor)
 	mux.HandleFunc("PUT /v1/monitors/{monitorId}", s.handleUpdateMonitor)
 	mux.HandleFunc("DELETE /v1/monitors/{monitorId}", s.handleDeleteMonitor)
+	mux.HandleFunc("POST /v1/monitors/{monitorId}/refresh", s.handleRefreshMonitor)
 	mux.HandleFunc("POST /v1/monitors/{monitorId}/trigger", s.handleTriggerMonitor)
 	mux.HandleFunc("POST /v1/monitors/test", s.handleTestMonitorURL)
 	mux.HandleFunc("POST /v1/monitors/selector-preview", s.handlePreviewMonitorSelector)
@@ -132,6 +133,7 @@ type monitorResponse struct {
 	LastStatusCode       *int                               `json:"lastStatusCode,omitempty"`
 	LastDurationMs       *int                               `json:"lastDurationMs,omitempty"`
 	LastErrorMessage     *string                            `json:"lastErrorMessage,omitempty"`
+	LastChanged          *time.Time                         `json:"lastChanged,omitempty"`
 	LastSelectionValue   *string                            `json:"lastSelectionValue,omitempty"`
 	CreatedAt            time.Time                          `json:"createdAt"`
 	UpdatedAt            time.Time                          `json:"updatedAt"`
@@ -282,11 +284,6 @@ func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {
 func (s *Server) handleListMonitors(w http.ResponseWriter, r *http.Request) {
 	rows, err := s.db.Monitor.Query().
 		WithRuntime().
-		WithCheckResults(func(query *ent.CheckResultQuery) {
-			query.
-				Order(ent.Desc(checkresult.FieldCheckedAt), ent.Desc(checkresult.FieldID)).
-				Limit(1)
-		}).
 		All(r.Context())
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to list monitors")
@@ -297,15 +294,9 @@ func (s *Server) handleListMonitors(w http.ResponseWriter, r *http.Request) {
 
 	response := make([]monitorResponse, 0, len(rows))
 	for _, row := range rows {
-		var latestCheck *ent.CheckResult
-		if len(row.Edges.CheckResults) > 0 {
-			latestCheck = row.Edges.CheckResults[0]
-		}
-
-		latestCheck, err = s.hydrateMonitorCheckSelectionValue(
+		latestSelectionCheck, err := s.loadLatestStoredSelectionCheck(
 			r.Context(),
 			row.ID,
-			latestCheck,
 		)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to list monitors")
@@ -315,7 +306,8 @@ func (s *Server) handleListMonitors(w http.ResponseWriter, r *http.Request) {
 		response = append(response, mapMonitor(
 			row,
 			row.Edges.Runtime,
-			latestCheck,
+			latestSelectionValueFromCheck(latestSelectionCheck),
+			latestSelectionChangedAt(latestSelectionCheck),
 			buildMonitorNotificationIssues(row.NotificationChannels, channelStates),
 		))
 	}
@@ -400,6 +392,7 @@ func (s *Server) handleCreateMonitor(w http.ResponseWriter, r *http.Request) {
 			Monitor: mapMonitor(
 				created,
 				runtime,
+				nil,
 				nil,
 				buildMonitorNotificationIssues(created.NotificationChannels, channelStates),
 			),
@@ -541,10 +534,20 @@ func (s *Server) handleUpdateMonitor(w http.ResponseWriter, r *http.Request) {
 	}
 
 	channelStates := s.loadNotificationChannelStates(r.Context())
+	latestSelectionCheck, err := s.loadLatestStoredSelectionCheck(
+		r.Context(),
+		updated.ID,
+	)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to load monitor")
+		return
+	}
+
 	writeJSON(w, http.StatusOK, mapMonitor(
 		updated,
 		runtime,
-		nil,
+		latestSelectionValueFromCheck(latestSelectionCheck),
+		latestSelectionChangedAt(latestSelectionCheck),
 		buildMonitorNotificationIssues(updated.NotificationChannels, channelStates),
 	))
 }
@@ -629,6 +632,39 @@ func (s *Server) handleTriggerMonitor(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, response)
+}
+
+func (s *Server) handleRefreshMonitor(w http.ResponseWriter, r *http.Request) {
+	monitorID, err := parseMonitorID(r.PathValue("monitorId"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "monitorId must be a positive integer")
+		return
+	}
+
+	refreshResult, err := s.triggerWorker.RefreshMonitorRuntime(r.Context(), monitorID)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			writeError(w, http.StatusNotFound, "monitor not found")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "failed to refresh monitor")
+		return
+	}
+
+	channelStates := s.loadNotificationChannelStates(r.Context())
+	latestSelectionCheck, err := s.loadLatestStoredSelectionCheck(r.Context(), refreshResult.Monitor.ID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to refresh monitor")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, mapMonitor(
+		refreshResult.Monitor,
+		refreshResult.Runtime,
+		latestSelectionValueFromCheck(latestSelectionCheck),
+		latestSelectionChangedAt(latestSelectionCheck),
+		buildMonitorNotificationIssues(refreshResult.Monitor.NotificationChannels, channelStates),
+	))
 }
 
 func (s *Server) handleTestMonitorURL(w http.ResponseWriter, r *http.Request) {
@@ -1441,7 +1477,8 @@ func realignEnabledMonitorRuntimes(ctx context.Context, db *ent.Client, now time
 func mapMonitor(
 	row *ent.Monitor,
 	runtime *ent.MonitorRuntime,
-	latestCheck *ent.CheckResult,
+	latestSelectionValue *string,
+	lastChanged *time.Time,
 	notificationIssues []monitorNotificationIssueResponse,
 ) monitorResponse {
 	status := "pending"
@@ -1453,8 +1490,6 @@ func mapMonitor(
 	var lastStatusCode *int
 	var lastDurationMs *int
 	var lastErrorMessage *string
-	var lastSelectionValue *string
-
 	if !row.Enabled {
 		status = "disabled"
 	}
@@ -1469,10 +1504,6 @@ func mapMonitor(
 		lastStatusCode = runtime.LastStatusCode
 		lastDurationMs = runtime.LastDurationMs
 		lastErrorMessage = runtime.LastErrorMessage
-	}
-
-	if latestCheck != nil {
-		lastSelectionValue = latestCheck.SelectionValue
 	}
 
 	notificationChannels := row.NotificationChannels
@@ -1508,7 +1539,8 @@ func mapMonitor(
 		LastStatusCode:       lastStatusCode,
 		LastDurationMs:       lastDurationMs,
 		LastErrorMessage:     truncateOptionalResponseString(lastErrorMessage),
-		LastSelectionValue:   truncateOptionalResponseString(lastSelectionValue),
+		LastChanged:          lastChanged,
+		LastSelectionValue:   latestSelectionValue,
 		CreatedAt:            row.CreatedAt,
 		UpdatedAt:            row.UpdatedAt,
 	}
@@ -1537,7 +1569,8 @@ func (s *Server) mapTriggerResponse(
 		Monitor: mapMonitor(
 			result.Monitor,
 			runtime,
-			check,
+			latestSelectionValueFromCheck(check),
+			latestSelectionChangedAt(check),
 			buildMonitorNotificationIssues(result.Monitor.NotificationChannels, channelStates),
 		),
 	}
@@ -1548,6 +1581,23 @@ func (s *Server) mapTriggerResponse(
 	}
 
 	return response, nil
+}
+
+func latestSelectionValueFromCheck(row *ent.CheckResult) *string {
+	if row == nil {
+		return nil
+	}
+
+	return row.SelectionValue
+}
+
+func latestSelectionChangedAt(row *ent.CheckResult) *time.Time {
+	if row == nil {
+		return nil
+	}
+
+	checkedAt := row.CheckedAt
+	return &checkedAt
 }
 
 func (s *Server) hydrateMonitorCheckSelectionValue(
@@ -1576,6 +1626,21 @@ func (s *Server) loadLatestStoredSelectionValue(
 	ctx context.Context,
 	monitorID int,
 ) (*string, error) {
+	row, err := s.loadLatestStoredSelectionCheck(ctx, monitorID)
+	if err != nil {
+		return nil, err
+	}
+	if row == nil {
+		return nil, nil
+	}
+
+	return row.SelectionValue, nil
+}
+
+func (s *Server) loadLatestStoredSelectionCheck(
+	ctx context.Context,
+	monitorID int,
+) (*ent.CheckResult, error) {
 	row, err := s.db.CheckResult.Query().
 		Where(
 			checkresult.HasMonitorWith(monitor.IDEQ(monitorID)),
@@ -1590,7 +1655,7 @@ func (s *Server) loadLatestStoredSelectionValue(
 		return nil, err
 	}
 
-	return row.SelectionValue, nil
+	return row, nil
 }
 
 func mapMonitorCheck(row *ent.CheckResult) monitorCheckResponse {

@@ -93,6 +93,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { getCronDescription } from '@/lib/cron'
+import { formatRelativeShort, useRelativeClock } from '@/lib/use-relative-clock'
 import { cn } from '@/lib/utils'
 
 type ConfiguredMonitorsCardProps = {
@@ -108,6 +109,7 @@ type ConfiguredMonitorsCardProps = {
   editingMonitorId: number | null
   onToggleChecks: (monitorId: number) => Promise<void>
   onToggleMonitorEnabled: (monitor: MonitorRecord) => Promise<void>
+  onAutoRefreshMonitor: (monitor: MonitorRecord) => Promise<void>
   onRefreshMonitors: () => Promise<void>
   onRefreshChecks: (monitorId: number) => Promise<void>
   onTriggerMonitor: (monitor: MonitorRecord) => Promise<void>
@@ -132,6 +134,13 @@ type ConfiguredMonitorsTableCardProps = Omit<
 type ImportPreviewRow = {
   previewId: string
   config: CreateMonitorRequest
+}
+
+type DetailedDiffEntry = {
+  path: string
+  change: 'changed' | 'added' | 'removed'
+  oldValue?: unknown
+  newValue?: unknown
 }
 
 const monitorTablePageSizeOptions = [10, 25, 50, 100] as const
@@ -159,6 +168,7 @@ export const ConfiguredMonitorsTableCard = memo(
     togglingMonitorId,
     editingMonitorId,
     onToggleMonitorEnabled,
+    onAutoRefreshMonitor,
     onRefreshMonitors,
     onRefreshChecks,
     onTriggerMonitor,
@@ -185,7 +195,10 @@ export const ConfiguredMonitorsTableCard = memo(
     const [checksDialogMonitorId, setChecksDialogMonitorId] = useState<
       number | null
     >(null)
-    const [batchTriggerConfirmOpen, setBatchTriggerConfirmOpen] = useState(false)
+    const [checksDialogAutoExpandLatest, setChecksDialogAutoExpandLatest] =
+      useState(false)
+    const [batchTriggerConfirmOpen, setBatchTriggerConfirmOpen] =
+      useState(false)
     const [batchDeleteConfirmOpen, setBatchDeleteConfirmOpen] = useState(false)
     const [exportWarningOpen, setExportWarningOpen] = useState(false)
     const [pendingExportConfigs, setPendingExportConfigs] = useState<
@@ -197,15 +210,15 @@ export const ConfiguredMonitorsTableCard = memo(
     >([])
     const [importPreviewSelection, setImportPreviewSelection] =
       useState<RowSelectionState>({})
-    const [importPreviewSorting, setImportPreviewSorting] = useState<
-      SortingState
-    >([])
+    const [importPreviewSorting, setImportPreviewSorting] =
+      useState<SortingState>([])
     const [importPreviewOpen, setImportPreviewOpen] = useState(false)
     const [importingConfigs, setImportingConfigs] = useState(false)
     const [triggerOnImport, setTriggerOnImport] = useState(true)
 
     useEffect(() => {
-      const normalizedPageSize = normalizeMonitorTablePageSize(storedTablePageSize)
+      const normalizedPageSize =
+        normalizeMonitorTablePageSize(storedTablePageSize)
 
       if (normalizedPageSize !== storedTablePageSize) {
         setStoredTablePageSize(normalizedPageSize)
@@ -223,8 +236,14 @@ export const ConfiguredMonitorsTableCard = memo(
     }, [setStoredTablePageSize, storedTablePageSize])
 
     const openChecksDialogForMonitor = useCallback(
-      async (monitorId: number) => {
+      async (
+        monitorId: number,
+        options?: {
+          autoExpandLatest?: boolean
+        },
+      ) => {
         setChecksDialogMonitorId(monitorId)
+        setChecksDialogAutoExpandLatest(options?.autoExpandLatest === true)
 
         if (checksByMonitor[monitorId]) {
           return
@@ -237,6 +256,7 @@ export const ConfiguredMonitorsTableCard = memo(
 
     const closeChecksDialog = useCallback(() => {
       setChecksDialogMonitorId(null)
+      setChecksDialogAutoExpandLatest(false)
     }, [])
 
     const checksDialogMonitor = useMemo(
@@ -253,6 +273,38 @@ export const ConfiguredMonitorsTableCard = memo(
       () => [...monitors].sort((left, right) => right.id - left.id),
       [monitors],
     )
+    const relativeClockTimestamps = useMemo(
+      () =>
+        sortedMonitors.flatMap((monitor) =>
+          getMonitorRelativeClockTimestamps(monitor),
+        ),
+      [sortedMonitors],
+    )
+    const now = useRelativeClock(relativeClockTimestamps)
+    const autoRefreshAttemptsRef = useRef<Record<string, number>>({})
+
+    useEffect(() => {
+      for (const monitor of sortedMonitors) {
+        const nextTriggerTime = getMonitorNextTriggerTime(monitor)
+        if (!monitor.enabled || nextTriggerTime === null) {
+          continue
+        }
+
+        if (nextTriggerTime.getTime() > now) {
+          continue
+        }
+
+        const attemptKey = `${monitor.id}:${nextTriggerTime.toISOString()}`
+        const lastAttemptAt =
+          autoRefreshAttemptsRef.current[attemptKey] ?? Number.NEGATIVE_INFINITY
+        if (now - lastAttemptAt < 30_000) {
+          continue
+        }
+
+        autoRefreshAttemptsRef.current[attemptKey] = now
+        void onAutoRefreshMonitor(monitor)
+      }
+    }, [now, onAutoRefreshMonitor, sortedMonitors])
 
     const allRowsSelected =
       sortedMonitors.length > 0 &&
@@ -298,7 +350,9 @@ export const ConfiguredMonitorsTableCard = memo(
 
         setSelectedMonitorRows(
           Object.fromEntries(
-            sortedMonitors.map((monitor) => [String(monitor.id), true] as const),
+            sortedMonitors.map(
+              (monitor) => [String(monitor.id), true] as const,
+            ),
           ),
         )
       },
@@ -439,7 +493,7 @@ export const ConfiguredMonitorsTableCard = memo(
             }),
           cell: ({ row }) => {
             const timestamp = getMonitorNextTriggerTime(row.original)
-            return <RelativeTimestampCell timestamp={timestamp} />
+            return <RelativeTimestampCell timestamp={timestamp} now={now} />
           },
         },
         {
@@ -456,6 +510,7 @@ export const ConfiguredMonitorsTableCard = memo(
             }),
           cell: ({ row }) => (
             <RelativeTimestampCell
+              now={now}
               timestamp={parseTimestamp(row.original.lastCheckAt)}
             />
           ),
@@ -474,13 +529,15 @@ export const ConfiguredMonitorsTableCard = memo(
             }),
           cell: ({ row }) => (
             <RelativeTimestampCell
+              now={now}
               timestamp={parseTimestamp(getMonitorLastChanged(row.original))}
             />
           ),
         },
         {
           id: 'latestValue',
-          accessorFn: (monitor) => monitor.lastSelectionValue ?? '',
+          accessorFn: (monitor) =>
+            formatLatestMonitorValue(monitor.lastSelectionValue) ?? '',
           header: ({ column }) =>
             formatSortLabel({
               className: '-ml-2',
@@ -488,19 +545,28 @@ export const ConfiguredMonitorsTableCard = memo(
               column,
             }),
           cell: ({ row }) => {
-            const latestValue = row.original.lastSelectionValue
+            const latestValue = formatLatestMonitorValue(
+              row.original.lastSelectionValue,
+            )
 
             if (!latestValue) {
               return <span className="text-zinc-500">-</span>
             }
 
             return (
-              <span
-                className="block max-w-[28rem] min-w-[18rem] truncate text-zinc-300"
+              <button
+                type="button"
+                className="block w-full max-w-sm min-w-[18rem] truncate text-left text-zinc-300 underline decoration-dotted underline-offset-3 hover:text-zinc-100"
                 title={latestValue}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  void openChecksDialogForMonitor(row.original.id, {
+                    autoExpandLatest: true,
+                  })
+                }}
               >
                 {latestValue}
-              </span>
+              </button>
             )
           },
         },
@@ -584,7 +650,9 @@ export const ConfiguredMonitorsTableCard = memo(
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       variant="destructive"
-                      disabled={deletingMonitorId === monitor.id || batchDeleting}
+                      disabled={
+                        deletingMonitorId === monitor.id || batchDeleting
+                      }
                       onClick={(event) => {
                         event.stopPropagation()
                         void onDeleteMonitor(monitor)
@@ -619,6 +687,7 @@ export const ConfiguredMonitorsTableCard = memo(
         toggleAllRowsSelection,
         togglingMonitorId,
         triggeringMonitorId,
+        now,
       ],
     )
 
@@ -757,7 +826,9 @@ export const ConfiguredMonitorsTableCard = memo(
               column,
             }),
           cell: ({ row }) => (
-            <Badge variant="secondary">{row.original.config.method ?? 'GET'}</Badge>
+            <Badge variant="secondary">
+              {row.original.config.method ?? 'GET'}
+            </Badge>
           ),
         },
         {
@@ -769,7 +840,9 @@ export const ConfiguredMonitorsTableCard = memo(
               column,
             }),
           cell: ({ row }) => (
-            <span className="font-mono text-zinc-300">{row.original.config.cron}</span>
+            <span className="font-mono text-zinc-300">
+              {row.original.config.cron}
+            </span>
           ),
         },
         {
@@ -867,7 +940,9 @@ export const ConfiguredMonitorsTableCard = memo(
           const parsed = JSON.parse(text) as unknown
 
           if (!Array.isArray(parsed)) {
-            sileo.error({ title: 'Import JSON must be a list of monitor configs.' })
+            sileo.error({
+              title: 'Import JSON must be a list of monitor configs.',
+            })
             return
           }
 
@@ -886,7 +961,9 @@ export const ConfiguredMonitorsTableCard = memo(
           })
 
           if (previewRows.length === 0) {
-            sileo.error({ title: 'Import JSON does not include any monitor configs.' })
+            sileo.error({
+              title: 'Import JSON does not include any monitor configs.',
+            })
             return
           }
 
@@ -996,7 +1073,9 @@ export const ConfiguredMonitorsTableCard = memo(
                   setBatchTriggerConfirmOpen(true)
                 }}
               >
-                {batchTriggering ? 'Triggering selected...' : 'Trigger selected'}
+                {batchTriggering
+                  ? 'Triggering selected...'
+                  : 'Trigger selected'}
               </Button>
             ) : null}
             {selectedMonitorsCount > 0 ? (
@@ -1021,7 +1100,12 @@ export const ConfiguredMonitorsTableCard = memo(
               <Upload className="size-4" />
               Import JSON
             </Button>
-            <Button type="button" variant="outline" size="sm" onClick={onExport}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onExport}
+            >
               <Download className="size-4" />
               Export JSON
             </Button>
@@ -1038,7 +1122,8 @@ export const ConfiguredMonitorsTableCard = memo(
 
           <p className="text-xs text-zinc-400">
             Selected rows: {selectedMonitorsCount}. Batch actions and export use
-            selected rows when any are selected; otherwise export includes all rows.
+            selected rows when any are selected; otherwise export includes all
+            rows.
           </p>
 
           <div className="rounded-lg border border-zinc-800 bg-zinc-950">
@@ -1081,7 +1166,9 @@ export const ConfiguredMonitorsTableCard = memo(
                       {row.getVisibleCells().map((cell) => (
                         <TableCell
                           key={cell.id}
-                          className={getMonitorTableColumnClassName(cell.column.id)}
+                          className={getMonitorTableColumnClassName(
+                            cell.column.id,
+                          )}
                         >
                           {flexRender(
                             cell.column.columnDef.cell,
@@ -1221,7 +1308,9 @@ export const ConfiguredMonitorsTableCard = memo(
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel disabled={batchDeleting}>Cancel</AlertDialogCancel>
+                <AlertDialogCancel disabled={batchDeleting}>
+                  Cancel
+                </AlertDialogCancel>
                 <AlertDialogAction
                   disabled={batchDeleting || selectedMonitorsCount === 0}
                   onClick={() => {
@@ -1242,10 +1331,13 @@ export const ConfiguredMonitorsTableCard = memo(
           >
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Export contains auth settings</AlertDialogTitle>
+                <AlertDialogTitle>
+                  Export contains auth settings
+                </AlertDialogTitle>
                 <AlertDialogDescription>
-                  This export includes auth tokens or sensitive headers. Continue
-                  only if you trust how this file will be stored and shared.
+                  This export includes auth tokens or sensitive headers.
+                  Continue only if you trust how this file will be stored and
+                  shared.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -1286,7 +1378,10 @@ export const ConfiguredMonitorsTableCard = memo(
               </p>
 
               <div className="inline-flex w-fit items-center gap-2 rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2">
-                <Label htmlFor="importTriggerOnCreate" className="text-sm text-zinc-300">
+                <Label
+                  htmlFor="importTriggerOnCreate"
+                  className="text-sm text-zinc-300"
+                >
                   Trigger monitors after import
                 </Label>
                 <Checkbox
@@ -1319,7 +1414,9 @@ export const ConfiguredMonitorsTableCard = memo(
                     {importPreviewTable.getRowModel().rows.map((row) => (
                       <TableRow
                         key={row.id}
-                        data-state={row.getIsSelected() ? 'selected' : undefined}
+                        data-state={
+                          row.getIsSelected() ? 'selected' : undefined
+                        }
                         className="cursor-pointer"
                         onClick={() => row.toggleSelected()}
                       >
@@ -1350,7 +1447,9 @@ export const ConfiguredMonitorsTableCard = memo(
                 <Button
                   type="button"
                   size="sm"
-                  disabled={importingConfigs || selectedImportConfigs.length === 0}
+                  disabled={
+                    importingConfigs || selectedImportConfigs.length === 0
+                  }
                   onClick={() => void onConfirmImport()}
                 >
                   {importingConfigs ? 'Importing...' : 'Import selected'}
@@ -1367,7 +1466,7 @@ export const ConfiguredMonitorsTableCard = memo(
               }
             }}
           >
-            <DialogContent className="sm:max-w-2xl">
+            <DialogContent className="sm:max-w-7xl sm:max-h-[90vh] sm:h-full">
               <DialogHeader>
                 <DialogTitle>History</DialogTitle>
                 <DialogDescription>
@@ -1379,12 +1478,13 @@ export const ConfiguredMonitorsTableCard = memo(
 
               {checksDialogMonitor ? (
                 <>
-                  <div className="max-h-[55vh] overflow-y-auto pr-1">
+                  <div className="overflow-y-auto pr-1">
                     <MonitorChecksList
                       checks={checksByMonitor[checksDialogMonitor.id] ?? []}
                       className="space-y-2"
                       error={checksErrors[checksDialogMonitor.id]}
                       loading={loadingChecksFor === checksDialogMonitor.id}
+                      autoExpandLatestCheck={checksDialogAutoExpandLatest}
                     />
                   </div>
                   <div className="flex justify-end gap-2">
@@ -1575,9 +1675,7 @@ export const ConfiguredMonitorsCard = memo(function ConfiguredMonitorsCard({
                 size="sm"
                 onClick={() => void onToggleChecks(monitor.id)}
               >
-                {expandedMonitorId === monitor.id
-                  ? 'Hide history'
-                  : 'History'}
+                {expandedMonitorId === monitor.id ? 'Hide history' : 'History'}
               </Button>
               <Button
                 type="button"
@@ -1662,7 +1760,13 @@ function getStatusBadgeClassName(status: MonitorRecord['status']): string {
   }
 }
 
-function RelativeTimestampCell({ timestamp }: { timestamp: Date | null }) {
+function RelativeTimestampCell({
+  timestamp,
+  now,
+}: {
+  timestamp: Date | null
+  now: number
+}) {
   if (!timestamp) {
     return <span className="text-zinc-500">-</span>
   }
@@ -1674,7 +1778,7 @@ function RelativeTimestampCell({ timestamp }: { timestamp: Date | null }) {
           <span className="text-zinc-300 underline decoration-dotted underline-offset-3" />
         }
       >
-        {formatRelativeShort(timestamp.getTime() - Date.now())}
+        {formatRelativeShort(timestamp.getTime() - now)}
       </HybridTooltipTrigger>
       <HybridTooltipContent side="top">
         {formatLocalTimestamp(timestamp)}
@@ -1714,7 +1818,10 @@ function MonitorNotificationIssuesIndicator({
           Notifications need attention
         </p>
         {issues.map((issue) => (
-          <p key={`${issue.channel}-${issue.code}`} className="text-xs text-zinc-100">
+          <p
+            key={`${issue.channel}-${issue.code}`}
+            className="text-xs text-zinc-100"
+          >
             {issue.message}
           </p>
         ))}
@@ -1768,53 +1875,14 @@ function getMonitorNextTriggerTime(monitor: MonitorRecord): Date | null {
   return null
 }
 
-function formatRelativeShort(deltaMs: number): string {
-  if (!Number.isFinite(deltaMs)) {
-    return '-'
-  }
-
-  if (deltaMs === 0) {
-    return '0s ago'
-  }
-
-  const absoluteMs = Math.abs(deltaMs)
-  const amount = formatDurationShort(absoluteMs)
-
-  if (deltaMs > 0) {
-    return `in ${amount}`
-  }
-
-  return `${amount} ago`
-}
-
-function formatDurationShort(ms: number): string {
-  if (ms < 60000) {
-    const seconds = Math.max(1, Math.floor(ms / 1000))
-    return `${seconds}s`
-  }
-
-  const totalMinutes = Math.floor(ms / 60000)
-  if (totalMinutes < 60) {
-    return `${totalMinutes}m`
-  }
-
-  const totalHours = Math.floor(totalMinutes / 60)
-  if (totalHours < 24) {
-    return `${totalHours}h`
-  }
-
-  const totalDays = Math.floor(totalHours / 24)
-  if (totalDays < 30) {
-    return `${totalDays}d`
-  }
-
-  const totalMonths = Math.floor(totalDays / 30)
-  if (totalMonths < 12) {
-    return `${totalMonths}M`
-  }
-
-  const totalYears = Math.floor(totalMonths / 12)
-  return `${totalYears}y`
+function getMonitorRelativeClockTimestamps(
+  monitor: MonitorRecord,
+): Array<number> {
+  return [
+    getMonitorNextTriggerTime(monitor)?.getTime(),
+    parseTimestamp(monitor.lastCheckAt)?.getTime(),
+    parseTimestamp(getMonitorLastChanged(monitor))?.getTime(),
+  ].filter((timestamp): timestamp is number => Number.isFinite(timestamp))
 }
 
 type MonitorChecksListProps = {
@@ -1822,6 +1890,7 @@ type MonitorChecksListProps = {
   loading: boolean
   error?: string
   className?: string
+  autoExpandLatestCheck?: boolean
 }
 
 function MonitorChecksList({
@@ -1829,6 +1898,7 @@ function MonitorChecksList({
   loading,
   error,
   className,
+  autoExpandLatestCheck = false,
 }: MonitorChecksListProps) {
   const [expandedCheckId, setExpandedCheckId] = useState<number | null>(null)
   const [copiedCheckId, setCopiedCheckId] = useState<number | null>(null)
@@ -1846,6 +1916,15 @@ function MonitorChecksList({
       setExpandedCheckId(null)
     }
   }, [displayChecks, expandedCheckId])
+
+  useEffect(() => {
+    if (!autoExpandLatestCheck) {
+      return
+    }
+
+    const latestCheck = displayChecks.at(0)
+    setExpandedCheckId((current) => (latestCheck ? latestCheck.id : current))
+  }, [autoExpandLatestCheck, displayChecks])
 
   useEffect(() => {
     if (copiedCheckId === null) {
@@ -1878,7 +1957,7 @@ function MonitorChecksList({
 
       {error ? <p className="text-xs text-red-300">{error}</p> : null}
 
-      {displayChecks.map((check) => (
+      {displayChecks.map((check, index) => (
         <div
           key={check.id}
           className={cn(
@@ -1928,8 +2007,12 @@ function MonitorChecksList({
           ) : null}
 
           <div className="flex items-center justify-between gap-2 pr-16">
-            <span className="font-medium uppercase text-zinc-200">{check.status}</span>
-            <span className="text-zinc-500">{formatTimestamp(check.checkedAt)}</span>
+            <span className="font-medium uppercase text-zinc-200">
+              {check.status}
+            </span>
+            <span className="text-zinc-500">
+              {formatTimestamp(check.checkedAt)}
+            </span>
           </div>
           <div className="mt-1 text-zinc-400">
             code: {check.statusCode ?? '-'} | duration:{' '}
@@ -1948,6 +2031,13 @@ function MonitorChecksList({
 
           {expandedCheckId === check.id ? (
             <div className="mt-2">
+              <SelectionValueDiffView
+                check={check}
+                previousCheck={findPreviousComparableCheck(
+                  displayChecks,
+                  index,
+                )}
+              />
               <div className="mb-1 text-right text-[11px] text-zinc-500">
                 {copiedCheckId === check.id ? 'Copied' : '\u00a0'}
               </div>
@@ -2122,6 +2212,85 @@ function CheckDiffDetails({ check }: { check: MonitorCheckRecord }) {
   )
 }
 
+function SelectionValueDiffView({
+  check,
+  previousCheck,
+}: {
+  check: MonitorCheckRecord
+  previousCheck: MonitorCheckRecord | null
+}) {
+  const diffEntries = useMemo(
+    () => buildSelectionValueDiffEntries(previousCheck, check),
+    [check, previousCheck],
+  )
+
+  if (diffEntries.length === 0) {
+    return null
+  }
+
+  return (
+    <div className="mb-2 rounded border border-emerald-700/50 bg-emerald-950/10 px-2 py-2 text-zinc-200">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <span className="font-medium text-emerald-300">Changed values</span>
+        <span className="text-[11px] text-zinc-500">
+          {diffEntries.length} {diffEntries.length === 1 ? 'change' : 'changes'}
+        </span>
+      </div>
+
+      <div className="space-y-2">
+        {diffEntries.map((entry) => (
+          <div
+            key={`${entry.change}:${entry.path}`}
+            className="rounded border border-zinc-800/80 bg-zinc-950/70 px-2 py-1.5"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-mono text-[11px] text-emerald-200">
+                {entry.path}
+              </span>
+              <span className="text-[11px] uppercase tracking-wide text-zinc-500">
+                {entry.change}
+              </span>
+            </div>
+
+            <div className="mt-1 grid gap-2 md:grid-cols-2">
+              <DiffValuePanel label="Old" value={entry.oldValue} tone="old" />
+              <DiffValuePanel label="New" value={entry.newValue} tone="new" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function DiffValuePanel({
+  label,
+  value,
+  tone,
+}: {
+  label: string
+  value: unknown
+  tone: 'old' | 'new'
+}) {
+  return (
+    <div
+      className={cn(
+        'rounded border px-2 py-1',
+        tone === 'old'
+          ? 'border-red-900/70 bg-red-950/20'
+          : 'border-emerald-900/70 bg-emerald-950/20',
+      )}
+    >
+      <div className="text-[11px] uppercase tracking-wide text-zinc-500">
+        {label}
+      </div>
+      <pre className="mt-1 overflow-x-auto whitespace-pre-wrap break-words font-mono text-[11px] text-zinc-200">
+        {formatDiffValue(value)}
+      </pre>
+    </div>
+  )
+}
+
 function buildDiffDetailLines(
   kind: string,
   details: Record<string, unknown> | null,
@@ -2233,6 +2402,355 @@ function formatPrimitiveCountMap(value: unknown): string {
     .join(', ')
 }
 
+function buildSelectionValueDiffEntries(
+  previousCheck: MonitorCheckRecord | null,
+  currentCheck: MonitorCheckRecord,
+): Array<DetailedDiffEntry> {
+  if (!getCheckDiffChanged(currentCheck) || previousCheck === null) {
+    return []
+  }
+
+  const previousValue = parseSelectionValueForDiff(
+    getCheckSelectionValue(previousCheck),
+  )
+  const currentValue = parseSelectionValueForDiff(
+    getCheckSelectionValue(currentCheck),
+  )
+  const entries: Array<DetailedDiffEntry> = []
+
+  collectDetailedDiffEntries('value', previousValue, currentValue, entries)
+
+  if (entries.length > 0) {
+    return entries.slice(0, 50)
+  }
+
+  if (areDiffValuesEqual(previousValue, currentValue)) {
+    return []
+  }
+
+  return [
+    {
+      path: 'value',
+      change: 'changed',
+      oldValue: previousValue,
+      newValue: currentValue,
+    },
+  ]
+}
+
+function findPreviousComparableCheck(
+  checks: Array<MonitorCheckRecord>,
+  currentIndex: number,
+): MonitorCheckRecord | null {
+  for (let index = currentIndex + 1; index < checks.length; index += 1) {
+    const candidate = checks[index]
+    if (!hasComparableSelectionValue(candidate)) {
+      continue
+    }
+
+    return candidate
+  }
+
+  return null
+}
+
+function hasComparableSelectionValue(check: MonitorCheckRecord): boolean {
+  return (
+    check.status === 'ok' &&
+    !check.errorMessage &&
+    getCheckSelectionValue(check) !== null
+  )
+}
+
+function parseSelectionValueForDiff(value: string | null): unknown {
+  const parsed = tryParseJSONString(value)
+  return parsed.ok ? parsed.value : value
+}
+
+function collectDetailedDiffEntries(
+  path: string,
+  previousValue: unknown,
+  currentValue: unknown,
+  entries: Array<DetailedDiffEntry>,
+): void {
+  if (areDiffValuesEqual(previousValue, currentValue)) {
+    return
+  }
+
+  if (Array.isArray(previousValue) && Array.isArray(currentValue)) {
+    if (
+      collectKeyedArrayDiffEntries(path, previousValue, currentValue, entries)
+    ) {
+      return
+    }
+
+    const maxLength = Math.max(previousValue.length, currentValue.length)
+    for (let index = 0; index < maxLength; index += 1) {
+      const nextPath = `${path}[${index}]`
+      const previousExists = index < previousValue.length
+      const currentExists = index < currentValue.length
+
+      if (!previousExists && currentExists) {
+        entries.push({
+          path: nextPath,
+          change: 'added',
+          newValue: currentValue[index],
+        })
+        continue
+      }
+
+      if (previousExists && !currentExists) {
+        entries.push({
+          path: nextPath,
+          change: 'removed',
+          oldValue: previousValue[index],
+        })
+        continue
+      }
+
+      collectDetailedDiffEntries(
+        nextPath,
+        previousValue[index],
+        currentValue[index],
+        entries,
+      )
+    }
+    return
+  }
+
+  if (isPlainObject(previousValue) && isPlainObject(currentValue)) {
+    const keys = new Set([
+      ...Object.keys(previousValue),
+      ...Object.keys(currentValue),
+    ])
+
+    for (const key of [...keys].sort()) {
+      const nextPath = path === 'value' ? key : `${path}.${key}`
+      const previousHasKey = Object.hasOwn(previousValue, key)
+      const currentHasKey = Object.hasOwn(currentValue, key)
+
+      if (!previousHasKey && currentHasKey) {
+        entries.push({
+          path: nextPath,
+          change: 'added',
+          newValue: currentValue[key],
+        })
+        continue
+      }
+
+      if (previousHasKey && !currentHasKey) {
+        entries.push({
+          path: nextPath,
+          change: 'removed',
+          oldValue: previousValue[key],
+        })
+        continue
+      }
+
+      collectDetailedDiffEntries(
+        nextPath,
+        previousValue[key],
+        currentValue[key],
+        entries,
+      )
+    }
+    return
+  }
+
+  entries.push({
+    path,
+    change: 'changed',
+    oldValue: previousValue,
+    newValue: currentValue,
+  })
+}
+
+function collectKeyedArrayDiffEntries(
+  path: string,
+  previousValue: Array<unknown>,
+  currentValue: Array<unknown>,
+  entries: Array<DetailedDiffEntry>,
+): boolean {
+  const previousObjects = asObjectArray(previousValue)
+  const currentObjects = asObjectArray(currentValue)
+  if (!previousObjects || !currentObjects) {
+    return false
+  }
+
+  const keyField = detectObjectArrayKey(previousObjects, currentObjects)
+  if (!keyField) {
+    return false
+  }
+
+  const previousMap = mapObjectArrayByKey(previousObjects, keyField)
+  const currentMap = mapObjectArrayByKey(currentObjects, keyField)
+  if (!previousMap || !currentMap) {
+    return false
+  }
+
+  const keys = new Set([...previousMap.keys(), ...currentMap.keys()])
+  for (const key of [...keys].sort()) {
+    const previousEntry = previousMap.get(key)
+    const currentEntry = currentMap.get(key)
+    const nextPath = `${path}[${keyField}=${key}]`
+
+    if (!previousEntry && currentEntry) {
+      entries.push({
+        path: nextPath,
+        change: 'added',
+        newValue: currentEntry,
+      })
+      continue
+    }
+
+    if (previousEntry && !currentEntry) {
+      entries.push({
+        path: nextPath,
+        change: 'removed',
+        oldValue: previousEntry,
+      })
+      continue
+    }
+
+    collectDetailedDiffEntries(nextPath, previousEntry, currentEntry, entries)
+  }
+
+  return true
+}
+
+function asObjectArray(
+  value: Array<unknown>,
+): Array<Record<string, unknown>> | null {
+  const objects: Array<Record<string, unknown>> = []
+
+  for (const entry of value) {
+    if (!isPlainObject(entry)) {
+      return null
+    }
+    objects.push(entry)
+  }
+
+  return objects
+}
+
+function detectObjectArrayKey(
+  previous: Array<Record<string, unknown>>,
+  current: Array<Record<string, unknown>>,
+): string {
+  const candidates = [
+    'id',
+    'key',
+    'name',
+    'slug',
+    'uuid',
+    'code',
+    'currency',
+    'Currency',
+  ]
+
+  for (const candidate of candidates) {
+    if (
+      hasUniquePrimitiveKey(candidate, previous) &&
+      hasUniquePrimitiveKey(candidate, current)
+    ) {
+      return candidate
+    }
+  }
+
+  return ''
+}
+
+function hasUniquePrimitiveKey(
+  key: string,
+  values: Array<Record<string, unknown>>,
+): boolean {
+  const seen = new Set<string>()
+
+  for (const item of values) {
+    if (!Object.hasOwn(item, key)) {
+      return false
+    }
+
+    const value = item[key]
+    if (value === null || Array.isArray(value) || isPlainObject(value)) {
+      return false
+    }
+
+    const encoded = stableStringify(value)
+    if (seen.has(encoded)) {
+      return false
+    }
+    seen.add(encoded)
+  }
+
+  return true
+}
+
+function mapObjectArrayByKey(
+  values: Array<Record<string, unknown>>,
+  key: string,
+): Map<string, Record<string, unknown>> | null {
+  const mapped = new Map<string, Record<string, unknown>>()
+
+  for (const item of values) {
+    if (!Object.hasOwn(item, key)) {
+      return null
+    }
+
+    const encoded = stableStringify(item[key])
+    if (mapped.has(encoded)) {
+      return null
+    }
+
+    mapped.set(encoded, item)
+  }
+
+  return mapped
+}
+
+function areDiffValuesEqual(left: unknown, right: unknown): boolean {
+  return stableStringify(left) === stableStringify(right)
+}
+
+function stableStringify(value: unknown): string {
+  if (isPlainObject(value)) {
+    const sortedKeys = Object.keys(value).sort()
+    const normalized: Record<string, unknown> = {}
+    for (const key of sortedKeys) {
+      normalized[key] = JSON.parse(stableStringify(value[key])) as unknown
+    }
+    return JSON.stringify(normalized)
+  }
+
+  if (Array.isArray(value)) {
+    return JSON.stringify(
+      value.map((entry) => JSON.parse(stableStringify(entry)) as unknown),
+    )
+  }
+
+  return JSON.stringify(value)
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && !Array.isArray(value) && typeof value === 'object'
+}
+
+function formatDiffValue(value: unknown): string {
+  if (value === undefined) {
+    return '-'
+  }
+
+  if (typeof value === 'string') {
+    return value
+  }
+
+  try {
+    return JSON.stringify(value, null, 2)
+  } catch {
+    return String(value)
+  }
+}
+
 function decodePrimitiveValue(raw: string): string {
   try {
     const parsed = JSON.parse(raw) as unknown
@@ -2317,7 +2835,9 @@ function getMonitorIconURL(monitor: MonitorRecord): string | null {
   return null
 }
 
-function getMonitorConfigIconURL(monitorConfig: CreateMonitorRequest): string | null {
+function getMonitorConfigIconURL(
+  monitorConfig: CreateMonitorRequest,
+): string | null {
   if (typeof monitorConfig.iconUrl !== 'string') {
     return null
   }
@@ -2377,7 +2897,9 @@ function getMonitorNotificationIssues(
   return parsed
 }
 
-function buildMonitorConfigForExport(monitor: MonitorRecord): CreateMonitorRequest {
+function buildMonitorConfigForExport(
+  monitor: MonitorRecord,
+): CreateMonitorRequest {
   return {
     label: monitor.label ?? undefined,
     method: monitor.method,
@@ -2433,7 +2955,9 @@ function hasValues(value: Record<string, string> | undefined): boolean {
   )
 }
 
-function downloadMonitorConfigs(monitorConfigs: Array<CreateMonitorRequest>): void {
+function downloadMonitorConfigs(
+  monitorConfigs: Array<CreateMonitorRequest>,
+): void {
   const json = JSON.stringify(monitorConfigs, null, 2)
   const blob = new Blob([json], { type: 'application/json' })
   const downloadURL = URL.createObjectURL(blob)
@@ -2446,7 +2970,9 @@ function downloadMonitorConfigs(monitorConfigs: Array<CreateMonitorRequest>): vo
   URL.revokeObjectURL(downloadURL)
 }
 
-function parseImportedMonitorConfig(value: unknown): CreateMonitorRequest | null {
+function parseImportedMonitorConfig(
+  value: unknown,
+): CreateMonitorRequest | null {
   if (!value || Array.isArray(value) || typeof value !== 'object') {
     return null
   }
@@ -2484,7 +3010,9 @@ function parseImportedMonitorConfig(value: unknown): CreateMonitorRequest | null
 
   const headers = asStringMap(record.headers)
   const auth = asStringMap(record.auth)
-  const notificationChannels = asNotificationChannels(record.notificationChannels)
+  const notificationChannels = asNotificationChannels(
+    record.notificationChannels,
+  )
 
   if (
     (record.headers !== undefined && headers === null) ||
@@ -2592,6 +3120,30 @@ function getCheckSelectionValue(check: MonitorCheckRecord): string | null {
   const value = (check as MonitorCheckRecord & { selectionValue?: unknown })
     .selectionValue
   return typeof value === 'string' ? value : null
+}
+
+function formatLatestMonitorValue(value: unknown): string | null {
+  if (value === null || value === undefined) {
+    return null
+  }
+
+  if (typeof value === 'string') {
+    return value
+  }
+
+  if (
+    typeof value === 'number' ||
+    typeof value === 'boolean' ||
+    typeof value === 'bigint'
+  ) {
+    return String(value)
+  }
+
+  try {
+    return JSON.stringify(value)
+  } catch {
+    return String(value)
+  }
 }
 
 function backfillCheckSelectionValues(

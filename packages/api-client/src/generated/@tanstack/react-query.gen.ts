@@ -3,8 +3,8 @@
 import { type DefaultError, queryOptions, type UseMutationOptions } from '@tanstack/react-query';
 
 import { client } from '../client.gen';
-import { createMonitor, deleteMonitor, getHealth, getRuntimeSettings, getTelegramSettings, listMonitorChecks, listMonitors, type Options, previewMonitorSelector, testMonitorUrl, testTelegramSettings, triggerMonitor, updateMonitor, upsertRuntimeSettings, upsertTelegramSettings } from '../sdk.gen';
-import type { CreateMonitorData, CreateMonitorResponse, DeleteMonitorData, DeleteMonitorResponse, GetHealthData, GetHealthResponse, GetRuntimeSettingsData, GetRuntimeSettingsResponse, GetTelegramSettingsData, GetTelegramSettingsResponse, ListMonitorChecksData, ListMonitorChecksResponse, ListMonitorsData, ListMonitorsResponse, PreviewMonitorSelectorData, PreviewMonitorSelectorResponse, TestMonitorUrlData, TestMonitorUrlResponse, TestTelegramSettingsData, TestTelegramSettingsResponse2, TriggerMonitorData, TriggerMonitorResponse, UpdateMonitorData, UpdateMonitorResponse, UpsertRuntimeSettingsData, UpsertRuntimeSettingsResponse, UpsertTelegramSettingsData, UpsertTelegramSettingsResponse } from '../types.gen';
+import { createMonitor, deleteMonitor, getHealth, getRuntimeSettings, getTelegramSettings, listMonitorChecks, listMonitors, type Options, previewMonitorSelector, refreshMonitor, testMonitorUrl, testTelegramSettings, triggerMonitor, updateMonitor, upsertRuntimeSettings, upsertTelegramSettings } from '../sdk.gen';
+import type { CreateMonitorData, CreateMonitorResponse, DeleteMonitorData, DeleteMonitorResponse, GetHealthData, GetHealthResponse, GetRuntimeSettingsData, GetRuntimeSettingsResponse, GetTelegramSettingsData, GetTelegramSettingsResponse, ListMonitorChecksData, ListMonitorChecksResponse, ListMonitorsData, ListMonitorsResponse, PreviewMonitorSelectorData, PreviewMonitorSelectorResponse, RefreshMonitorData, RefreshMonitorResponse, TestMonitorUrlData, TestMonitorUrlResponse, TestTelegramSettingsData, TestTelegramSettingsResponse2, TriggerMonitorData, TriggerMonitorResponse, UpdateMonitorData, UpdateMonitorResponse, UpsertRuntimeSettingsData, UpsertRuntimeSettingsResponse, UpsertTelegramSettingsData, UpsertTelegramSettingsResponse } from '../types.gen';
 
 export type QueryKey<TOptions extends Options> = [
     Pick<TOptions, 'baseUrl' | 'body' | 'headers' | 'path' | 'query'> & {
@@ -133,6 +133,23 @@ export const triggerMonitorMutation = (options?: Partial<Options<TriggerMonitorD
     const mutationOptions: UseMutationOptions<TriggerMonitorResponse, DefaultError, Options<TriggerMonitorData>> = {
         mutationFn: async (fnOptions) => {
             const { data } = await triggerMonitor({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Refresh monitor runtime from its schedule
+ */
+export const refreshMonitorMutation = (options?: Partial<Options<RefreshMonitorData>>): UseMutationOptions<RefreshMonitorResponse, DefaultError, Options<RefreshMonitorData>> => {
+    const mutationOptions: UseMutationOptions<RefreshMonitorResponse, DefaultError, Options<RefreshMonitorData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await refreshMonitor({
                 ...options,
                 ...fnOptions,
                 throwOnError: true

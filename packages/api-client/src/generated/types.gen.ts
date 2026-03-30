@@ -37,6 +37,7 @@ export type Monitor = {
     lastStatusCode?: number | null;
     lastDurationMs?: number | null;
     lastErrorMessage?: string | null;
+    lastChanged?: string | null;
     lastSelectionValue?: string | null;
     createdAt: string;
     updatedAt: string;
@@ -310,6 +311,31 @@ export type TriggerMonitorResponses = {
 };
 
 export type TriggerMonitorResponse = TriggerMonitorResponses[keyof TriggerMonitorResponses];
+
+export type RefreshMonitorData = {
+    body?: never;
+    path: {
+        monitorId: number;
+    };
+    query?: never;
+    url: '/v1/monitors/{monitorId}/refresh';
+};
+
+export type RefreshMonitorErrors = {
+    /**
+     * Monitor not found
+     */
+    404: unknown;
+};
+
+export type RefreshMonitorResponses = {
+    /**
+     * Monitor runtime refreshed
+     */
+    200: Monitor;
+};
+
+export type RefreshMonitorResponse = RefreshMonitorResponses[keyof RefreshMonitorResponses];
 
 export type TestMonitorUrlData = {
     body: TestMonitorRequest;

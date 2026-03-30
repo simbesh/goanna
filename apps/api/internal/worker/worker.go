@@ -147,6 +147,35 @@ func (w *Worker) TriggerMonitorNow(ctx context.Context, monitorID int) (*Trigger
 	}, nil
 }
 
+func (w *Worker) RefreshMonitorRuntime(ctx context.Context, monitorID int) (*TriggerMonitorResult, error) {
+	row, err := w.db.Monitor.Query().
+		Where(monitor.IDEQ(monitorID)).
+		WithRuntime().
+		Only(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	config, err := w.ensureSystemConfig(ctx)
+	if err != nil {
+		return nil, err
+	}
+	cronLocation := cronLocationFromConfig(config.Timezone)
+
+	now := time.Now().UTC()
+	runtimeRow, err := w.refreshRuntime(ctx, row, now, cronLocation)
+	if err != nil {
+		return nil, err
+	}
+
+	row.Edges.Runtime = runtimeRow
+
+	return &TriggerMonitorResult{
+		Monitor: row,
+		Runtime: runtimeRow,
+	}, nil
+}
+
 func (w *Worker) tick(ctx context.Context, startupCutoff *time.Time) {
 	config, err := w.ensureSystemConfig(ctx)
 	if err != nil {
@@ -273,6 +302,61 @@ func (w *Worker) ensureRuntime(ctx context.Context, row *ent.Monitor, now time.T
 	}
 
 	return runtime, nil
+}
+
+func (w *Worker) refreshRuntime(ctx context.Context, row *ent.Monitor, now time.Time, cronLocation *time.Location) (*ent.MonitorRuntime, error) {
+	runtime := row.Edges.Runtime
+	if !row.Enabled {
+		if runtime == nil {
+			created, err := w.db.MonitorRuntime.Create().
+				SetMonitor(row).
+				SetStatus(monitorruntime.StatusDisabled).
+				Save(ctx)
+			if err != nil {
+				return nil, err
+			}
+			return created, nil
+		}
+
+		updated, err := w.db.MonitorRuntime.UpdateOneID(runtime.ID).
+			SetStatus(monitorruntime.StatusDisabled).
+			ClearNextRunAt().
+			Save(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return updated, nil
+	}
+
+	nextRun, err := nextRunFromCron(row.Cron, now, cronLocation)
+	if err != nil {
+		return nil, err
+	}
+
+	if runtime == nil {
+		created, err := w.db.MonitorRuntime.Create().
+			SetMonitor(row).
+			SetStatus(monitorruntime.StatusPending).
+			SetNextRunAt(nextRun).
+			Save(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return created, nil
+	}
+
+	update := w.db.MonitorRuntime.UpdateOneID(runtime.ID).
+		SetNextRunAt(nextRun)
+	if runtime.Status == monitorruntime.StatusDisabled {
+		update = update.SetStatus(monitorruntime.StatusPending)
+	}
+
+	updated, err := update.Save(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return updated, nil
 }
 
 func (w *Worker) runMonitor(ctx context.Context, row *ent.Monitor, runtime *ent.MonitorRuntime, now time.Time, cronLocation *time.Location, disableAfterRun bool) error {

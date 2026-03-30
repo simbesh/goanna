@@ -4,6 +4,7 @@ import {
   listMonitorChecksOptions,
   listMonitorsOptions,
   listMonitorsQueryKey,
+  refreshMonitorMutation,
   triggerMonitorMutation,
   updateMonitorMutation,
 } from '@goanna/api-client'
@@ -33,6 +34,7 @@ function MonitorsPage() {
   const queryClient = useQueryClient()
   const monitorsQuery = useQuery(listMonitorsOptions())
   const createMonitorRequest = useMutation(createMonitorMutation())
+  const refreshMonitorRequest = useMutation(refreshMonitorMutation())
   const triggerMonitorRequest = useMutation(triggerMonitorMutation())
   const deleteMonitorRequest = useMutation(deleteMonitorMutation())
   const updateMonitorRequest = useMutation(updateMonitorMutation())
@@ -59,8 +61,9 @@ function MonitorsPage() {
     null,
   )
   const [showConfiguredMonitors, setShowConfiguredMonitors] = useState(false)
-  const monitorFirstFetchUpdatedAtRef =
-    useRef<Partial<Record<number, string>>>({})
+  const monitorFirstFetchUpdatedAtRef = useRef<Partial<Record<number, string>>>(
+    {},
+  )
 
   const monitors = monitorsQuery.data ?? []
   const loading = monitorsQuery.isPending
@@ -237,6 +240,40 @@ function MonitorsPage() {
       }))
     },
     [queryClient],
+  )
+
+  const replaceMonitor = useCallback(
+    (monitor: MonitorRecord) => {
+      queryClient.setQueryData<Array<MonitorRecord>>(
+        listMonitorsQueryKey(),
+        (current) => {
+          const existing = current ?? []
+          const index = existing.findIndex((entry) => entry.id === monitor.id)
+          if (index === -1) {
+            return [monitor, ...existing]
+          }
+
+          const next = [...existing]
+          next[index] = monitor
+          return next
+        },
+      )
+    },
+    [queryClient],
+  )
+
+  const onAutoRefreshMonitor = useCallback(
+    async (monitor: MonitorRecord) => {
+      try {
+        const refreshedMonitor = await refreshMonitorRequest.mutateAsync({
+          path: { monitorId: monitor.id },
+        })
+        replaceMonitor(refreshedMonitor)
+      } catch {
+        // Best-effort refresh for stale schedule displays.
+      }
+    },
+    [refreshMonitorRequest, replaceMonitor],
   )
 
   const triggerMonitorNow = useCallback(
@@ -481,7 +518,10 @@ function MonitorsPage() {
             }
 
             const next = [...existing]
-            next[index] = updatedMonitor
+            next[index] = {
+              ...existing[index],
+              ...updatedMonitor,
+            }
             return next
           },
         )
@@ -558,6 +598,7 @@ function MonitorsPage() {
         onBatchTriggerMonitors={onBatchTriggerMonitors}
         onBatchDeleteMonitors={onBatchDeleteMonitors}
         onToggleMonitorEnabled={onToggleMonitorEnabled}
+        onAutoRefreshMonitor={onAutoRefreshMonitor}
         onImportMonitorConfigs={onImportMonitorConfigs}
         deletingMonitorId={deletingMonitorId}
         batchDeleting={batchDeleting}
@@ -597,6 +638,7 @@ function MonitorsPage() {
             onRefreshChecks={loadMonitorChecks}
             onToggleChecks={toggleMonitorChecks}
             onToggleMonitorEnabled={onToggleMonitorEnabled}
+            onAutoRefreshMonitor={onAutoRefreshMonitor}
             onDeleteMonitor={onDeleteMonitor}
             onTriggerMonitor={onTriggerMonitor}
             deletingMonitorId={deletingMonitorId}

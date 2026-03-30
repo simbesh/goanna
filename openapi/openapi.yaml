@@ -119,6 +119,27 @@ paths:
         '404':
           description: Monitor not found
 
+  /v1/monitors/{monitorId}/refresh:
+    post:
+      operationId: refreshMonitor
+      summary: Refresh monitor runtime from its schedule
+      parameters:
+        - in: path
+          name: monitorId
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Monitor runtime refreshed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Monitor'
+        '404':
+          description: Monitor not found
+
   /v1/monitors/test:
     post:
       operationId: testMonitorUrl
@@ -383,6 +404,10 @@ components:
           nullable: true
         lastErrorMessage:
           type: string
+          nullable: true
+        lastChanged:
+          type: string
+          format: date-time
           nullable: true
         lastSelectionValue:
           type: string

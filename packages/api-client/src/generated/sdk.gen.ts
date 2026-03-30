@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { CreateMonitorData, CreateMonitorErrors, CreateMonitorResponses, DeleteMonitorData, DeleteMonitorErrors, DeleteMonitorResponses, GetHealthData, GetHealthResponses, GetRuntimeSettingsData, GetRuntimeSettingsResponses, GetTelegramSettingsData, GetTelegramSettingsResponses, ListMonitorChecksData, ListMonitorChecksErrors, ListMonitorChecksResponses, ListMonitorsData, ListMonitorsResponses, PreviewMonitorSelectorData, PreviewMonitorSelectorErrors, PreviewMonitorSelectorResponses, TestMonitorUrlData, TestMonitorUrlErrors, TestMonitorUrlResponses, TestTelegramSettingsData, TestTelegramSettingsErrors, TestTelegramSettingsResponses, TriggerMonitorData, TriggerMonitorErrors, TriggerMonitorResponses, UpdateMonitorData, UpdateMonitorErrors, UpdateMonitorResponses, UpsertRuntimeSettingsData, UpsertRuntimeSettingsErrors, UpsertRuntimeSettingsResponses, UpsertTelegramSettingsData, UpsertTelegramSettingsErrors, UpsertTelegramSettingsResponses } from './types.gen';
+import type { CreateMonitorData, CreateMonitorErrors, CreateMonitorResponses, DeleteMonitorData, DeleteMonitorErrors, DeleteMonitorResponses, GetHealthData, GetHealthResponses, GetRuntimeSettingsData, GetRuntimeSettingsResponses, GetTelegramSettingsData, GetTelegramSettingsResponses, ListMonitorChecksData, ListMonitorChecksErrors, ListMonitorChecksResponses, ListMonitorsData, ListMonitorsResponses, PreviewMonitorSelectorData, PreviewMonitorSelectorErrors, PreviewMonitorSelectorResponses, RefreshMonitorData, RefreshMonitorErrors, RefreshMonitorResponses, TestMonitorUrlData, TestMonitorUrlErrors, TestMonitorUrlResponses, TestTelegramSettingsData, TestTelegramSettingsErrors, TestTelegramSettingsResponses, TriggerMonitorData, TriggerMonitorErrors, TriggerMonitorResponses, UpdateMonitorData, UpdateMonitorErrors, UpdateMonitorResponses, UpsertRuntimeSettingsData, UpsertRuntimeSettingsErrors, UpsertRuntimeSettingsResponses, UpsertTelegramSettingsData, UpsertTelegramSettingsErrors, UpsertTelegramSettingsResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean> = Options2<TData, ThrowOnError> & {
     /**
@@ -61,6 +61,11 @@ export const updateMonitor = <ThrowOnError extends boolean = false>(options: Opt
  * Trigger monitor to run immediately
  */
 export const triggerMonitor = <ThrowOnError extends boolean = false>(options: Options<TriggerMonitorData, ThrowOnError>) => (options.client ?? client).post<TriggerMonitorResponses, TriggerMonitorErrors, ThrowOnError>({ url: '/v1/monitors/{monitorId}/trigger', ...options });
+
+/**
+ * Refresh monitor runtime from its schedule
+ */
+export const refreshMonitor = <ThrowOnError extends boolean = false>(options: Options<RefreshMonitorData, ThrowOnError>) => (options.client ?? client).post<RefreshMonitorResponses, RefreshMonitorErrors, ThrowOnError>({ url: '/v1/monitors/{monitorId}/refresh', ...options });
 
 /**
  * Test monitor URL via backend
