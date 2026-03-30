@@ -109,7 +109,7 @@ type ConfiguredMonitorsCardProps = {
   editingMonitorId: number | null
   onToggleChecks: (monitorId: number) => Promise<void>
   onToggleMonitorEnabled: (monitor: MonitorRecord) => Promise<void>
-  onAutoRefreshMonitor: (monitor: MonitorRecord) => Promise<void>
+  onAutoRefreshMonitor: () => Promise<void>
   onRefreshMonitors: () => Promise<void>
   onRefreshChecks: (monitorId: number) => Promise<void>
   onTriggerMonitor: (monitor: MonitorRecord) => Promise<void>
@@ -281,29 +281,28 @@ export const ConfiguredMonitorsTableCard = memo(
       [sortedMonitors],
     )
     const now = useRelativeClock(relativeClockTimestamps)
-    const autoRefreshAttemptsRef = useRef<Record<string, number>>({})
+    const autoRefreshAttemptAtRef = useRef(Number.NEGATIVE_INFINITY)
 
     useEffect(() => {
-      for (const monitor of sortedMonitors) {
+      const hasDueMonitor = sortedMonitors.some((monitor) => {
         const nextTriggerTime = getMonitorNextTriggerTime(monitor)
-        if (!monitor.enabled || nextTriggerTime === null) {
-          continue
-        }
+        return (
+          monitor.enabled &&
+          nextTriggerTime !== null &&
+          nextTriggerTime.getTime() <= now
+        )
+      })
 
-        if (nextTriggerTime.getTime() > now) {
-          continue
-        }
-
-        const attemptKey = `${monitor.id}:${nextTriggerTime.toISOString()}`
-        const lastAttemptAt =
-          autoRefreshAttemptsRef.current[attemptKey] ?? Number.NEGATIVE_INFINITY
-        if (now - lastAttemptAt < 30_000) {
-          continue
-        }
-
-        autoRefreshAttemptsRef.current[attemptKey] = now
-        void onAutoRefreshMonitor(monitor)
+      if (!hasDueMonitor) {
+        return
       }
+
+      if (now - autoRefreshAttemptAtRef.current < 30_000) {
+        return
+      }
+
+      autoRefreshAttemptAtRef.current = now
+      void onAutoRefreshMonitor()
     }, [now, onAutoRefreshMonitor, sortedMonitors])
 
     const allRowsSelected =

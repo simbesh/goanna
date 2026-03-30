@@ -4,7 +4,6 @@ import {
   listMonitorChecksOptions,
   listMonitorsOptions,
   listMonitorsQueryKey,
-  refreshMonitorMutation,
   triggerMonitorMutation,
   updateMonitorMutation,
 } from '@goanna/api-client'
@@ -34,7 +33,6 @@ function MonitorsPage() {
   const queryClient = useQueryClient()
   const monitorsQuery = useQuery(listMonitorsOptions())
   const createMonitorRequest = useMutation(createMonitorMutation())
-  const refreshMonitorRequest = useMutation(refreshMonitorMutation())
   const triggerMonitorRequest = useMutation(triggerMonitorMutation())
   const deleteMonitorRequest = useMutation(deleteMonitorMutation())
   const updateMonitorRequest = useMutation(updateMonitorMutation())
@@ -242,38 +240,15 @@ function MonitorsPage() {
     [queryClient],
   )
 
-  const replaceMonitor = useCallback(
-    (monitor: MonitorRecord) => {
-      queryClient.setQueryData<Array<MonitorRecord>>(
-        listMonitorsQueryKey(),
-        (current) => {
-          const existing = current ?? []
-          const index = existing.findIndex((entry) => entry.id === monitor.id)
-          if (index === -1) {
-            return [monitor, ...existing]
-          }
-
-          const next = [...existing]
-          next[index] = monitor
-          return next
-        },
-      )
-    },
-    [queryClient],
-  )
-
-  const onAutoRefreshMonitor = useCallback(
-    async (monitor: MonitorRecord) => {
+  const onAutoRefreshMonitor: () => Promise<void> = useCallback(
+    async () => {
       try {
-        const refreshedMonitor = await refreshMonitorRequest.mutateAsync({
-          path: { monitorId: monitor.id },
-        })
-        replaceMonitor(refreshedMonitor)
+        await queryClient.fetchQuery(listMonitorsOptions())
       } catch {
-        // Best-effort refresh for stale schedule displays.
+        // Best-effort refetch for stale schedule displays.
       }
     },
-    [refreshMonitorRequest, replaceMonitor],
+    [queryClient],
   )
 
   const triggerMonitorNow = useCallback(
