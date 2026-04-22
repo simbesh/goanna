@@ -2913,6 +2913,7 @@ function buildMonitorConfigForExport(
     expectedResponse: monitor.expectedResponse ?? undefined,
     cron: monitor.cron,
     enabled: monitor.enabled,
+    pauseOnNextChange: monitor.pauseOnNextChange,
   }
 }
 
@@ -3007,6 +3008,16 @@ function parseImportedMonitorConfig(
     return null
   }
 
+  const pauseOnNextChange =
+    typeof record.pauseOnNextChange === 'boolean'
+      ? record.pauseOnNextChange
+      : record.pauseOnNextChange === undefined
+        ? false
+        : null
+  if (pauseOnNextChange === null) {
+    return null
+  }
+
   const headers = asStringMap(record.headers)
   const auth = asStringMap(record.auth)
   const notificationChannels = asNotificationChannels(
@@ -3041,6 +3052,7 @@ function parseImportedMonitorConfig(
     expectedResponse: emptyToUndefined(expectedResponse),
     cron,
     enabled,
+    pauseOnNextChange,
   }
 }
 

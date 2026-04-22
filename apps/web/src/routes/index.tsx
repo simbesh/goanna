@@ -644,5 +644,6 @@ function buildMonitorUpdateRequest(
     expectedResponse: monitor.expectedResponse ?? undefined,
     cron: monitor.cron,
     enabled,
+    pauseOnNextChange: monitor.pauseOnNextChange,
   }
 }

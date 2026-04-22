@@ -2,10 +2,16 @@ package worker
 
 import (
 	"context"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
+	"goanna/apps/api/ent"
+	"goanna/apps/api/ent/checkresult"
 	"goanna/apps/api/ent/enttest"
+	"goanna/apps/api/ent/monitor"
 	"goanna/apps/api/ent/monitorruntime"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -126,5 +132,85 @@ func TestRefreshMonitorRuntimeRealignsPastNextRunAt(t *testing.T) {
 	}
 	if persistedRuntime.NextRunAt == nil || !persistedRuntime.NextRunAt.Equal(*result.Runtime.NextRunAt) {
 		t.Fatalf("expected persisted next run %v, got %v", result.Runtime.NextRunAt, persistedRuntime.NextRunAt)
+	}
+}
+
+func TestTriggerMonitorNowDisablesMonitorAfterNextChangedRun(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:trigger-monitor-disable-after-change?mode=memory&cache=shared&_fk=1")
+	defer client.Close()
+
+	responses := []string{"{\"value\":\"ready\"}", "{\"value\":\"changed\"}"}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = fmt.Fprint(w, responses[0])
+		if len(responses) > 1 {
+			responses = responses[1:]
+		}
+	}))
+	defer server.Close()
+
+	monitorRow, err := client.Monitor.Create().
+		SetURL(server.URL).
+		SetCron("*/5 * * * *").
+		SetExpectedType(monitor.ExpectedTypeJSON).
+		SetSelector("value").
+		SetExpectedResponse("ready").
+		SetEnabled(true).
+		SetPauseOnNextChange(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("expected monitor to save: %v", err)
+	}
+
+	w := New(client)
+	if _, err := w.TriggerMonitorNow(ctx, monitorRow.ID); err != nil {
+		t.Fatalf("expected first trigger to succeed: %v", err)
+	}
+
+	triggerResult, err := w.TriggerMonitorNow(ctx, monitorRow.ID)
+	if err != nil {
+		t.Fatalf("expected second trigger to succeed: %v", err)
+	}
+
+	updatedMonitor, err := client.Monitor.Get(ctx, monitorRow.ID)
+	if err != nil {
+		t.Fatalf("expected updated monitor to load: %v", err)
+	}
+	if updatedMonitor.Enabled {
+		t.Fatal("expected monitor to be disabled after changed run")
+	}
+	if updatedMonitor.PauseOnNextChange {
+		t.Fatal("expected pause-on-next-change flag to clear after changed run")
+	}
+
+	updatedRuntime, err := client.MonitorRuntime.Query().
+		Where(monitorruntime.HasMonitorWith(monitor.IDEQ(monitorRow.ID))).
+		Only(ctx)
+	if err != nil {
+		t.Fatalf("expected updated runtime to load: %v", err)
+	}
+	if updatedRuntime.Status != monitorruntime.StatusDisabled {
+		t.Fatalf("expected runtime status %q, got %q", monitorruntime.StatusDisabled, updatedRuntime.Status)
+	}
+	if updatedRuntime.NextRunAt != nil {
+		t.Fatalf("expected next run to be cleared, got %v", updatedRuntime.NextRunAt)
+	}
+
+	if triggerResult.Monitor == nil || triggerResult.Monitor.Enabled {
+		t.Fatalf("expected trigger response monitor to be disabled, got %#v", triggerResult.Monitor)
+	}
+
+	checks, err := client.CheckResult.Query().
+		Where(checkresult.HasMonitorWith(monitor.IDEQ(monitorRow.ID))).
+		Order(ent.Asc(checkresult.FieldID)).
+		All(ctx)
+	if err != nil {
+		t.Fatalf("expected check results to load: %v", err)
+	}
+	if len(checks) != 2 {
+		t.Fatalf("expected 2 check results, got %d", len(checks))
+	}
+	if !checks[1].DiffChanged {
+		t.Fatal("expected changed run to record a diff")
 	}
 }

@@ -49,12 +49,16 @@ func init() {
 	monitorDescEnabled := monitorFields[12].Descriptor()
 	// monitor.DefaultEnabled holds the default value on creation for the enabled field.
 	monitor.DefaultEnabled = monitorDescEnabled.Default.(bool)
+	// monitorDescPauseOnNextChange is the schema descriptor for pause_on_next_change field.
+	monitorDescPauseOnNextChange := monitorFields[13].Descriptor()
+	// monitor.DefaultPauseOnNextChange holds the default value on creation for the pause_on_next_change field.
+	monitor.DefaultPauseOnNextChange = monitorDescPauseOnNextChange.Default.(bool)
 	// monitorDescCreatedAt is the schema descriptor for created_at field.
-	monitorDescCreatedAt := monitorFields[13].Descriptor()
+	monitorDescCreatedAt := monitorFields[14].Descriptor()
 	// monitor.DefaultCreatedAt holds the default value on creation for the created_at field.
 	monitor.DefaultCreatedAt = monitorDescCreatedAt.Default.(func() time.Time)
 	// monitorDescUpdatedAt is the schema descriptor for updated_at field.
-	monitorDescUpdatedAt := monitorFields[14].Descriptor()
+	monitorDescUpdatedAt := monitorFields[15].Descriptor()
 	// monitor.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	monitor.DefaultUpdatedAt = monitorDescUpdatedAt.Default.(func() time.Time)
 	// monitor.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.

@@ -372,6 +372,8 @@ components:
           example: "*/5 * * * *"
         enabled:
           type: boolean
+        pauseOnNextChange:
+          type: boolean
         status:
           type: string
           enum: [pending, ok, error, retrying, disabled]
@@ -479,6 +481,9 @@ components:
         enabled:
           type: boolean
           default: true
+        pauseOnNextChange:
+          type: boolean
+          default: false
         triggerOnCreate:
           type: boolean
           default: false

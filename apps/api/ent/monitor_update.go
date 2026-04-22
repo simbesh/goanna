@@ -244,6 +244,20 @@ func (_u *MonitorUpdate) SetNillableEnabled(v *bool) *MonitorUpdate {
 	return _u
 }
 
+// SetPauseOnNextChange sets the "pause_on_next_change" field.
+func (_u *MonitorUpdate) SetPauseOnNextChange(v bool) *MonitorUpdate {
+	_u.mutation.SetPauseOnNextChange(v)
+	return _u
+}
+
+// SetNillablePauseOnNextChange sets the "pause_on_next_change" field if the given value is not nil.
+func (_u *MonitorUpdate) SetNillablePauseOnNextChange(v *bool) *MonitorUpdate {
+	if v != nil {
+		_u.SetPauseOnNextChange(*v)
+	}
+	return _u
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *MonitorUpdate) SetUpdatedAt(v time.Time) *MonitorUpdate {
 	_u.mutation.SetUpdatedAt(v)
@@ -487,6 +501,9 @@ func (_u *MonitorUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.Enabled(); ok {
 		_spec.SetField(monitor.FieldEnabled, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.PauseOnNextChange(); ok {
+		_spec.SetField(monitor.FieldPauseOnNextChange, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(monitor.FieldUpdatedAt, field.TypeTime, value)
@@ -842,6 +859,20 @@ func (_u *MonitorUpdateOne) SetNillableEnabled(v *bool) *MonitorUpdateOne {
 	return _u
 }
 
+// SetPauseOnNextChange sets the "pause_on_next_change" field.
+func (_u *MonitorUpdateOne) SetPauseOnNextChange(v bool) *MonitorUpdateOne {
+	_u.mutation.SetPauseOnNextChange(v)
+	return _u
+}
+
+// SetNillablePauseOnNextChange sets the "pause_on_next_change" field if the given value is not nil.
+func (_u *MonitorUpdateOne) SetNillablePauseOnNextChange(v *bool) *MonitorUpdateOne {
+	if v != nil {
+		_u.SetPauseOnNextChange(*v)
+	}
+	return _u
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *MonitorUpdateOne) SetUpdatedAt(v time.Time) *MonitorUpdateOne {
 	_u.mutation.SetUpdatedAt(v)
@@ -1115,6 +1146,9 @@ func (_u *MonitorUpdateOne) sqlSave(ctx context.Context) (_node *Monitor, err er
 	}
 	if value, ok := _u.mutation.Enabled(); ok {
 		_spec.SetField(monitor.FieldEnabled, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.PauseOnNextChange(); ok {
+		_spec.SetField(monitor.FieldPauseOnNextChange, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(monitor.FieldUpdatedAt, field.TypeTime, value)

@@ -95,6 +95,11 @@ func Enabled(v bool) predicate.Monitor {
 	return predicate.Monitor(sql.FieldEQ(FieldEnabled, v))
 }
 
+// PauseOnNextChange applies equality check predicate on the "pause_on_next_change" field. It's identical to PauseOnNextChangeEQ.
+func PauseOnNextChange(v bool) predicate.Monitor {
+	return predicate.Monitor(sql.FieldEQ(FieldPauseOnNextChange, v))
+}
+
 // CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
 func CreatedAt(v time.Time) predicate.Monitor {
 	return predicate.Monitor(sql.FieldEQ(FieldCreatedAt, v))
@@ -733,6 +738,16 @@ func EnabledEQ(v bool) predicate.Monitor {
 // EnabledNEQ applies the NEQ predicate on the "enabled" field.
 func EnabledNEQ(v bool) predicate.Monitor {
 	return predicate.Monitor(sql.FieldNEQ(FieldEnabled, v))
+}
+
+// PauseOnNextChangeEQ applies the EQ predicate on the "pause_on_next_change" field.
+func PauseOnNextChangeEQ(v bool) predicate.Monitor {
+	return predicate.Monitor(sql.FieldEQ(FieldPauseOnNextChange, v))
+}
+
+// PauseOnNextChangeNEQ applies the NEQ predicate on the "pause_on_next_change" field.
+func PauseOnNextChangeNEQ(v bool) predicate.Monitor {
+	return predicate.Monitor(sql.FieldNEQ(FieldPauseOnNextChange, v))
 }
 
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.

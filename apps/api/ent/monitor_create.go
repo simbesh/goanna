@@ -165,6 +165,20 @@ func (_c *MonitorCreate) SetNillableEnabled(v *bool) *MonitorCreate {
 	return _c
 }
 
+// SetPauseOnNextChange sets the "pause_on_next_change" field.
+func (_c *MonitorCreate) SetPauseOnNextChange(v bool) *MonitorCreate {
+	_c.mutation.SetPauseOnNextChange(v)
+	return _c
+}
+
+// SetNillablePauseOnNextChange sets the "pause_on_next_change" field if the given value is not nil.
+func (_c *MonitorCreate) SetNillablePauseOnNextChange(v *bool) *MonitorCreate {
+	if v != nil {
+		_c.SetPauseOnNextChange(*v)
+	}
+	return _c
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (_c *MonitorCreate) SetCreatedAt(v time.Time) *MonitorCreate {
 	_c.mutation.SetCreatedAt(v)
@@ -289,6 +303,10 @@ func (_c *MonitorCreate) defaults() {
 		v := monitor.DefaultEnabled
 		_c.mutation.SetEnabled(v)
 	}
+	if _, ok := _c.mutation.PauseOnNextChange(); !ok {
+		v := monitor.DefaultPauseOnNextChange
+		_c.mutation.SetPauseOnNextChange(v)
+	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		v := monitor.DefaultCreatedAt()
 		_c.mutation.SetCreatedAt(v)
@@ -330,6 +348,9 @@ func (_c *MonitorCreate) check() error {
 	}
 	if _, ok := _c.mutation.Enabled(); !ok {
 		return &ValidationError{Name: "enabled", err: errors.New(`ent: missing required field "Monitor.enabled"`)}
+	}
+	if _, ok := _c.mutation.PauseOnNextChange(); !ok {
+		return &ValidationError{Name: "pause_on_next_change", err: errors.New(`ent: missing required field "Monitor.pause_on_next_change"`)}
 	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Monitor.created_at"`)}
@@ -414,6 +435,10 @@ func (_c *MonitorCreate) createSpec() (*Monitor, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Enabled(); ok {
 		_spec.SetField(monitor.FieldEnabled, field.TypeBool, value)
 		_node.Enabled = value
+	}
+	if value, ok := _c.mutation.PauseOnNextChange(); ok {
+		_spec.SetField(monitor.FieldPauseOnNextChange, field.TypeBool, value)
+		_node.PauseOnNextChange = value
 	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(monitor.FieldCreatedAt, field.TypeTime, value)

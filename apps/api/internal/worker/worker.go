@@ -429,9 +429,16 @@ func (w *Worker) runMonitor(ctx context.Context, row *ent.Monitor, runtime *ent.
 		return err
 	}
 
+	disableOnChangedRun := row.PauseOnNextChange && result.diff != nil && result.diff.Changed
 	if result.diff != nil && result.diff.Changed {
-		if err := w.notifyMonitorDiff(ctx, row, result.diff, result.checkedAt); err != nil {
+		if err := w.notifyMonitorDiff(ctx, row, result.diff, result.checkedAt, disableOnChangedRun); err != nil {
 			log.Printf("worker: failed notifying monitor=%d: %v", row.ID, err)
+		}
+	}
+
+	if disableOnChangedRun {
+		if err := w.disableMonitorAfterChangedRun(ctx, row.ID, runtime.ID); err != nil {
+			return err
 		}
 	}
 
@@ -441,6 +448,24 @@ func (w *Worker) runMonitor(ctx context.Context, row *ent.Monitor, runtime *ent.
 	}
 
 	return w.pruneCheckHistory(ctx, row.ID, limit)
+}
+
+func (w *Worker) disableMonitorAfterChangedRun(ctx context.Context, monitorID int, runtimeID int) error {
+	if _, err := w.db.Monitor.UpdateOneID(monitorID).
+		SetEnabled(false).
+		SetPauseOnNextChange(false).
+		Save(ctx); err != nil {
+		return err
+	}
+
+	if _, err := w.db.MonitorRuntime.UpdateOneID(runtimeID).
+		SetStatus(monitorruntime.StatusDisabled).
+		ClearNextRunAt().
+		Save(ctx); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (w *Worker) executeWithRetry(ctx context.Context, row *ent.Monitor, runtime *ent.MonitorRuntime) (executionResult, int) {

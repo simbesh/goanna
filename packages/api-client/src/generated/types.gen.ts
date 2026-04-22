@@ -28,6 +28,7 @@ export type Monitor = {
     expectedResponse?: string | null;
     cron: string;
     enabled: boolean;
+    pauseOnNextChange?: boolean;
     status: 'pending' | 'ok' | 'error' | 'retrying' | 'disabled';
     checkCount: number;
     nextRunAt?: string | null;
@@ -67,6 +68,7 @@ export type CreateMonitorRequest = {
     expectedResponse?: string;
     cron: string;
     enabled?: boolean;
+    pauseOnNextChange?: boolean;
     triggerOnCreate?: boolean;
 };
 

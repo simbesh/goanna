@@ -1216,6 +1216,7 @@ type MonitorMutation struct {
 	expected_response           *string
 	cron                        *string
 	enabled                     *bool
+	pause_on_next_change        *bool
 	created_at                  *time.Time
 	updated_at                  *time.Time
 	clearedFields               map[string]struct{}
@@ -1918,6 +1919,42 @@ func (m *MonitorMutation) ResetEnabled() {
 	m.enabled = nil
 }
 
+// SetPauseOnNextChange sets the "pause_on_next_change" field.
+func (m *MonitorMutation) SetPauseOnNextChange(b bool) {
+	m.pause_on_next_change = &b
+}
+
+// PauseOnNextChange returns the value of the "pause_on_next_change" field in the mutation.
+func (m *MonitorMutation) PauseOnNextChange() (r bool, exists bool) {
+	v := m.pause_on_next_change
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPauseOnNextChange returns the old "pause_on_next_change" field's value of the Monitor entity.
+// If the Monitor object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MonitorMutation) OldPauseOnNextChange(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPauseOnNextChange is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPauseOnNextChange requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPauseOnNextChange: %w", err)
+	}
+	return oldValue.PauseOnNextChange, nil
+}
+
+// ResetPauseOnNextChange resets all changes to the "pause_on_next_change" field.
+func (m *MonitorMutation) ResetPauseOnNextChange() {
+	m.pause_on_next_change = nil
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (m *MonitorMutation) SetCreatedAt(t time.Time) {
 	m.created_at = &t
@@ -2171,7 +2208,7 @@ func (m *MonitorMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *MonitorMutation) Fields() []string {
-	fields := make([]string, 0, 15)
+	fields := make([]string, 0, 16)
 	if m.label != nil {
 		fields = append(fields, monitor.FieldLabel)
 	}
@@ -2210,6 +2247,9 @@ func (m *MonitorMutation) Fields() []string {
 	}
 	if m.enabled != nil {
 		fields = append(fields, monitor.FieldEnabled)
+	}
+	if m.pause_on_next_change != nil {
+		fields = append(fields, monitor.FieldPauseOnNextChange)
 	}
 	if m.created_at != nil {
 		fields = append(fields, monitor.FieldCreatedAt)
@@ -2251,6 +2291,8 @@ func (m *MonitorMutation) Field(name string) (ent.Value, bool) {
 		return m.Cron()
 	case monitor.FieldEnabled:
 		return m.Enabled()
+	case monitor.FieldPauseOnNextChange:
+		return m.PauseOnNextChange()
 	case monitor.FieldCreatedAt:
 		return m.CreatedAt()
 	case monitor.FieldUpdatedAt:
@@ -2290,6 +2332,8 @@ func (m *MonitorMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldCron(ctx)
 	case monitor.FieldEnabled:
 		return m.OldEnabled(ctx)
+	case monitor.FieldPauseOnNextChange:
+		return m.OldPauseOnNextChange(ctx)
 	case monitor.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
 	case monitor.FieldUpdatedAt:
@@ -2393,6 +2437,13 @@ func (m *MonitorMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetEnabled(v)
+		return nil
+	case monitor.FieldPauseOnNextChange:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPauseOnNextChange(v)
 		return nil
 	case monitor.FieldCreatedAt:
 		v, ok := value.(time.Time)
@@ -2546,6 +2597,9 @@ func (m *MonitorMutation) ResetField(name string) error {
 		return nil
 	case monitor.FieldEnabled:
 		m.ResetEnabled()
+		return nil
+	case monitor.FieldPauseOnNextChange:
+		m.ResetPauseOnNextChange()
 		return nil
 	case monitor.FieldCreatedAt:
 		m.ResetCreatedAt()

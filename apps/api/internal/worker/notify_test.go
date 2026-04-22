@@ -138,7 +138,7 @@ func TestFormatMonitorDiffMessageIncludesLabelWhenPresent(t *testing.T) {
 		Summary: "object changed (+0 -0 ~1)",
 	}
 
-	message := formatMonitorDiffMessage(row, diff, time.Date(2026, time.February, 25, 10, 30, 0, 0, time.UTC))
+	message := formatMonitorDiffMessage(row, diff, time.Date(2026, time.February, 25, 10, 30, 0, 0, time.UTC), false)
 	if !strings.Contains(message, "Monitor: BTC Markets (#42)") {
 		t.Fatalf("expected labeled monitor line, got %q", message)
 	}
@@ -155,11 +155,28 @@ func TestFormatMonitorDiffMessageFallsBackToIDWhenLabelMissing(t *testing.T) {
 		Summary: "object changed (+0 -0 ~1)",
 	}
 
-	message := formatMonitorDiffMessage(row, diff, time.Date(2026, time.February, 25, 10, 30, 0, 0, time.UTC))
+	message := formatMonitorDiffMessage(row, diff, time.Date(2026, time.February, 25, 10, 30, 0, 0, time.UTC), false)
 	if !strings.Contains(message, "Monitor: 42") {
 		t.Fatalf("expected monitor id line, got %q", message)
 	}
 	if strings.Contains(message, "(#42)") {
 		t.Fatalf("did not expect label suffix when missing, got %q", message)
+	}
+}
+
+func TestFormatMonitorDiffMessageIncludesDisableNoticeWhenRequested(t *testing.T) {
+	row := &ent.Monitor{
+		ID:  42,
+		URL: "https://api.btcmarkets.net/v3/markets",
+	}
+
+	diff := &selectionDiff{
+		Kind:    "object",
+		Summary: "object changed (+0 -0 ~1)",
+	}
+
+	message := formatMonitorDiffMessage(row, diff, time.Date(2026, time.February, 25, 10, 30, 0, 0, time.UTC), true)
+	if !strings.Contains(message, "Monitor disabled after this change (pause on next change).") {
+		t.Fatalf("expected disable notice, got %q", message)
 	}
 }

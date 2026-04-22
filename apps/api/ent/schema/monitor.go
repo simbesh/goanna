@@ -48,6 +48,8 @@ func (Monitor) Fields() []ent.Field {
 			NotEmpty(),
 		field.Bool("enabled").
 			Default(true),
+		field.Bool("pause_on_next_change").
+			Default(false),
 		field.Time("created_at").
 			Default(time.Now).
 			Immutable(),

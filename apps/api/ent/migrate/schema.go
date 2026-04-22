@@ -54,6 +54,7 @@ var (
 		{Name: "expected_response", Type: field.TypeString, Nullable: true},
 		{Name: "cron", Type: field.TypeString},
 		{Name: "enabled", Type: field.TypeBool, Default: true},
+		{Name: "pause_on_next_change", Type: field.TypeBool, Default: false},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
 	}

@@ -71,6 +71,7 @@ type FormState = {
   expectedResponse: string
   cron: string
   enabled: boolean
+  pauseOnNextChange: boolean
   triggerOnCreate: boolean
 }
 
@@ -104,6 +105,7 @@ const defaultForm: FormState = {
   expectedResponse: '',
   cron: '*/5 * * * *',
   enabled: true,
+  pauseOnNextChange: false,
   triggerOnCreate: true,
 }
 
@@ -315,6 +317,7 @@ export function CreateEditMonitorCard({
         expectedResponse: emptyToUndefined(form.expectedResponse),
         cron: form.cron,
         enabled: form.enabled,
+        pauseOnNextChange: form.pauseOnNextChange,
       }
 
       let savedMonitor: MonitorRecord
@@ -765,6 +768,25 @@ export function CreateEditMonitorCard({
                   />
                 </div>
 
+                <div className="flex items-center justify-between rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2">
+                  <Label
+                    htmlFor="pauseOnNextChange"
+                    className="text-sm text-zinc-300"
+                  >
+                    Pause on next change
+                  </Label>
+                  <Switch
+                    id="pauseOnNextChange"
+                    checked={form.pauseOnNextChange}
+                    onCheckedChange={(checked) =>
+                      setForm((current) => ({
+                        ...current,
+                        pauseOnNextChange: checked,
+                      }))
+                    }
+                  />
+                </div>
+
                 {!editingMonitor ? (
                   <div className="flex items-center justify-between rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2">
                     <Label
@@ -1010,6 +1032,7 @@ function mapMonitorToForm(monitor: MonitorRecord): FormState {
     expectedResponse: monitor.expectedResponse ?? '',
     cron: monitor.cron,
     enabled: monitor.enabled,
+    pauseOnNextChange: monitor.pauseOnNextChange,
     triggerOnCreate: true,
   }
 }

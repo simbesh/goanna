@@ -124,6 +124,7 @@ type monitorResponse struct {
 	ExpectedResponse     *string                            `json:"expectedResponse,omitempty"`
 	Cron                 string                             `json:"cron"`
 	Enabled              bool                               `json:"enabled"`
+	PauseOnNextChange    bool                               `json:"pauseOnNextChange"`
 	Status               string                             `json:"status"`
 	CheckCount           int64                              `json:"checkCount"`
 	NextRunAt            *time.Time                         `json:"nextRunAt,omitempty"`
@@ -164,6 +165,7 @@ type createMonitorRequest struct {
 	ExpectedResponse     *string           `json:"expectedResponse"`
 	Cron                 string            `json:"cron"`
 	Enabled              *bool             `json:"enabled"`
+	PauseOnNextChange    *bool             `json:"pauseOnNextChange"`
 	TriggerOnCreate      *bool             `json:"triggerOnCreate"`
 }
 
@@ -186,6 +188,7 @@ type normalizedMonitorRequest struct {
 	expectedResponse     *string
 	cronExpr             string
 	enabled              bool
+	pauseOnNextChange    bool
 }
 
 type testMonitorRequest struct {
@@ -335,6 +338,7 @@ func (s *Server) handleCreateMonitor(w http.ResponseWriter, r *http.Request) {
 		SetCron(input.cronExpr).
 		SetExpectedType(monitor.ExpectedType(input.expectedType)).
 		SetEnabled(input.enabled).
+		SetPauseOnNextChange(input.pauseOnNextChange).
 		SetHeaders(input.headers).
 		SetAuth(input.auth).
 		SetNotificationChannels(input.notificationChannels)
@@ -454,6 +458,7 @@ func (s *Server) handleUpdateMonitor(w http.ResponseWriter, r *http.Request) {
 		SetCron(input.cronExpr).
 		SetExpectedType(monitor.ExpectedType(input.expectedType)).
 		SetEnabled(input.enabled).
+		SetPauseOnNextChange(input.pauseOnNextChange).
 		SetHeaders(input.headers).
 		SetAuth(input.auth).
 		SetNotificationChannels(input.notificationChannels)
@@ -1124,6 +1129,11 @@ func normalizeMonitorRequest(req createMonitorRequest) (normalizedMonitorRequest
 		enabled = *req.Enabled
 	}
 
+	pauseOnNextChange := false
+	if req.PauseOnNextChange != nil {
+		pauseOnNextChange = *req.PauseOnNextChange
+	}
+
 	headers := req.Headers
 	if headers == nil {
 		headers = map[string]string{}
@@ -1158,6 +1168,7 @@ func normalizeMonitorRequest(req createMonitorRequest) (normalizedMonitorRequest
 		expectedResponse:     req.ExpectedResponse,
 		cronExpr:             cronExpr,
 		enabled:              enabled,
+		pauseOnNextChange:    pauseOnNextChange,
 	}, nil
 }
 
@@ -1530,6 +1541,7 @@ func mapMonitor(
 		ExpectedResponse:     truncateOptionalResponseString(row.ExpectedResponse),
 		Cron:                 row.Cron,
 		Enabled:              row.Enabled,
+		PauseOnNextChange:    row.PauseOnNextChange,
 		Status:               status,
 		CheckCount:           checkCount,
 		NextRunAt:            nextRunAt,

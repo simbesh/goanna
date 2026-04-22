@@ -17,7 +17,7 @@ import (
 
 const telegramSendTimeout = 10 * time.Second
 
-func (w *Worker) notifyMonitorDiff(ctx context.Context, row *ent.Monitor, diff *selectionDiff, checkedAt time.Time) error {
+func (w *Worker) notifyMonitorDiff(ctx context.Context, row *ent.Monitor, diff *selectionDiff, checkedAt time.Time, disabledAfterChange bool) error {
 	if diff == nil || !diff.Changed {
 		return nil
 	}
@@ -30,7 +30,7 @@ func (w *Worker) notifyMonitorDiff(ctx context.Context, row *ent.Monitor, diff *
 		return nil
 	}
 
-	message := formatMonitorDiffMessage(row, diff, checkedAt)
+	message := formatMonitorDiffMessage(row, diff, checkedAt, disabledAfterChange)
 	var notifyErr error
 	for _, channel := range channels {
 		status := "sent"
@@ -113,7 +113,7 @@ func (w *Worker) sendTelegramMessage(ctx context.Context, botToken string, chatI
 	return err
 }
 
-func formatMonitorDiffMessage(row *ent.Monitor, diff *selectionDiff, checkedAt time.Time) string {
+func formatMonitorDiffMessage(row *ent.Monitor, diff *selectionDiff, checkedAt time.Time, disabledAfterChange bool) string {
 	monitorLine := fmt.Sprintf("Monitor: %d", row.ID)
 	if monitorLabel := monitorNotificationLabel(row); monitorLabel != "" {
 		monitorLine = fmt.Sprintf("Monitor: %s (#%d)", monitorLabel, row.ID)
@@ -130,6 +130,9 @@ func formatMonitorDiffMessage(row *ent.Monitor, diff *selectionDiff, checkedAt t
 
 	if detail := formatNotificationDetail(diff); detail != "" {
 		lines = append(lines, detail)
+	}
+	if disabledAfterChange {
+		lines = append(lines, "Monitor disabled after this change (pause on next change).")
 	}
 
 	return strings.Join(lines, "\n")

@@ -45,6 +45,8 @@ type Monitor struct {
 	Cron string `json:"cron,omitempty"`
 	// Enabled holds the value of the "enabled" field.
 	Enabled bool `json:"enabled,omitempty"`
+	// PauseOnNextChange holds the value of the "pause_on_next_change" field.
+	PauseOnNextChange bool `json:"pause_on_next_change,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
@@ -104,7 +106,7 @@ func (*Monitor) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case monitor.FieldHeaders, monitor.FieldAuth, monitor.FieldNotificationChannels:
 			values[i] = new([]byte)
-		case monitor.FieldEnabled:
+		case monitor.FieldEnabled, monitor.FieldPauseOnNextChange:
 			values[i] = new(sql.NullBool)
 		case monitor.FieldID:
 			values[i] = new(sql.NullInt64)
@@ -222,6 +224,12 @@ func (_m *Monitor) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.Enabled = value.Bool
 			}
+		case monitor.FieldPauseOnNextChange:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field pause_on_next_change", values[i])
+			} else if value.Valid {
+				_m.PauseOnNextChange = value.Bool
+			}
 		case monitor.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
@@ -333,6 +341,9 @@ func (_m *Monitor) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("enabled=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Enabled))
+	builder.WriteString(", ")
+	builder.WriteString("pause_on_next_change=")
+	builder.WriteString(fmt.Sprintf("%v", _m.PauseOnNextChange))
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))

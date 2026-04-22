@@ -41,6 +41,8 @@ const (
 	FieldCron = "cron"
 	// FieldEnabled holds the string denoting the enabled field in the database.
 	FieldEnabled = "enabled"
+	// FieldPauseOnNextChange holds the string denoting the pause_on_next_change field in the database.
+	FieldPauseOnNextChange = "pause_on_next_change"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
@@ -92,6 +94,7 @@ var Columns = []string{
 	FieldExpectedResponse,
 	FieldCron,
 	FieldEnabled,
+	FieldPauseOnNextChange,
 	FieldCreatedAt,
 	FieldUpdatedAt,
 }
@@ -115,6 +118,8 @@ var (
 	CronValidator func(string) error
 	// DefaultEnabled holds the default value on creation for the "enabled" field.
 	DefaultEnabled bool
+	// DefaultPauseOnNextChange holds the default value on creation for the "pause_on_next_change" field.
+	DefaultPauseOnNextChange bool
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
 	// DefaultUpdatedAt holds the default value on creation for the "updated_at" field.
@@ -206,6 +211,11 @@ func ByCron(opts ...sql.OrderTermOption) OrderOption {
 // ByEnabled orders the results by the enabled field.
 func ByEnabled(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldEnabled, opts...).ToFunc()
+}
+
+// ByPauseOnNextChange orders the results by the pause_on_next_change field.
+func ByPauseOnNextChange(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPauseOnNextChange, opts...).ToFunc()
 }
 
 // ByCreatedAt orders the results by the created_at field.
