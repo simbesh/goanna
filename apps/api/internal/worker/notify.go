@@ -165,6 +165,9 @@ func formatNotificationDetail(diff *selectionDiff) string {
 		if detail := formatPrimitiveArrayNotificationDetail(diff.Details); detail != "" {
 			return detail
 		}
+		if detail := formatGenericArrayNotificationDetail(diff.Details); detail != "" {
+			return detail
+		}
 		return formatNotificationJSONDetails(diff.Details)
 	case "arrayObject":
 		if detail := formatArrayObjectNotificationDetail(diff.Details); detail != "" {
@@ -197,21 +200,42 @@ func formatPrimitiveArrayNotificationDetail(details map[string]any) string {
 	return strings.Join(lines, "\n")
 }
 
+func formatGenericArrayNotificationDetail(details map[string]any) string {
+	lines := make([]string, 0, 2)
+	if added := formatJSONValueForNotification(details["addedEntries"]); added != "" {
+		lines = append(lines, fmt.Sprintf("Added entries: %s", added))
+	}
+	if removed := formatJSONValueForNotification(details["removedEntries"]); removed != "" {
+		lines = append(lines, fmt.Sprintf("Removed entries: %s", removed))
+	}
+
+	return strings.Join(lines, "\n")
+}
+
 func formatArrayObjectNotificationDetail(details map[string]any) string {
 	keyField, _ := details["keyField"].(string)
 	if strings.TrimSpace(keyField) == "" {
 		keyField = "key"
 	}
 
-	lines := make([]string, 0, 3)
+	lines := make([]string, 0, 6)
 	if added := formatStringSliceForNotification(details["added"]); added != "" {
 		lines = append(lines, fmt.Sprintf("Added by %s: %s", keyField, added))
+	}
+	if addedEntries := formatJSONValueForNotification(details["addedEntries"]); addedEntries != "" {
+		lines = append(lines, fmt.Sprintf("Added entries: %s", addedEntries))
 	}
 	if removed := formatStringSliceForNotification(details["removed"]); removed != "" {
 		lines = append(lines, fmt.Sprintf("Removed by %s: %s", keyField, removed))
 	}
+	if removedEntries := formatJSONValueForNotification(details["removedEntries"]); removedEntries != "" {
+		lines = append(lines, fmt.Sprintf("Removed entries: %s", removedEntries))
+	}
 	if updated := formatStringSliceForNotification(details["updated"]); updated != "" {
 		lines = append(lines, fmt.Sprintf("Updated by %s: %s", keyField, updated))
+	}
+	if updatedDetails := formatJSONValueForNotification(details["updatedDetails"]); updatedDetails != "" {
+		lines = append(lines, fmt.Sprintf("Updated details: %s", updatedDetails))
 	}
 
 	return strings.Join(lines, "\n")
@@ -293,6 +317,19 @@ func formatNotificationJSONDetails(details map[string]any) string {
 		return ""
 	}
 	return fmt.Sprintf("Details: %s", truncateNotificationValue(string(encoded)))
+}
+
+func formatJSONValueForNotification(value any) string {
+	if shouldOmitNotificationDetailValue(value) {
+		return ""
+	}
+
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		return ""
+	}
+
+	return truncateNotificationValue(string(encoded))
 }
 
 func compactNotificationDetails(details map[string]any) map[string]any {

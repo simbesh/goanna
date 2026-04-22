@@ -54,6 +54,40 @@ func TestBuildSelectionDiffPrimitiveArray(t *testing.T) {
 	}
 }
 
+func TestBuildSelectionDiffGenericArrayIncludesAddedAndRemovedEntries(t *testing.T) {
+	previous := &selectionSnapshot{Exists: true, Type: "json", Raw: `[["BTC","AUD"],["ETH","AUD"]]`, Value: `[["BTC","AUD"],["ETH","AUD"]]`}
+	current := &selectionSnapshot{Exists: true, Type: "json", Raw: `[["BTC","AUD"],["XRP","AUD"]]`, Value: `[["BTC","AUD"],["XRP","AUD"]]`}
+
+	diff := buildSelectionDiff(previous, current)
+	if diff == nil {
+		t.Fatal("expected diff result")
+	}
+	if diff.Kind != "array" {
+		t.Fatalf("expected array kind, got %q", diff.Kind)
+	}
+
+	addedEntries, ok := diff.Details["addedEntries"].([]any)
+	if !ok || len(addedEntries) != 1 {
+		t.Fatalf("expected one added entry, got %#v", diff.Details["addedEntries"])
+	}
+	addedEntry, ok := addedEntries[0].([]any)
+	if !ok || len(addedEntry) != 2 || addedEntry[0] != "XRP" || addedEntry[1] != "AUD" {
+		t.Fatalf("expected XRP added entry, got %#v", addedEntries[0])
+	}
+
+	removedEntries, ok := diff.Details["removedEntries"].([]any)
+	if !ok || len(removedEntries) != 1 {
+		t.Fatalf("expected one removed entry, got %#v", diff.Details["removedEntries"])
+	}
+	removedEntry, ok := removedEntries[0].([]any)
+	if !ok || len(removedEntry) != 2 || removedEntry[0] != "ETH" || removedEntry[1] != "AUD" {
+		t.Fatalf("expected ETH removed entry, got %#v", removedEntries[0])
+	}
+	if diff.Details["oldCount"] != 2 || diff.Details["newCount"] != 2 {
+		t.Fatalf("expected old/new counts to be retained, got %#v", diff.Details)
+	}
+}
+
 func TestBuildSelectionDiffTypeChanged(t *testing.T) {
 	previous := &selectionSnapshot{Exists: true, Type: "number", Value: "1"}
 	current := &selectionSnapshot{Exists: true, Type: "string", Value: "1"}
@@ -120,6 +154,50 @@ func TestBuildSelectionDiffObjectOmitsEmptyFieldsAndIncludesChanges(t *testing.T
 	}
 	if math.Abs(deltaValue-(-24.1)) > 0.000001 {
 		t.Fatalf("unexpected delta value: %v", deltaValue)
+	}
+}
+
+func TestBuildSelectionDiffArrayObjectIncludesEntryDetails(t *testing.T) {
+	previous := &selectionSnapshot{Exists: true, Type: "json", Raw: `[{"id":"BTC-AUD","price":10},{"id":"ETH-AUD","price":20}]`, Value: `[{"id":"BTC-AUD","price":10},{"id":"ETH-AUD","price":20}]`}
+	current := &selectionSnapshot{Exists: true, Type: "json", Raw: `[{"id":"BTC-AUD","price":11},{"id":"XRP-AUD","price":30}]`, Value: `[{"id":"BTC-AUD","price":11},{"id":"XRP-AUD","price":30}]`}
+
+	diff := buildSelectionDiff(previous, current)
+	if diff == nil {
+		t.Fatal("expected diff result")
+	}
+	if diff.Kind != "arrayObject" {
+		t.Fatalf("expected arrayObject kind, got %q", diff.Kind)
+	}
+
+	addedEntries, ok := diff.Details["addedEntries"].([]map[string]any)
+	if !ok || len(addedEntries) != 1 || addedEntries[0]["id"] != "XRP-AUD" {
+		t.Fatalf("expected XRP-AUD added entry, got %#v", diff.Details["addedEntries"])
+	}
+
+	removedEntries, ok := diff.Details["removedEntries"].([]map[string]any)
+	if !ok || len(removedEntries) != 1 || removedEntries[0]["id"] != "ETH-AUD" {
+		t.Fatalf("expected ETH-AUD removed entry, got %#v", diff.Details["removedEntries"])
+	}
+
+	updatedDetails, ok := diff.Details["updatedDetails"].(map[string]map[string]any)
+	if !ok {
+		t.Fatalf("expected updatedDetails map, got %#v", diff.Details["updatedDetails"])
+	}
+	btcDetails, ok := updatedDetails[`"BTC-AUD"`]
+	if !ok {
+		t.Fatalf("expected BTC-AUD updated details, got %#v", updatedDetails)
+	}
+	changed, ok := btcDetails["changed"].([]string)
+	if !ok || len(changed) != 1 || changed[0] != "price" {
+		t.Fatalf("expected changed field price, got %#v", btcDetails["changed"])
+	}
+	changes, ok := btcDetails["changes"].(map[string]map[string]any)
+	if !ok {
+		t.Fatalf("expected changes map, got %#v", btcDetails["changes"])
+	}
+	price, ok := changes["price"]
+	if !ok || price["old"] != float64(10) || price["new"] != float64(11) || price["delta"] != float64(1) {
+		t.Fatalf("expected price old/new/delta, got %#v", price)
 	}
 }
 

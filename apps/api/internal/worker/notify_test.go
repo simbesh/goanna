@@ -102,6 +102,30 @@ func TestFormatNotificationDetailArrayDecodesStringEntries(t *testing.T) {
 	}
 }
 
+func TestFormatNotificationDetailArrayIncludesGenericEntries(t *testing.T) {
+	diff := &selectionDiff{
+		Kind: "array",
+		Details: map[string]any{
+			"oldCount": 2,
+			"newCount": 3,
+			"addedEntries": []any{
+				map[string]any{"symbol": "XRP-AUD"},
+			},
+			"removedEntries": []any{
+				map[string]any{"symbol": "ETH-AUD"},
+			},
+		},
+	}
+
+	formatted := formatNotificationDetail(diff)
+	if !strings.Contains(formatted, `Added entries: [{"symbol":"XRP-AUD"}]`) {
+		t.Fatalf("expected added entries JSON, got %q", formatted)
+	}
+	if !strings.Contains(formatted, `Removed entries: [{"symbol":"ETH-AUD"}]`) {
+		t.Fatalf("expected removed entries JSON, got %q", formatted)
+	}
+}
+
 func TestFormatNotificationDetailArrayObjectDecodesStringKeys(t *testing.T) {
 	diff := &selectionDiff{
 		Kind: "arrayObject",
@@ -110,6 +134,23 @@ func TestFormatNotificationDetailArrayObjectDecodesStringKeys(t *testing.T) {
 			"added":    []string{`"BTC-AUD"`},
 			"removed":  []string{`"ETH-AUD"`},
 			"updated":  []string{`"XRP-AUD"`},
+			"addedEntries": []map[string]any{
+				{"id": "BTC-AUD", "status": "online"},
+			},
+			"removedEntries": []map[string]any{
+				{"id": "ETH-AUD", "status": "offline"},
+			},
+			"updatedDetails": map[string]map[string]any{
+				`"XRP-AUD"`: {
+					"changed": []string{"status"},
+					"changes": map[string]map[string]any{
+						"status": {
+							"old": "offline",
+							"new": "online",
+						},
+					},
+				},
+			},
 		},
 	}
 
@@ -122,6 +163,15 @@ func TestFormatNotificationDetailArrayObjectDecodesStringKeys(t *testing.T) {
 	}
 	if !strings.Contains(formatted, "Updated by id: XRP-AUD") {
 		t.Fatalf("expected decoded updated entry, got %q", formatted)
+	}
+	if !strings.Contains(formatted, `Added entries: [{"id":"BTC-AUD","status":"online"}]`) {
+		t.Fatalf("expected added entries payload, got %q", formatted)
+	}
+	if !strings.Contains(formatted, `Removed entries: [{"id":"ETH-AUD","status":"offline"}]`) {
+		t.Fatalf("expected removed entries payload, got %q", formatted)
+	}
+	if !strings.Contains(formatted, `Updated details: {"\"XRP-AUD\"":{"changed":["status"],"changes":{"status":{"new":"online","old":"offline"}}}}`) {
+		t.Fatalf("expected updated details payload, got %q", formatted)
 	}
 }
 

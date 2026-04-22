@@ -254,16 +254,74 @@ func buildArrayDiff(previous *selectionSnapshot, current *selectionSnapshot) *se
 
 	changed := !reflect.DeepEqual(previousArray, currentArray)
 	summary := "array unchanged"
+	details := map[string]any{"oldCount": len(previousArray), "newCount": len(currentArray)}
 	if changed {
 		summary = fmt.Sprintf("array changed (%d to %d items)", len(previousArray), len(currentArray))
+		addedEntries, removedEntries := diffArrayEntries(previousArray, currentArray)
+		if len(addedEntries) > 0 {
+			details["addedEntries"] = addedEntries
+		}
+		if len(removedEntries) > 0 {
+			details["removedEntries"] = removedEntries
+		}
 	}
 
 	return &selectionDiff{
 		Kind:    "array",
 		Changed: changed,
 		Summary: summary,
-		Details: map[string]any{"oldCount": len(previousArray), "newCount": len(currentArray)},
+		Details: details,
 	}
+}
+
+func diffArrayEntries(previousArray []any, currentArray []any) ([]any, []any) {
+	previousCounts := arrayValueCounts(previousArray)
+	currentCounts := arrayValueCounts(currentArray)
+	addedCounts := mapCountDiff(currentCounts, previousCounts)
+	removedCounts := mapCountDiff(previousCounts, currentCounts)
+
+	return collectArrayEntries(currentArray, addedCounts), collectArrayEntries(previousArray, removedCounts)
+}
+
+func arrayValueCounts(values []any) map[string]int {
+	counts := make(map[string]int, len(values))
+	for _, value := range values {
+		encoded, err := json.Marshal(value)
+		if err != nil {
+			counts[fmt.Sprintf("%v", value)]++
+			continue
+		}
+		counts[string(encoded)]++
+	}
+
+	return counts
+}
+
+func collectArrayEntries(values []any, remaining map[string]int) []any {
+	if len(remaining) == 0 {
+		return nil
+	}
+
+	entries := make([]any, 0)
+	for _, value := range values {
+		encoded, err := json.Marshal(value)
+		key := fmt.Sprintf("%v", value)
+		if err == nil {
+			key = string(encoded)
+		}
+
+		if remaining[key] == 0 {
+			continue
+		}
+
+		entries = append(entries, value)
+		remaining[key]--
+		if remaining[key] == 0 {
+			delete(remaining, key)
+		}
+	}
+
+	return entries
 }
 
 func parseJSONArrayPair(previous *selectionSnapshot, current *selectionSnapshot) ([]any, []any, bool) {
@@ -336,25 +394,37 @@ func buildKeyedObjectArrayDiff(previousArray []any, currentArray []any) *selecti
 	added := make([]string, 0)
 	removed := make([]string, 0)
 	updated := make([]string, 0)
+	addedEntries := make([]map[string]any, 0)
+	removedEntries := make([]map[string]any, 0)
+	updatedDetails := map[string]map[string]any{}
 
 	for key := range currentMap {
 		if _, ok := previousMap[key]; !ok {
 			added = append(added, key)
+			addedEntries = append(addedEntries, currentMap[key])
 		}
 	}
 	for key := range previousMap {
 		if _, ok := currentMap[key]; !ok {
 			removed = append(removed, key)
+			removedEntries = append(removedEntries, previousMap[key])
 			continue
 		}
 		if !reflect.DeepEqual(previousMap[key], currentMap[key]) {
 			updated = append(updated, key)
+			updatedDetails[key] = buildObjectChangeDetails(previousMap[key], currentMap[key])
 		}
 	}
 
 	sort.Strings(added)
 	sort.Strings(removed)
 	sort.Strings(updated)
+	sort.Slice(addedEntries, func(left int, right int) bool {
+		return stableJSON(addedEntries[left][keyField]) < stableJSON(addedEntries[right][keyField])
+	})
+	sort.Slice(removedEntries, func(left int, right int) bool {
+		return stableJSON(removedEntries[left][keyField]) < stableJSON(removedEntries[right][keyField])
+	})
 
 	changed := len(added) > 0 || len(removed) > 0 || len(updated) > 0
 	summary := "array unchanged"
@@ -362,17 +432,55 @@ func buildKeyedObjectArrayDiff(previousArray []any, currentArray []any) *selecti
 		summary = fmt.Sprintf("array objects changed (+%d -%d ~%d)", len(added), len(removed), len(updated))
 	}
 
+	details := map[string]any{
+		"keyField": keyField,
+		"added":    added,
+		"removed":  removed,
+		"updated":  updated,
+	}
+	if len(addedEntries) > 0 {
+		details["addedEntries"] = addedEntries
+	}
+	if len(removedEntries) > 0 {
+		details["removedEntries"] = removedEntries
+	}
+	if len(updatedDetails) > 0 {
+		details["updatedDetails"] = updatedDetails
+	}
+
 	return &selectionDiff{
 		Kind:    "arrayObject",
 		Changed: changed,
 		Summary: summary,
-		Details: map[string]any{
-			"keyField": keyField,
-			"added":    added,
-			"removed":  removed,
-			"updated":  updated,
-		},
+		Details: details,
 	}
+}
+
+func buildObjectChangeDetails(previous map[string]any, current map[string]any) map[string]any {
+	added := make([]string, 0)
+	removed := make([]string, 0)
+	changedPaths := make([]string, 0)
+	changes := map[string]map[string]any{}
+	collectObjectDiff("", previous, current, &added, &removed, &changedPaths, changes)
+	sort.Strings(added)
+	sort.Strings(removed)
+	sort.Strings(changedPaths)
+
+	details := map[string]any{}
+	if len(added) > 0 {
+		details["added"] = added
+	}
+	if len(removed) > 0 {
+		details["removed"] = removed
+	}
+	if len(changedPaths) > 0 {
+		details["changed"] = changedPaths
+	}
+	if len(changes) > 0 {
+		details["changes"] = changes
+	}
+
+	return details
 }
 
 func buildObjectDiff(previous *selectionSnapshot, current *selectionSnapshot) *selectionDiff {
