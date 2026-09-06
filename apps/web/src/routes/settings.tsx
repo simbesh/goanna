@@ -327,7 +327,7 @@ function SettingsPage() {
               <form onSubmit={onSaveRuntime} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="checks-history-limit">
-                    Checks History Limit (global)
+                    History Limit (global)
                   </Label>
                   <Input
                     id="checks-history-limit"
@@ -342,8 +342,8 @@ function SettingsPage() {
                     className="bg-zinc-950"
                   />
                   <p className="text-xs text-zinc-400">
-                    Worker keeps only the latest N checks per monitor and
-                    deletes older entries.
+                    Keeps the latest N history entries per monitor, including
+                    changes and error/recovery transitions.
                   </p>
                 </div>
 

@@ -119,6 +119,62 @@ func (_c *MonitorRuntimeCreate) SetNillableConsecutiveErrors(v *int64) *MonitorR
 	return _c
 }
 
+// SetLastSelectionType sets the "last_selection_type" field.
+func (_c *MonitorRuntimeCreate) SetLastSelectionType(v string) *MonitorRuntimeCreate {
+	_c.mutation.SetLastSelectionType(v)
+	return _c
+}
+
+// SetNillableLastSelectionType sets the "last_selection_type" field if the given value is not nil.
+func (_c *MonitorRuntimeCreate) SetNillableLastSelectionType(v *string) *MonitorRuntimeCreate {
+	if v != nil {
+		_c.SetLastSelectionType(*v)
+	}
+	return _c
+}
+
+// SetLastSelectionValue sets the "last_selection_value" field.
+func (_c *MonitorRuntimeCreate) SetLastSelectionValue(v string) *MonitorRuntimeCreate {
+	_c.mutation.SetLastSelectionValue(v)
+	return _c
+}
+
+// SetNillableLastSelectionValue sets the "last_selection_value" field if the given value is not nil.
+func (_c *MonitorRuntimeCreate) SetNillableLastSelectionValue(v *string) *MonitorRuntimeCreate {
+	if v != nil {
+		_c.SetLastSelectionValue(*v)
+	}
+	return _c
+}
+
+// SetLastChangedAt sets the "last_changed_at" field.
+func (_c *MonitorRuntimeCreate) SetLastChangedAt(v time.Time) *MonitorRuntimeCreate {
+	_c.mutation.SetLastChangedAt(v)
+	return _c
+}
+
+// SetNillableLastChangedAt sets the "last_changed_at" field if the given value is not nil.
+func (_c *MonitorRuntimeCreate) SetNillableLastChangedAt(v *time.Time) *MonitorRuntimeCreate {
+	if v != nil {
+		_c.SetLastChangedAt(*v)
+	}
+	return _c
+}
+
+// SetLastCheckStatus sets the "last_check_status" field.
+func (_c *MonitorRuntimeCreate) SetLastCheckStatus(v string) *MonitorRuntimeCreate {
+	_c.mutation.SetLastCheckStatus(v)
+	return _c
+}
+
+// SetNillableLastCheckStatus sets the "last_check_status" field if the given value is not nil.
+func (_c *MonitorRuntimeCreate) SetNillableLastCheckStatus(v *string) *MonitorRuntimeCreate {
+	if v != nil {
+		_c.SetLastCheckStatus(*v)
+	}
+	return _c
+}
+
 // SetLastCheckAt sets the "last_check_at" field.
 func (_c *MonitorRuntimeCreate) SetLastCheckAt(v time.Time) *MonitorRuntimeCreate {
 	_c.mutation.SetLastCheckAt(v)
@@ -398,6 +454,22 @@ func (_c *MonitorRuntimeCreate) createSpec() (*MonitorRuntime, *sqlgraph.CreateS
 	if value, ok := _c.mutation.ConsecutiveErrors(); ok {
 		_spec.SetField(monitorruntime.FieldConsecutiveErrors, field.TypeInt64, value)
 		_node.ConsecutiveErrors = value
+	}
+	if value, ok := _c.mutation.LastSelectionType(); ok {
+		_spec.SetField(monitorruntime.FieldLastSelectionType, field.TypeString, value)
+		_node.LastSelectionType = &value
+	}
+	if value, ok := _c.mutation.LastSelectionValue(); ok {
+		_spec.SetField(monitorruntime.FieldLastSelectionValue, field.TypeString, value)
+		_node.LastSelectionValue = &value
+	}
+	if value, ok := _c.mutation.LastChangedAt(); ok {
+		_spec.SetField(monitorruntime.FieldLastChangedAt, field.TypeTime, value)
+		_node.LastChangedAt = &value
+	}
+	if value, ok := _c.mutation.LastCheckStatus(); ok {
+		_spec.SetField(monitorruntime.FieldLastCheckStatus, field.TypeString, value)
+		_node.LastCheckStatus = &value
 	}
 	if value, ok := _c.mutation.LastCheckAt(); ok {
 		_spec.SetField(monitorruntime.FieldLastCheckAt, field.TypeTime, value)

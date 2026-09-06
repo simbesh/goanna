@@ -90,7 +90,7 @@ func init() {
 	// monitorruntime.DefaultConsecutiveErrors holds the default value on creation for the consecutive_errors field.
 	monitorruntime.DefaultConsecutiveErrors = monitorruntimeDescConsecutiveErrors.Default.(int64)
 	// monitorruntimeDescUpdatedAt is the schema descriptor for updated_at field.
-	monitorruntimeDescUpdatedAt := monitorruntimeFields[14].Descriptor()
+	monitorruntimeDescUpdatedAt := monitorruntimeFields[18].Descriptor()
 	// monitorruntime.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	monitorruntime.DefaultUpdatedAt = monitorruntimeDescUpdatedAt.Default.(func() time.Time)
 	// monitorruntime.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.

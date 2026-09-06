@@ -13,7 +13,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-func TestInsertCheckResultStoresSelectionValueOnlyWhenValueChanges(t *testing.T) {
+func TestInsertCheckResultStoresFullSelectionForEachHistoryEntry(t *testing.T) {
 	ctx := context.Background()
 	client := enttest.Open(t, "sqlite3", "file:worker-selection-storage?mode=memory&cache=shared&_fk=1")
 	defer client.Close()
@@ -73,7 +73,7 @@ func TestInsertCheckResultStoresSelectionValueOnlyWhenValueChanges(t *testing.T)
 	}
 
 	assertStoredSelectionValue(t, rows[0], initial.Type, initial.Value)
-	assertStoredSelectionValue(t, rows[1], unchanged.Type, nil)
+	assertStoredSelectionValue(t, rows[1], unchanged.Type, unchanged.Value)
 	assertStoredSelectionValue(t, rows[2], changed.Type, changed.Value)
 }
 

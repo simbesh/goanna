@@ -14,6 +14,7 @@ import (
 
 	"goanna/apps/api/ent"
 	"goanna/apps/api/internal/server"
+	"goanna/apps/api/internal/startup"
 	"goanna/apps/api/internal/worker"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -44,6 +45,20 @@ func main() {
 		logger.Error("failed running schema migrations", "error", err)
 		os.Exit(1)
 	}
+
+	// Temporary cleanup for installations that stored every check.
+	removed, err := startup.CompactCheckHistory(context.Background(), client)
+	if err != nil {
+		logger.Error("failed compacting check history", "error", err)
+		os.Exit(1)
+	}
+	if removed > 0 {
+		if err := startup.ReclaimSQLiteSpace(context.Background(), *dsn); err != nil {
+			logger.Error("failed reclaiming check history space", "error", err)
+			os.Exit(1)
+		}
+	}
+	logger.Info("check history cleanup complete", "removed", removed)
 
 	mux := http.NewServeMux()
 	maxResponseBodyBytes := loadPositiveIntEnv(

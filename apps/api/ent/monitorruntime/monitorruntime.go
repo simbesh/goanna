@@ -29,6 +29,14 @@ const (
 	FieldConsecutiveSuccesses = "consecutive_successes"
 	// FieldConsecutiveErrors holds the string denoting the consecutive_errors field in the database.
 	FieldConsecutiveErrors = "consecutive_errors"
+	// FieldLastSelectionType holds the string denoting the last_selection_type field in the database.
+	FieldLastSelectionType = "last_selection_type"
+	// FieldLastSelectionValue holds the string denoting the last_selection_value field in the database.
+	FieldLastSelectionValue = "last_selection_value"
+	// FieldLastChangedAt holds the string denoting the last_changed_at field in the database.
+	FieldLastChangedAt = "last_changed_at"
+	// FieldLastCheckStatus holds the string denoting the last_check_status field in the database.
+	FieldLastCheckStatus = "last_check_status"
 	// FieldLastCheckAt holds the string denoting the last_check_at field in the database.
 	FieldLastCheckAt = "last_check_at"
 	// FieldLastSuccessAt holds the string denoting the last_success_at field in the database.
@@ -68,6 +76,10 @@ var Columns = []string{
 	FieldRetryCount,
 	FieldConsecutiveSuccesses,
 	FieldConsecutiveErrors,
+	FieldLastSelectionType,
+	FieldLastSelectionValue,
+	FieldLastChangedAt,
+	FieldLastCheckStatus,
 	FieldLastCheckAt,
 	FieldLastSuccessAt,
 	FieldLastErrorAt,
@@ -188,6 +200,26 @@ func ByConsecutiveSuccesses(opts ...sql.OrderTermOption) OrderOption {
 // ByConsecutiveErrors orders the results by the consecutive_errors field.
 func ByConsecutiveErrors(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldConsecutiveErrors, opts...).ToFunc()
+}
+
+// ByLastSelectionType orders the results by the last_selection_type field.
+func ByLastSelectionType(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLastSelectionType, opts...).ToFunc()
+}
+
+// ByLastSelectionValue orders the results by the last_selection_value field.
+func ByLastSelectionValue(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLastSelectionValue, opts...).ToFunc()
+}
+
+// ByLastChangedAt orders the results by the last_changed_at field.
+func ByLastChangedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLastChangedAt, opts...).ToFunc()
+}
+
+// ByLastCheckStatus orders the results by the last_check_status field.
+func ByLastCheckStatus(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLastCheckStatus, opts...).ToFunc()
 }
 
 // ByLastCheckAt orders the results by the last_check_at field.

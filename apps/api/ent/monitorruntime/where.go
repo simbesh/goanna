@@ -85,6 +85,26 @@ func ConsecutiveErrors(v int64) predicate.MonitorRuntime {
 	return predicate.MonitorRuntime(sql.FieldEQ(FieldConsecutiveErrors, v))
 }
 
+// LastSelectionType applies equality check predicate on the "last_selection_type" field. It's identical to LastSelectionTypeEQ.
+func LastSelectionType(v string) predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldEQ(FieldLastSelectionType, v))
+}
+
+// LastSelectionValue applies equality check predicate on the "last_selection_value" field. It's identical to LastSelectionValueEQ.
+func LastSelectionValue(v string) predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldEQ(FieldLastSelectionValue, v))
+}
+
+// LastChangedAt applies equality check predicate on the "last_changed_at" field. It's identical to LastChangedAtEQ.
+func LastChangedAt(v time.Time) predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldEQ(FieldLastChangedAt, v))
+}
+
+// LastCheckStatus applies equality check predicate on the "last_check_status" field. It's identical to LastCheckStatusEQ.
+func LastCheckStatus(v string) predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldEQ(FieldLastCheckStatus, v))
+}
+
 // LastCheckAt applies equality check predicate on the "last_check_at" field. It's identical to LastCheckAtEQ.
 func LastCheckAt(v time.Time) predicate.MonitorRuntime {
 	return predicate.MonitorRuntime(sql.FieldEQ(FieldLastCheckAt, v))
@@ -383,6 +403,281 @@ func ConsecutiveErrorsLT(v int64) predicate.MonitorRuntime {
 // ConsecutiveErrorsLTE applies the LTE predicate on the "consecutive_errors" field.
 func ConsecutiveErrorsLTE(v int64) predicate.MonitorRuntime {
 	return predicate.MonitorRuntime(sql.FieldLTE(FieldConsecutiveErrors, v))
+}
+
+// LastSelectionTypeEQ applies the EQ predicate on the "last_selection_type" field.
+func LastSelectionTypeEQ(v string) predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldEQ(FieldLastSelectionType, v))
+}
+
+// LastSelectionTypeNEQ applies the NEQ predicate on the "last_selection_type" field.
+func LastSelectionTypeNEQ(v string) predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldNEQ(FieldLastSelectionType, v))
+}
+
+// LastSelectionTypeIn applies the In predicate on the "last_selection_type" field.
+func LastSelectionTypeIn(vs ...string) predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldIn(FieldLastSelectionType, vs...))
+}
+
+// LastSelectionTypeNotIn applies the NotIn predicate on the "last_selection_type" field.
+func LastSelectionTypeNotIn(vs ...string) predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldNotIn(FieldLastSelectionType, vs...))
+}
+
+// LastSelectionTypeGT applies the GT predicate on the "last_selection_type" field.
+func LastSelectionTypeGT(v string) predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldGT(FieldLastSelectionType, v))
+}
+
+// LastSelectionTypeGTE applies the GTE predicate on the "last_selection_type" field.
+func LastSelectionTypeGTE(v string) predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldGTE(FieldLastSelectionType, v))
+}
+
+// LastSelectionTypeLT applies the LT predicate on the "last_selection_type" field.
+func LastSelectionTypeLT(v string) predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldLT(FieldLastSelectionType, v))
+}
+
+// LastSelectionTypeLTE applies the LTE predicate on the "last_selection_type" field.
+func LastSelectionTypeLTE(v string) predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldLTE(FieldLastSelectionType, v))
+}
+
+// LastSelectionTypeContains applies the Contains predicate on the "last_selection_type" field.
+func LastSelectionTypeContains(v string) predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldContains(FieldLastSelectionType, v))
+}
+
+// LastSelectionTypeHasPrefix applies the HasPrefix predicate on the "last_selection_type" field.
+func LastSelectionTypeHasPrefix(v string) predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldHasPrefix(FieldLastSelectionType, v))
+}
+
+// LastSelectionTypeHasSuffix applies the HasSuffix predicate on the "last_selection_type" field.
+func LastSelectionTypeHasSuffix(v string) predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldHasSuffix(FieldLastSelectionType, v))
+}
+
+// LastSelectionTypeIsNil applies the IsNil predicate on the "last_selection_type" field.
+func LastSelectionTypeIsNil() predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldIsNull(FieldLastSelectionType))
+}
+
+// LastSelectionTypeNotNil applies the NotNil predicate on the "last_selection_type" field.
+func LastSelectionTypeNotNil() predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldNotNull(FieldLastSelectionType))
+}
+
+// LastSelectionTypeEqualFold applies the EqualFold predicate on the "last_selection_type" field.
+func LastSelectionTypeEqualFold(v string) predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldEqualFold(FieldLastSelectionType, v))
+}
+
+// LastSelectionTypeContainsFold applies the ContainsFold predicate on the "last_selection_type" field.
+func LastSelectionTypeContainsFold(v string) predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldContainsFold(FieldLastSelectionType, v))
+}
+
+// LastSelectionValueEQ applies the EQ predicate on the "last_selection_value" field.
+func LastSelectionValueEQ(v string) predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldEQ(FieldLastSelectionValue, v))
+}
+
+// LastSelectionValueNEQ applies the NEQ predicate on the "last_selection_value" field.
+func LastSelectionValueNEQ(v string) predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldNEQ(FieldLastSelectionValue, v))
+}
+
+// LastSelectionValueIn applies the In predicate on the "last_selection_value" field.
+func LastSelectionValueIn(vs ...string) predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldIn(FieldLastSelectionValue, vs...))
+}
+
+// LastSelectionValueNotIn applies the NotIn predicate on the "last_selection_value" field.
+func LastSelectionValueNotIn(vs ...string) predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldNotIn(FieldLastSelectionValue, vs...))
+}
+
+// LastSelectionValueGT applies the GT predicate on the "last_selection_value" field.
+func LastSelectionValueGT(v string) predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldGT(FieldLastSelectionValue, v))
+}
+
+// LastSelectionValueGTE applies the GTE predicate on the "last_selection_value" field.
+func LastSelectionValueGTE(v string) predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldGTE(FieldLastSelectionValue, v))
+}
+
+// LastSelectionValueLT applies the LT predicate on the "last_selection_value" field.
+func LastSelectionValueLT(v string) predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldLT(FieldLastSelectionValue, v))
+}
+
+// LastSelectionValueLTE applies the LTE predicate on the "last_selection_value" field.
+func LastSelectionValueLTE(v string) predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldLTE(FieldLastSelectionValue, v))
+}
+
+// LastSelectionValueContains applies the Contains predicate on the "last_selection_value" field.
+func LastSelectionValueContains(v string) predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldContains(FieldLastSelectionValue, v))
+}
+
+// LastSelectionValueHasPrefix applies the HasPrefix predicate on the "last_selection_value" field.
+func LastSelectionValueHasPrefix(v string) predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldHasPrefix(FieldLastSelectionValue, v))
+}
+
+// LastSelectionValueHasSuffix applies the HasSuffix predicate on the "last_selection_value" field.
+func LastSelectionValueHasSuffix(v string) predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldHasSuffix(FieldLastSelectionValue, v))
+}
+
+// LastSelectionValueIsNil applies the IsNil predicate on the "last_selection_value" field.
+func LastSelectionValueIsNil() predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldIsNull(FieldLastSelectionValue))
+}
+
+// LastSelectionValueNotNil applies the NotNil predicate on the "last_selection_value" field.
+func LastSelectionValueNotNil() predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldNotNull(FieldLastSelectionValue))
+}
+
+// LastSelectionValueEqualFold applies the EqualFold predicate on the "last_selection_value" field.
+func LastSelectionValueEqualFold(v string) predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldEqualFold(FieldLastSelectionValue, v))
+}
+
+// LastSelectionValueContainsFold applies the ContainsFold predicate on the "last_selection_value" field.
+func LastSelectionValueContainsFold(v string) predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldContainsFold(FieldLastSelectionValue, v))
+}
+
+// LastChangedAtEQ applies the EQ predicate on the "last_changed_at" field.
+func LastChangedAtEQ(v time.Time) predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldEQ(FieldLastChangedAt, v))
+}
+
+// LastChangedAtNEQ applies the NEQ predicate on the "last_changed_at" field.
+func LastChangedAtNEQ(v time.Time) predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldNEQ(FieldLastChangedAt, v))
+}
+
+// LastChangedAtIn applies the In predicate on the "last_changed_at" field.
+func LastChangedAtIn(vs ...time.Time) predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldIn(FieldLastChangedAt, vs...))
+}
+
+// LastChangedAtNotIn applies the NotIn predicate on the "last_changed_at" field.
+func LastChangedAtNotIn(vs ...time.Time) predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldNotIn(FieldLastChangedAt, vs...))
+}
+
+// LastChangedAtGT applies the GT predicate on the "last_changed_at" field.
+func LastChangedAtGT(v time.Time) predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldGT(FieldLastChangedAt, v))
+}
+
+// LastChangedAtGTE applies the GTE predicate on the "last_changed_at" field.
+func LastChangedAtGTE(v time.Time) predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldGTE(FieldLastChangedAt, v))
+}
+
+// LastChangedAtLT applies the LT predicate on the "last_changed_at" field.
+func LastChangedAtLT(v time.Time) predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldLT(FieldLastChangedAt, v))
+}
+
+// LastChangedAtLTE applies the LTE predicate on the "last_changed_at" field.
+func LastChangedAtLTE(v time.Time) predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldLTE(FieldLastChangedAt, v))
+}
+
+// LastChangedAtIsNil applies the IsNil predicate on the "last_changed_at" field.
+func LastChangedAtIsNil() predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldIsNull(FieldLastChangedAt))
+}
+
+// LastChangedAtNotNil applies the NotNil predicate on the "last_changed_at" field.
+func LastChangedAtNotNil() predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldNotNull(FieldLastChangedAt))
+}
+
+// LastCheckStatusEQ applies the EQ predicate on the "last_check_status" field.
+func LastCheckStatusEQ(v string) predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldEQ(FieldLastCheckStatus, v))
+}
+
+// LastCheckStatusNEQ applies the NEQ predicate on the "last_check_status" field.
+func LastCheckStatusNEQ(v string) predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldNEQ(FieldLastCheckStatus, v))
+}
+
+// LastCheckStatusIn applies the In predicate on the "last_check_status" field.
+func LastCheckStatusIn(vs ...string) predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldIn(FieldLastCheckStatus, vs...))
+}
+
+// LastCheckStatusNotIn applies the NotIn predicate on the "last_check_status" field.
+func LastCheckStatusNotIn(vs ...string) predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldNotIn(FieldLastCheckStatus, vs...))
+}
+
+// LastCheckStatusGT applies the GT predicate on the "last_check_status" field.
+func LastCheckStatusGT(v string) predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldGT(FieldLastCheckStatus, v))
+}
+
+// LastCheckStatusGTE applies the GTE predicate on the "last_check_status" field.
+func LastCheckStatusGTE(v string) predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldGTE(FieldLastCheckStatus, v))
+}
+
+// LastCheckStatusLT applies the LT predicate on the "last_check_status" field.
+func LastCheckStatusLT(v string) predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldLT(FieldLastCheckStatus, v))
+}
+
+// LastCheckStatusLTE applies the LTE predicate on the "last_check_status" field.
+func LastCheckStatusLTE(v string) predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldLTE(FieldLastCheckStatus, v))
+}
+
+// LastCheckStatusContains applies the Contains predicate on the "last_check_status" field.
+func LastCheckStatusContains(v string) predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldContains(FieldLastCheckStatus, v))
+}
+
+// LastCheckStatusHasPrefix applies the HasPrefix predicate on the "last_check_status" field.
+func LastCheckStatusHasPrefix(v string) predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldHasPrefix(FieldLastCheckStatus, v))
+}
+
+// LastCheckStatusHasSuffix applies the HasSuffix predicate on the "last_check_status" field.
+func LastCheckStatusHasSuffix(v string) predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldHasSuffix(FieldLastCheckStatus, v))
+}
+
+// LastCheckStatusIsNil applies the IsNil predicate on the "last_check_status" field.
+func LastCheckStatusIsNil() predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldIsNull(FieldLastCheckStatus))
+}
+
+// LastCheckStatusNotNil applies the NotNil predicate on the "last_check_status" field.
+func LastCheckStatusNotNil() predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldNotNull(FieldLastCheckStatus))
+}
+
+// LastCheckStatusEqualFold applies the EqualFold predicate on the "last_check_status" field.
+func LastCheckStatusEqualFold(v string) predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldEqualFold(FieldLastCheckStatus, v))
+}
+
+// LastCheckStatusContainsFold applies the ContainsFold predicate on the "last_check_status" field.
+func LastCheckStatusContainsFold(v string) predicate.MonitorRuntime {
+	return predicate.MonitorRuntime(sql.FieldContainsFold(FieldLastCheckStatus, v))
 }
 
 // LastCheckAtEQ applies the EQ predicate on the "last_check_at" field.

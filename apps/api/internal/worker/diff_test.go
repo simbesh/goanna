@@ -310,3 +310,41 @@ func TestBuildSelectionDiffNumberDeltaRounded(t *testing.T) {
 		t.Fatalf("expected rounded delta 2.6, got %v", deltaValue)
 	}
 }
+
+func TestBuildSelectionDiffArrayIgnoresOrder(t *testing.T) {
+	cases := []struct {
+		name     string
+		previous string
+		current  string
+		changed  bool
+	}{
+		{"strings", `["BTC-AUD","ETH-AUD"]`, `["ETH-AUD","BTC-AUD"]`, false},
+		{"mixed primitives", `[1,"1",true,null]`, `[null,true,"1",1]`, false},
+		{"duplicates reordered", `["a","a","b"]`, `["b","a","a"]`, false},
+		{"duplicate count changed", `["a","a","b"]`, `["b","b","a"]`, true},
+		{"added while reordering", `["a","b"]`, `["b","a","c"]`, true},
+		{"removed while reordering", `["a","b","c"]`, `["c","a"]`, true},
+		{"keyed objects", `[{"id":1},{"id":2}]`, `[{"id":2},{"id":1}]`, false},
+		{"unkeyed objects", `[{"instId":"BTC-AUD"},{"instId":"ETH-AUD"}]`, `[{"instId":"ETH-AUD"},{"instId":"BTC-AUD"}]`, false},
+		{"object duplicate count changed", `[{"x":1},{"x":1},{"x":2}]`, `[{"x":2},{"x":2},{"x":1}]`, true},
+		{"array entries", `[[1,2],[3,4]]`, `[[3,4],[1,2]]`, false},
+		{"mixed entries", `[{"x":1},null,2]`, `[2,{"x":1},null]`, false},
+		{"empty", `[]`, `[]`, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			previous := &selectionSnapshot{Exists: true, Type: "json", Raw: tc.previous, Value: tc.previous}
+			current := &selectionSnapshot{Exists: true, Type: "json", Raw: tc.current, Value: tc.current}
+			diff := buildSelectionDiff(previous, current)
+			if diff == nil {
+				t.Fatal("expected diff result")
+			}
+			if diff.Changed != tc.changed {
+				t.Fatalf("expected changed %t, got %#v", tc.changed, diff)
+			}
+			if !tc.changed && diff.Summary != "array unchanged" {
+				t.Fatalf("expected unchanged summary, got %q", diff.Summary)
+			}
+		})
+	}
+}

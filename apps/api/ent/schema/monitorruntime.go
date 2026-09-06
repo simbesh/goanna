@@ -31,6 +31,10 @@ func (MonitorRuntime) Fields() []ent.Field {
 			Default(0),
 		field.Int64("consecutive_errors").
 			Default(0),
+		field.String("last_selection_type").Optional().Nillable(),
+		field.String("last_selection_value").Optional().Nillable(),
+		field.Time("last_changed_at").Optional().Nillable(),
+		field.String("last_check_status").Optional().Nillable(),
 		field.Time("last_check_at").
 			Optional().
 			Nillable(),

@@ -32,6 +32,14 @@ type MonitorRuntime struct {
 	ConsecutiveSuccesses int64 `json:"consecutive_successes,omitempty"`
 	// ConsecutiveErrors holds the value of the "consecutive_errors" field.
 	ConsecutiveErrors int64 `json:"consecutive_errors,omitempty"`
+	// LastSelectionType holds the value of the "last_selection_type" field.
+	LastSelectionType *string `json:"last_selection_type,omitempty"`
+	// LastSelectionValue holds the value of the "last_selection_value" field.
+	LastSelectionValue *string `json:"last_selection_value,omitempty"`
+	// LastChangedAt holds the value of the "last_changed_at" field.
+	LastChangedAt *time.Time `json:"last_changed_at,omitempty"`
+	// LastCheckStatus holds the value of the "last_check_status" field.
+	LastCheckStatus *string `json:"last_check_status,omitempty"`
 	// LastCheckAt holds the value of the "last_check_at" field.
 	LastCheckAt *time.Time `json:"last_check_at,omitempty"`
 	// LastSuccessAt holds the value of the "last_success_at" field.
@@ -82,9 +90,9 @@ func (*MonitorRuntime) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case monitorruntime.FieldID, monitorruntime.FieldCheckCount, monitorruntime.FieldSuccessCount, monitorruntime.FieldErrorCount, monitorruntime.FieldRetryCount, monitorruntime.FieldConsecutiveSuccesses, monitorruntime.FieldConsecutiveErrors, monitorruntime.FieldLastStatusCode, monitorruntime.FieldLastDurationMs:
 			values[i] = new(sql.NullInt64)
-		case monitorruntime.FieldStatus, monitorruntime.FieldLastErrorMessage:
+		case monitorruntime.FieldStatus, monitorruntime.FieldLastSelectionType, monitorruntime.FieldLastSelectionValue, monitorruntime.FieldLastCheckStatus, monitorruntime.FieldLastErrorMessage:
 			values[i] = new(sql.NullString)
-		case monitorruntime.FieldLastCheckAt, monitorruntime.FieldLastSuccessAt, monitorruntime.FieldLastErrorAt, monitorruntime.FieldNextRunAt, monitorruntime.FieldUpdatedAt:
+		case monitorruntime.FieldLastChangedAt, monitorruntime.FieldLastCheckAt, monitorruntime.FieldLastSuccessAt, monitorruntime.FieldLastErrorAt, monitorruntime.FieldNextRunAt, monitorruntime.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
 		case monitorruntime.ForeignKeys[0]: // monitor_runtime
 			values[i] = new(sql.NullInt64)
@@ -150,6 +158,34 @@ func (_m *MonitorRuntime) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field consecutive_errors", values[i])
 			} else if value.Valid {
 				_m.ConsecutiveErrors = value.Int64
+			}
+		case monitorruntime.FieldLastSelectionType:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field last_selection_type", values[i])
+			} else if value.Valid {
+				_m.LastSelectionType = new(string)
+				*_m.LastSelectionType = value.String
+			}
+		case monitorruntime.FieldLastSelectionValue:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field last_selection_value", values[i])
+			} else if value.Valid {
+				_m.LastSelectionValue = new(string)
+				*_m.LastSelectionValue = value.String
+			}
+		case monitorruntime.FieldLastChangedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field last_changed_at", values[i])
+			} else if value.Valid {
+				_m.LastChangedAt = new(time.Time)
+				*_m.LastChangedAt = value.Time
+			}
+		case monitorruntime.FieldLastCheckStatus:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field last_check_status", values[i])
+			} else if value.Valid {
+				_m.LastCheckStatus = new(string)
+				*_m.LastCheckStatus = value.String
 			}
 		case monitorruntime.FieldLastCheckAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -274,6 +310,26 @@ func (_m *MonitorRuntime) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("consecutive_errors=")
 	builder.WriteString(fmt.Sprintf("%v", _m.ConsecutiveErrors))
+	builder.WriteString(", ")
+	if v := _m.LastSelectionType; v != nil {
+		builder.WriteString("last_selection_type=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.LastSelectionValue; v != nil {
+		builder.WriteString("last_selection_value=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.LastChangedAt; v != nil {
+		builder.WriteString("last_changed_at=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
+	builder.WriteString(", ")
+	if v := _m.LastCheckStatus; v != nil {
+		builder.WriteString("last_check_status=")
+		builder.WriteString(*v)
+	}
 	builder.WriteString(", ")
 	if v := _m.LastCheckAt; v != nil {
 		builder.WriteString("last_check_at=")

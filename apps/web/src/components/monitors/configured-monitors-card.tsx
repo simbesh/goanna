@@ -1901,9 +1901,13 @@ function MonitorChecksList({
 }: MonitorChecksListProps) {
   const [expandedCheckId, setExpandedCheckId] = useState<number | null>(null)
   const [copiedCheckId, setCopiedCheckId] = useState<number | null>(null)
-  const displayChecks = useMemo(
+  const hydratedChecks = useMemo(
     () => backfillCheckSelectionValues(checks),
     [checks],
+  )
+  const displayChecks = useMemo(
+    () => hydratedChecks.filter(getCheckDiffChanged),
+    [hydratedChecks],
   )
 
   useEffect(() => {
@@ -1956,7 +1960,7 @@ function MonitorChecksList({
 
       {error ? <p className="text-xs text-red-300">{error}</p> : null}
 
-      {displayChecks.map((check, index) => (
+      {displayChecks.map((check) => (
         <div
           key={check.id}
           className={cn(
@@ -2033,8 +2037,8 @@ function MonitorChecksList({
               <SelectionValueDiffView
                 check={check}
                 previousCheck={findPreviousComparableCheck(
-                  displayChecks,
-                  index,
+                  hydratedChecks,
+                  hydratedChecks.indexOf(check),
                 )}
               />
               <div className="mb-1 text-right text-[11px] text-zinc-500">
@@ -2061,7 +2065,7 @@ function MonitorChecksList({
       ))}
 
       {!loading && displayChecks.length === 0 ? (
-        <p className="text-xs text-zinc-500">No checks yet for this monitor.</p>
+        <p className="text-xs text-zinc-500">No changes in the loaded history.</p>
       ) : null}
     </div>
   )

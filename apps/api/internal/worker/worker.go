@@ -140,6 +140,11 @@ func (w *Worker) TriggerMonitorNow(ctx context.Context, monitorID int) (*Trigger
 		latestCheck = nil
 	}
 
+	rt := updatedMonitor.Edges.Runtime
+	if rt != nil && rt.LastCheckAt != nil && (latestCheck == nil || !latestCheck.CheckedAt.Equal(*rt.LastCheckAt)) {
+		latestCheck = nil
+	}
+
 	return &TriggerMonitorResult{
 		Monitor: updatedMonitor,
 		Runtime: updatedMonitor.Edges.Runtime,
@@ -371,14 +376,32 @@ func (w *Worker) runMonitor(ctx context.Context, row *ent.Monitor, runtime *ent.
 		result.diff = buildSelectionDiff(previousSelection, result.selection)
 	}
 
-	if err := w.insertCheckResult(ctx, row.ID, result); err != nil {
+	tx, err := w.db.Tx(ctx)
+	if err != nil {
 		return err
 	}
+	defer tx.Rollback()
+	storeHistory := runtime.LastCheckStatus == nil || (result.diff != nil && (result.diff.Changed || result.diff.Kind == "initial")) ||
+		(runtime.LastCheckStatus != nil && *runtime.LastCheckStatus != result.status)
+	if storeHistory {
+		storageWorker := *w
+		storageWorker.db = tx.Client()
+		if err := storageWorker.insertCheckResult(ctx, row.ID, result); err != nil {
+			return err
+		}
+	}
 
-	update := w.db.MonitorRuntime.UpdateOneID(runtime.ID).
+	update := tx.MonitorRuntime.UpdateOneID(runtime.ID).
+		SetLastCheckStatus(result.status).
 		AddCheckCount(1).
 		AddRetryCount(int64(retriesUsed)).
 		SetLastCheckAt(result.checkedAt)
+	if result.selection != nil && result.selection.Exists {
+		update.SetLastSelectionType(result.selection.Type).SetLastSelectionValue(result.selection.Value)
+		if result.previousSelection == nil || (result.diff != nil && result.diff.Changed) {
+			update.SetLastChangedAt(result.checkedAt)
+		}
+	}
 
 	if disableAfterRun {
 		update = update.
@@ -429,6 +452,10 @@ func (w *Worker) runMonitor(ctx context.Context, row *ent.Monitor, runtime *ent.
 		return err
 	}
 
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
 	disableOnChangedRun := row.PauseOnNextChange && result.diff != nil && result.diff.Changed
 	if result.diff != nil && result.diff.Changed {
 		if err := w.notifyMonitorDiff(ctx, row, result.diff, result.checkedAt, disableOnChangedRun); err != nil {
@@ -440,6 +467,10 @@ func (w *Worker) runMonitor(ctx context.Context, row *ent.Monitor, runtime *ent.
 		if err := w.disableMonitorAfterChangedRun(ctx, row.ID, runtime.ID); err != nil {
 			return err
 		}
+	}
+
+	if !storeHistory {
+		return nil
 	}
 
 	limit, err := w.getChecksHistoryLimit(ctx)
@@ -674,9 +705,7 @@ func (w *Worker) insertCheckResult(ctx context.Context, monitorID int, result ex
 	}
 	if result.selection != nil && result.selection.Exists {
 		create = create.SetSelectionType(result.selection.Type)
-		if shouldStoreSelectionValue(result.previousSelection, result.selection) {
-			create = create.SetSelectionValue(result.selection.Value)
-		}
+		create = create.SetSelectionValue(result.selection.Value)
 	}
 	if result.diff != nil {
 		create = create.
@@ -696,43 +725,18 @@ func (w *Worker) insertCheckResult(ctx context.Context, monitorID int, result ex
 	return err
 }
 
-func shouldStoreSelectionValue(previous *selectionSnapshot, current *selectionSnapshot) bool {
-	if current == nil || !current.Exists {
-		return false
-	}
-
-	if previous == nil || !previous.Exists {
-		return true
-	}
-
-	return previous.Value != current.Value
-}
-
 func (w *Worker) loadPreviousSelection(ctx context.Context, monitorID int) (*selectionSnapshot, error) {
-	row, err := w.db.CheckResult.Query().
-		Where(
-			checkresult.HasMonitorWith(monitor.IDEQ(monitorID)),
-			checkresult.SelectionTypeNotNil(),
-			checkresult.SelectionValueNotNil(),
-		).
-		Order(ent.Desc(checkresult.FieldCheckedAt), ent.Desc(checkresult.FieldID)).
-		First(ctx)
-	if err != nil {
-		if ent.IsNotFound(err) {
-			return nil, nil
-		}
-		return nil, err
-	}
-
-	if row.SelectionType == nil || row.SelectionValue == nil {
+	runtime, err := w.db.MonitorRuntime.Query().Where(monitorruntime.HasMonitorWith(monitor.IDEQ(monitorID))).Only(ctx)
+	if ent.IsNotFound(err) {
 		return nil, nil
 	}
-
-	return &selectionSnapshot{
-		Exists: true,
-		Type:   *row.SelectionType,
-		Value:  *row.SelectionValue,
-	}, nil
+	if err != nil {
+		return nil, err
+	}
+	if runtime.LastSelectionType == nil || runtime.LastSelectionValue == nil {
+		return nil, nil
+	}
+	return &selectionSnapshot{Exists: true, Type: *runtime.LastSelectionType, Value: *runtime.LastSelectionValue}, nil
 }
 
 func (w *Worker) pruneCheckHistory(ctx context.Context, monitorID int, keep int) error {

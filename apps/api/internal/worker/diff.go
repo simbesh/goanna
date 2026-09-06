@@ -252,12 +252,12 @@ func buildArrayDiff(previous *selectionSnapshot, current *selectionSnapshot) *se
 		return keyedDiff
 	}
 
-	changed := !reflect.DeepEqual(previousArray, currentArray)
+	addedEntries, removedEntries := diffArrayEntries(previousArray, currentArray)
+	changed := len(addedEntries) > 0 || len(removedEntries) > 0
 	summary := "array unchanged"
 	details := map[string]any{"oldCount": len(previousArray), "newCount": len(currentArray)}
 	if changed {
 		summary = fmt.Sprintf("array changed (%d to %d items)", len(previousArray), len(currentArray))
-		addedEntries, removedEntries := diffArrayEntries(previousArray, currentArray)
 		if len(addedEntries) > 0 {
 			details["addedEntries"] = addedEntries
 		}
@@ -343,32 +343,26 @@ func buildPrimitiveArrayDiff(previousArray []any, currentArray []any) *selection
 		return nil
 	}
 
-	previousCounts, previousOrder := arrayCountMap(previousArray)
-	currentCounts, currentOrder := arrayCountMap(currentArray)
+	previousCounts := arrayValueCounts(previousArray)
+	currentCounts := arrayValueCounts(currentArray)
 	added := mapCountDiff(currentCounts, previousCounts)
 	removed := mapCountDiff(previousCounts, currentCounts)
-	reorderOnly := len(added) == 0 && len(removed) == 0 && !reflect.DeepEqual(previousOrder, currentOrder)
-	changed := reorderOnly || len(added) > 0 || len(removed) > 0
+	changed := len(added) > 0 || len(removed) > 0
 
-	kind := "array"
 	summary := "array unchanged"
-	if reorderOnly {
-		kind = "arrayReorder"
-		summary = fmt.Sprintf("array reordered (%d items)", len(currentArray))
-	} else if changed {
+	if changed {
 		summary = fmt.Sprintf("array changed (+%d -%d)", totalMapCount(added), totalMapCount(removed))
 	}
 
 	return &selectionDiff{
-		Kind:    kind,
+		Kind:    "array",
 		Changed: changed,
 		Summary: summary,
 		Details: map[string]any{
-			"oldCount":      len(previousArray),
-			"newCount":      len(currentArray),
-			"added":         added,
-			"removed":       removed,
-			"reorderedOnly": reorderOnly,
+			"oldCount": len(previousArray),
+			"newCount": len(currentArray),
+			"added":    added,
+			"removed":  removed,
 		},
 	}
 }
@@ -650,17 +644,6 @@ func allPrimitives(values []any) bool {
 		}
 	}
 	return true
-}
-
-func arrayCountMap(values []any) (map[string]int, []string) {
-	counts := make(map[string]int, len(values))
-	ordered := make([]string, 0, len(values))
-	for _, value := range values {
-		key := stableJSON(value)
-		counts[key]++
-		ordered = append(ordered, key)
-	}
-	return counts, ordered
 }
 
 func mapCountDiff(left map[string]int, right map[string]int) map[string]int {

@@ -169,6 +169,86 @@ func (_u *MonitorRuntimeUpdate) AddConsecutiveErrors(v int64) *MonitorRuntimeUpd
 	return _u
 }
 
+// SetLastSelectionType sets the "last_selection_type" field.
+func (_u *MonitorRuntimeUpdate) SetLastSelectionType(v string) *MonitorRuntimeUpdate {
+	_u.mutation.SetLastSelectionType(v)
+	return _u
+}
+
+// SetNillableLastSelectionType sets the "last_selection_type" field if the given value is not nil.
+func (_u *MonitorRuntimeUpdate) SetNillableLastSelectionType(v *string) *MonitorRuntimeUpdate {
+	if v != nil {
+		_u.SetLastSelectionType(*v)
+	}
+	return _u
+}
+
+// ClearLastSelectionType clears the value of the "last_selection_type" field.
+func (_u *MonitorRuntimeUpdate) ClearLastSelectionType() *MonitorRuntimeUpdate {
+	_u.mutation.ClearLastSelectionType()
+	return _u
+}
+
+// SetLastSelectionValue sets the "last_selection_value" field.
+func (_u *MonitorRuntimeUpdate) SetLastSelectionValue(v string) *MonitorRuntimeUpdate {
+	_u.mutation.SetLastSelectionValue(v)
+	return _u
+}
+
+// SetNillableLastSelectionValue sets the "last_selection_value" field if the given value is not nil.
+func (_u *MonitorRuntimeUpdate) SetNillableLastSelectionValue(v *string) *MonitorRuntimeUpdate {
+	if v != nil {
+		_u.SetLastSelectionValue(*v)
+	}
+	return _u
+}
+
+// ClearLastSelectionValue clears the value of the "last_selection_value" field.
+func (_u *MonitorRuntimeUpdate) ClearLastSelectionValue() *MonitorRuntimeUpdate {
+	_u.mutation.ClearLastSelectionValue()
+	return _u
+}
+
+// SetLastChangedAt sets the "last_changed_at" field.
+func (_u *MonitorRuntimeUpdate) SetLastChangedAt(v time.Time) *MonitorRuntimeUpdate {
+	_u.mutation.SetLastChangedAt(v)
+	return _u
+}
+
+// SetNillableLastChangedAt sets the "last_changed_at" field if the given value is not nil.
+func (_u *MonitorRuntimeUpdate) SetNillableLastChangedAt(v *time.Time) *MonitorRuntimeUpdate {
+	if v != nil {
+		_u.SetLastChangedAt(*v)
+	}
+	return _u
+}
+
+// ClearLastChangedAt clears the value of the "last_changed_at" field.
+func (_u *MonitorRuntimeUpdate) ClearLastChangedAt() *MonitorRuntimeUpdate {
+	_u.mutation.ClearLastChangedAt()
+	return _u
+}
+
+// SetLastCheckStatus sets the "last_check_status" field.
+func (_u *MonitorRuntimeUpdate) SetLastCheckStatus(v string) *MonitorRuntimeUpdate {
+	_u.mutation.SetLastCheckStatus(v)
+	return _u
+}
+
+// SetNillableLastCheckStatus sets the "last_check_status" field if the given value is not nil.
+func (_u *MonitorRuntimeUpdate) SetNillableLastCheckStatus(v *string) *MonitorRuntimeUpdate {
+	if v != nil {
+		_u.SetLastCheckStatus(*v)
+	}
+	return _u
+}
+
+// ClearLastCheckStatus clears the value of the "last_check_status" field.
+func (_u *MonitorRuntimeUpdate) ClearLastCheckStatus() *MonitorRuntimeUpdate {
+	_u.mutation.ClearLastCheckStatus()
+	return _u
+}
+
 // SetLastCheckAt sets the "last_check_at" field.
 func (_u *MonitorRuntimeUpdate) SetLastCheckAt(v time.Time) *MonitorRuntimeUpdate {
 	_u.mutation.SetLastCheckAt(v)
@@ -451,6 +531,30 @@ func (_u *MonitorRuntimeUpdate) sqlSave(ctx context.Context) (_node int, err err
 	if value, ok := _u.mutation.AddedConsecutiveErrors(); ok {
 		_spec.AddField(monitorruntime.FieldConsecutiveErrors, field.TypeInt64, value)
 	}
+	if value, ok := _u.mutation.LastSelectionType(); ok {
+		_spec.SetField(monitorruntime.FieldLastSelectionType, field.TypeString, value)
+	}
+	if _u.mutation.LastSelectionTypeCleared() {
+		_spec.ClearField(monitorruntime.FieldLastSelectionType, field.TypeString)
+	}
+	if value, ok := _u.mutation.LastSelectionValue(); ok {
+		_spec.SetField(monitorruntime.FieldLastSelectionValue, field.TypeString, value)
+	}
+	if _u.mutation.LastSelectionValueCleared() {
+		_spec.ClearField(monitorruntime.FieldLastSelectionValue, field.TypeString)
+	}
+	if value, ok := _u.mutation.LastChangedAt(); ok {
+		_spec.SetField(monitorruntime.FieldLastChangedAt, field.TypeTime, value)
+	}
+	if _u.mutation.LastChangedAtCleared() {
+		_spec.ClearField(monitorruntime.FieldLastChangedAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.LastCheckStatus(); ok {
+		_spec.SetField(monitorruntime.FieldLastCheckStatus, field.TypeString, value)
+	}
+	if _u.mutation.LastCheckStatusCleared() {
+		_spec.ClearField(monitorruntime.FieldLastCheckStatus, field.TypeString)
+	}
 	if value, ok := _u.mutation.LastCheckAt(); ok {
 		_spec.SetField(monitorruntime.FieldLastCheckAt, field.TypeTime, value)
 	}
@@ -688,6 +792,86 @@ func (_u *MonitorRuntimeUpdateOne) SetNillableConsecutiveErrors(v *int64) *Monit
 // AddConsecutiveErrors adds value to the "consecutive_errors" field.
 func (_u *MonitorRuntimeUpdateOne) AddConsecutiveErrors(v int64) *MonitorRuntimeUpdateOne {
 	_u.mutation.AddConsecutiveErrors(v)
+	return _u
+}
+
+// SetLastSelectionType sets the "last_selection_type" field.
+func (_u *MonitorRuntimeUpdateOne) SetLastSelectionType(v string) *MonitorRuntimeUpdateOne {
+	_u.mutation.SetLastSelectionType(v)
+	return _u
+}
+
+// SetNillableLastSelectionType sets the "last_selection_type" field if the given value is not nil.
+func (_u *MonitorRuntimeUpdateOne) SetNillableLastSelectionType(v *string) *MonitorRuntimeUpdateOne {
+	if v != nil {
+		_u.SetLastSelectionType(*v)
+	}
+	return _u
+}
+
+// ClearLastSelectionType clears the value of the "last_selection_type" field.
+func (_u *MonitorRuntimeUpdateOne) ClearLastSelectionType() *MonitorRuntimeUpdateOne {
+	_u.mutation.ClearLastSelectionType()
+	return _u
+}
+
+// SetLastSelectionValue sets the "last_selection_value" field.
+func (_u *MonitorRuntimeUpdateOne) SetLastSelectionValue(v string) *MonitorRuntimeUpdateOne {
+	_u.mutation.SetLastSelectionValue(v)
+	return _u
+}
+
+// SetNillableLastSelectionValue sets the "last_selection_value" field if the given value is not nil.
+func (_u *MonitorRuntimeUpdateOne) SetNillableLastSelectionValue(v *string) *MonitorRuntimeUpdateOne {
+	if v != nil {
+		_u.SetLastSelectionValue(*v)
+	}
+	return _u
+}
+
+// ClearLastSelectionValue clears the value of the "last_selection_value" field.
+func (_u *MonitorRuntimeUpdateOne) ClearLastSelectionValue() *MonitorRuntimeUpdateOne {
+	_u.mutation.ClearLastSelectionValue()
+	return _u
+}
+
+// SetLastChangedAt sets the "last_changed_at" field.
+func (_u *MonitorRuntimeUpdateOne) SetLastChangedAt(v time.Time) *MonitorRuntimeUpdateOne {
+	_u.mutation.SetLastChangedAt(v)
+	return _u
+}
+
+// SetNillableLastChangedAt sets the "last_changed_at" field if the given value is not nil.
+func (_u *MonitorRuntimeUpdateOne) SetNillableLastChangedAt(v *time.Time) *MonitorRuntimeUpdateOne {
+	if v != nil {
+		_u.SetLastChangedAt(*v)
+	}
+	return _u
+}
+
+// ClearLastChangedAt clears the value of the "last_changed_at" field.
+func (_u *MonitorRuntimeUpdateOne) ClearLastChangedAt() *MonitorRuntimeUpdateOne {
+	_u.mutation.ClearLastChangedAt()
+	return _u
+}
+
+// SetLastCheckStatus sets the "last_check_status" field.
+func (_u *MonitorRuntimeUpdateOne) SetLastCheckStatus(v string) *MonitorRuntimeUpdateOne {
+	_u.mutation.SetLastCheckStatus(v)
+	return _u
+}
+
+// SetNillableLastCheckStatus sets the "last_check_status" field if the given value is not nil.
+func (_u *MonitorRuntimeUpdateOne) SetNillableLastCheckStatus(v *string) *MonitorRuntimeUpdateOne {
+	if v != nil {
+		_u.SetLastCheckStatus(*v)
+	}
+	return _u
+}
+
+// ClearLastCheckStatus clears the value of the "last_check_status" field.
+func (_u *MonitorRuntimeUpdateOne) ClearLastCheckStatus() *MonitorRuntimeUpdateOne {
+	_u.mutation.ClearLastCheckStatus()
 	return _u
 }
 
@@ -1002,6 +1186,30 @@ func (_u *MonitorRuntimeUpdateOne) sqlSave(ctx context.Context) (_node *MonitorR
 	}
 	if value, ok := _u.mutation.AddedConsecutiveErrors(); ok {
 		_spec.AddField(monitorruntime.FieldConsecutiveErrors, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.LastSelectionType(); ok {
+		_spec.SetField(monitorruntime.FieldLastSelectionType, field.TypeString, value)
+	}
+	if _u.mutation.LastSelectionTypeCleared() {
+		_spec.ClearField(monitorruntime.FieldLastSelectionType, field.TypeString)
+	}
+	if value, ok := _u.mutation.LastSelectionValue(); ok {
+		_spec.SetField(monitorruntime.FieldLastSelectionValue, field.TypeString, value)
+	}
+	if _u.mutation.LastSelectionValueCleared() {
+		_spec.ClearField(monitorruntime.FieldLastSelectionValue, field.TypeString)
+	}
+	if value, ok := _u.mutation.LastChangedAt(); ok {
+		_spec.SetField(monitorruntime.FieldLastChangedAt, field.TypeTime, value)
+	}
+	if _u.mutation.LastChangedAtCleared() {
+		_spec.ClearField(monitorruntime.FieldLastChangedAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.LastCheckStatus(); ok {
+		_spec.SetField(monitorruntime.FieldLastCheckStatus, field.TypeString, value)
+	}
+	if _u.mutation.LastCheckStatusCleared() {
+		_spec.ClearField(monitorruntime.FieldLastCheckStatus, field.TypeString)
 	}
 	if value, ok := _u.mutation.LastCheckAt(); ok {
 		_spec.SetField(monitorruntime.FieldLastCheckAt, field.TypeTime, value)

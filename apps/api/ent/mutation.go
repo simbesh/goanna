@@ -2758,6 +2758,10 @@ type MonitorRuntimeMutation struct {
 	addconsecutive_successes *int64
 	consecutive_errors       *int64
 	addconsecutive_errors    *int64
+	last_selection_type      *string
+	last_selection_value     *string
+	last_changed_at          *time.Time
+	last_check_status        *string
 	last_check_at            *time.Time
 	last_success_at          *time.Time
 	last_error_at            *time.Time
@@ -3244,6 +3248,202 @@ func (m *MonitorRuntimeMutation) AddedConsecutiveErrors() (r int64, exists bool)
 func (m *MonitorRuntimeMutation) ResetConsecutiveErrors() {
 	m.consecutive_errors = nil
 	m.addconsecutive_errors = nil
+}
+
+// SetLastSelectionType sets the "last_selection_type" field.
+func (m *MonitorRuntimeMutation) SetLastSelectionType(s string) {
+	m.last_selection_type = &s
+}
+
+// LastSelectionType returns the value of the "last_selection_type" field in the mutation.
+func (m *MonitorRuntimeMutation) LastSelectionType() (r string, exists bool) {
+	v := m.last_selection_type
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastSelectionType returns the old "last_selection_type" field's value of the MonitorRuntime entity.
+// If the MonitorRuntime object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MonitorRuntimeMutation) OldLastSelectionType(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastSelectionType is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastSelectionType requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastSelectionType: %w", err)
+	}
+	return oldValue.LastSelectionType, nil
+}
+
+// ClearLastSelectionType clears the value of the "last_selection_type" field.
+func (m *MonitorRuntimeMutation) ClearLastSelectionType() {
+	m.last_selection_type = nil
+	m.clearedFields[monitorruntime.FieldLastSelectionType] = struct{}{}
+}
+
+// LastSelectionTypeCleared returns if the "last_selection_type" field was cleared in this mutation.
+func (m *MonitorRuntimeMutation) LastSelectionTypeCleared() bool {
+	_, ok := m.clearedFields[monitorruntime.FieldLastSelectionType]
+	return ok
+}
+
+// ResetLastSelectionType resets all changes to the "last_selection_type" field.
+func (m *MonitorRuntimeMutation) ResetLastSelectionType() {
+	m.last_selection_type = nil
+	delete(m.clearedFields, monitorruntime.FieldLastSelectionType)
+}
+
+// SetLastSelectionValue sets the "last_selection_value" field.
+func (m *MonitorRuntimeMutation) SetLastSelectionValue(s string) {
+	m.last_selection_value = &s
+}
+
+// LastSelectionValue returns the value of the "last_selection_value" field in the mutation.
+func (m *MonitorRuntimeMutation) LastSelectionValue() (r string, exists bool) {
+	v := m.last_selection_value
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastSelectionValue returns the old "last_selection_value" field's value of the MonitorRuntime entity.
+// If the MonitorRuntime object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MonitorRuntimeMutation) OldLastSelectionValue(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastSelectionValue is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastSelectionValue requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastSelectionValue: %w", err)
+	}
+	return oldValue.LastSelectionValue, nil
+}
+
+// ClearLastSelectionValue clears the value of the "last_selection_value" field.
+func (m *MonitorRuntimeMutation) ClearLastSelectionValue() {
+	m.last_selection_value = nil
+	m.clearedFields[monitorruntime.FieldLastSelectionValue] = struct{}{}
+}
+
+// LastSelectionValueCleared returns if the "last_selection_value" field was cleared in this mutation.
+func (m *MonitorRuntimeMutation) LastSelectionValueCleared() bool {
+	_, ok := m.clearedFields[monitorruntime.FieldLastSelectionValue]
+	return ok
+}
+
+// ResetLastSelectionValue resets all changes to the "last_selection_value" field.
+func (m *MonitorRuntimeMutation) ResetLastSelectionValue() {
+	m.last_selection_value = nil
+	delete(m.clearedFields, monitorruntime.FieldLastSelectionValue)
+}
+
+// SetLastChangedAt sets the "last_changed_at" field.
+func (m *MonitorRuntimeMutation) SetLastChangedAt(t time.Time) {
+	m.last_changed_at = &t
+}
+
+// LastChangedAt returns the value of the "last_changed_at" field in the mutation.
+func (m *MonitorRuntimeMutation) LastChangedAt() (r time.Time, exists bool) {
+	v := m.last_changed_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastChangedAt returns the old "last_changed_at" field's value of the MonitorRuntime entity.
+// If the MonitorRuntime object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MonitorRuntimeMutation) OldLastChangedAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastChangedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastChangedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastChangedAt: %w", err)
+	}
+	return oldValue.LastChangedAt, nil
+}
+
+// ClearLastChangedAt clears the value of the "last_changed_at" field.
+func (m *MonitorRuntimeMutation) ClearLastChangedAt() {
+	m.last_changed_at = nil
+	m.clearedFields[monitorruntime.FieldLastChangedAt] = struct{}{}
+}
+
+// LastChangedAtCleared returns if the "last_changed_at" field was cleared in this mutation.
+func (m *MonitorRuntimeMutation) LastChangedAtCleared() bool {
+	_, ok := m.clearedFields[monitorruntime.FieldLastChangedAt]
+	return ok
+}
+
+// ResetLastChangedAt resets all changes to the "last_changed_at" field.
+func (m *MonitorRuntimeMutation) ResetLastChangedAt() {
+	m.last_changed_at = nil
+	delete(m.clearedFields, monitorruntime.FieldLastChangedAt)
+}
+
+// SetLastCheckStatus sets the "last_check_status" field.
+func (m *MonitorRuntimeMutation) SetLastCheckStatus(s string) {
+	m.last_check_status = &s
+}
+
+// LastCheckStatus returns the value of the "last_check_status" field in the mutation.
+func (m *MonitorRuntimeMutation) LastCheckStatus() (r string, exists bool) {
+	v := m.last_check_status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastCheckStatus returns the old "last_check_status" field's value of the MonitorRuntime entity.
+// If the MonitorRuntime object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MonitorRuntimeMutation) OldLastCheckStatus(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastCheckStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastCheckStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastCheckStatus: %w", err)
+	}
+	return oldValue.LastCheckStatus, nil
+}
+
+// ClearLastCheckStatus clears the value of the "last_check_status" field.
+func (m *MonitorRuntimeMutation) ClearLastCheckStatus() {
+	m.last_check_status = nil
+	m.clearedFields[monitorruntime.FieldLastCheckStatus] = struct{}{}
+}
+
+// LastCheckStatusCleared returns if the "last_check_status" field was cleared in this mutation.
+func (m *MonitorRuntimeMutation) LastCheckStatusCleared() bool {
+	_, ok := m.clearedFields[monitorruntime.FieldLastCheckStatus]
+	return ok
+}
+
+// ResetLastCheckStatus resets all changes to the "last_check_status" field.
+func (m *MonitorRuntimeMutation) ResetLastCheckStatus() {
+	m.last_check_status = nil
+	delete(m.clearedFields, monitorruntime.FieldLastCheckStatus)
 }
 
 // SetLastCheckAt sets the "last_check_at" field.
@@ -3740,7 +3940,7 @@ func (m *MonitorRuntimeMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *MonitorRuntimeMutation) Fields() []string {
-	fields := make([]string, 0, 15)
+	fields := make([]string, 0, 19)
 	if m.status != nil {
 		fields = append(fields, monitorruntime.FieldStatus)
 	}
@@ -3761,6 +3961,18 @@ func (m *MonitorRuntimeMutation) Fields() []string {
 	}
 	if m.consecutive_errors != nil {
 		fields = append(fields, monitorruntime.FieldConsecutiveErrors)
+	}
+	if m.last_selection_type != nil {
+		fields = append(fields, monitorruntime.FieldLastSelectionType)
+	}
+	if m.last_selection_value != nil {
+		fields = append(fields, monitorruntime.FieldLastSelectionValue)
+	}
+	if m.last_changed_at != nil {
+		fields = append(fields, monitorruntime.FieldLastChangedAt)
+	}
+	if m.last_check_status != nil {
+		fields = append(fields, monitorruntime.FieldLastCheckStatus)
 	}
 	if m.last_check_at != nil {
 		fields = append(fields, monitorruntime.FieldLastCheckAt)
@@ -3808,6 +4020,14 @@ func (m *MonitorRuntimeMutation) Field(name string) (ent.Value, bool) {
 		return m.ConsecutiveSuccesses()
 	case monitorruntime.FieldConsecutiveErrors:
 		return m.ConsecutiveErrors()
+	case monitorruntime.FieldLastSelectionType:
+		return m.LastSelectionType()
+	case monitorruntime.FieldLastSelectionValue:
+		return m.LastSelectionValue()
+	case monitorruntime.FieldLastChangedAt:
+		return m.LastChangedAt()
+	case monitorruntime.FieldLastCheckStatus:
+		return m.LastCheckStatus()
 	case monitorruntime.FieldLastCheckAt:
 		return m.LastCheckAt()
 	case monitorruntime.FieldLastSuccessAt:
@@ -3847,6 +4067,14 @@ func (m *MonitorRuntimeMutation) OldField(ctx context.Context, name string) (ent
 		return m.OldConsecutiveSuccesses(ctx)
 	case monitorruntime.FieldConsecutiveErrors:
 		return m.OldConsecutiveErrors(ctx)
+	case monitorruntime.FieldLastSelectionType:
+		return m.OldLastSelectionType(ctx)
+	case monitorruntime.FieldLastSelectionValue:
+		return m.OldLastSelectionValue(ctx)
+	case monitorruntime.FieldLastChangedAt:
+		return m.OldLastChangedAt(ctx)
+	case monitorruntime.FieldLastCheckStatus:
+		return m.OldLastCheckStatus(ctx)
 	case monitorruntime.FieldLastCheckAt:
 		return m.OldLastCheckAt(ctx)
 	case monitorruntime.FieldLastSuccessAt:
@@ -3920,6 +4148,34 @@ func (m *MonitorRuntimeMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetConsecutiveErrors(v)
+		return nil
+	case monitorruntime.FieldLastSelectionType:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastSelectionType(v)
+		return nil
+	case monitorruntime.FieldLastSelectionValue:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastSelectionValue(v)
+		return nil
+	case monitorruntime.FieldLastChangedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastChangedAt(v)
+		return nil
+	case monitorruntime.FieldLastCheckStatus:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastCheckStatus(v)
 		return nil
 	case monitorruntime.FieldLastCheckAt:
 		v, ok := value.(time.Time)
@@ -4106,6 +4362,18 @@ func (m *MonitorRuntimeMutation) AddField(name string, value ent.Value) error {
 // mutation.
 func (m *MonitorRuntimeMutation) ClearedFields() []string {
 	var fields []string
+	if m.FieldCleared(monitorruntime.FieldLastSelectionType) {
+		fields = append(fields, monitorruntime.FieldLastSelectionType)
+	}
+	if m.FieldCleared(monitorruntime.FieldLastSelectionValue) {
+		fields = append(fields, monitorruntime.FieldLastSelectionValue)
+	}
+	if m.FieldCleared(monitorruntime.FieldLastChangedAt) {
+		fields = append(fields, monitorruntime.FieldLastChangedAt)
+	}
+	if m.FieldCleared(monitorruntime.FieldLastCheckStatus) {
+		fields = append(fields, monitorruntime.FieldLastCheckStatus)
+	}
 	if m.FieldCleared(monitorruntime.FieldLastCheckAt) {
 		fields = append(fields, monitorruntime.FieldLastCheckAt)
 	}
@@ -4141,6 +4409,18 @@ func (m *MonitorRuntimeMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *MonitorRuntimeMutation) ClearField(name string) error {
 	switch name {
+	case monitorruntime.FieldLastSelectionType:
+		m.ClearLastSelectionType()
+		return nil
+	case monitorruntime.FieldLastSelectionValue:
+		m.ClearLastSelectionValue()
+		return nil
+	case monitorruntime.FieldLastChangedAt:
+		m.ClearLastChangedAt()
+		return nil
+	case monitorruntime.FieldLastCheckStatus:
+		m.ClearLastCheckStatus()
+		return nil
 	case monitorruntime.FieldLastCheckAt:
 		m.ClearLastCheckAt()
 		return nil
@@ -4190,6 +4470,18 @@ func (m *MonitorRuntimeMutation) ResetField(name string) error {
 		return nil
 	case monitorruntime.FieldConsecutiveErrors:
 		m.ResetConsecutiveErrors()
+		return nil
+	case monitorruntime.FieldLastSelectionType:
+		m.ResetLastSelectionType()
+		return nil
+	case monitorruntime.FieldLastSelectionValue:
+		m.ResetLastSelectionValue()
+		return nil
+	case monitorruntime.FieldLastChangedAt:
+		m.ResetLastChangedAt()
+		return nil
+	case monitorruntime.FieldLastCheckStatus:
+		m.ResetLastCheckStatus()
 		return nil
 	case monitorruntime.FieldLastCheckAt:
 		m.ResetLastCheckAt()

@@ -1492,6 +1492,11 @@ func mapMonitor(
 	lastChanged *time.Time,
 	notificationIssues []monitorNotificationIssueResponse,
 ) monitorResponse {
+	if runtime != nil && runtime.LastSelectionValue != nil {
+		latestSelectionValue = runtime.LastSelectionValue
+		lastChanged = runtime.LastChangedAt
+	}
+
 	status := "pending"
 	checkCount := int64(0)
 	var nextRunAt *time.Time

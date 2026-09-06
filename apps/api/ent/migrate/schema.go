@@ -74,6 +74,10 @@ var (
 		{Name: "retry_count", Type: field.TypeInt64, Default: 0},
 		{Name: "consecutive_successes", Type: field.TypeInt64, Default: 0},
 		{Name: "consecutive_errors", Type: field.TypeInt64, Default: 0},
+		{Name: "last_selection_type", Type: field.TypeString, Nullable: true},
+		{Name: "last_selection_value", Type: field.TypeString, Nullable: true},
+		{Name: "last_changed_at", Type: field.TypeTime, Nullable: true},
+		{Name: "last_check_status", Type: field.TypeString, Nullable: true},
 		{Name: "last_check_at", Type: field.TypeTime, Nullable: true},
 		{Name: "last_success_at", Type: field.TypeTime, Nullable: true},
 		{Name: "last_error_at", Type: field.TypeTime, Nullable: true},
@@ -92,7 +96,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "monitor_runtimes_monitors_runtime",
-				Columns:    []*schema.Column{MonitorRuntimesColumns[16]},
+				Columns:    []*schema.Column{MonitorRuntimesColumns[20]},
 				RefColumns: []*schema.Column{MonitorsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
