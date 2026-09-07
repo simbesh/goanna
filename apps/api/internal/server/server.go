@@ -831,8 +831,40 @@ func (s *Server) handleListMonitorChecks(w http.ResponseWriter, r *http.Request)
 		limit = parsedLimit
 	}
 
-	rows, err := s.db.CheckResult.Query().
-		Where(checkresult.HasMonitorWith(monitor.IDEQ(monitorID))).
+	query := s.db.CheckResult.Query().Where(checkresult.HasMonitorWith(monitor.IDEQ(monitorID)))
+	if value := strings.TrimSpace(r.URL.Query().Get("changesOnly")); value != "" {
+		changesOnly, err := strconv.ParseBool(value)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "changesOnly must be a boolean")
+			return
+		}
+		if changesOnly {
+			query.Where(checkresult.DiffChangedEQ(true))
+		}
+	}
+	if value := strings.TrimSpace(r.URL.Query().Get("beforeId")); value != "" {
+		beforeID, err := strconv.Atoi(value)
+		if err != nil || beforeID <= 0 {
+			writeError(w, http.StatusBadRequest, "beforeId must be a positive integer")
+			return
+		}
+		cursor, err := s.db.CheckResult.Query().Where(
+			checkresult.IDEQ(beforeID), checkresult.HasMonitorWith(monitor.IDEQ(monitorID)),
+		).Only(r.Context())
+		if ent.IsNotFound(err) {
+			writeError(w, http.StatusBadRequest, "history cursor no longer exists; refresh history")
+			return
+		}
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to load history cursor")
+			return
+		}
+		query.Where(checkresult.Or(
+			checkresult.CheckedAtLT(cursor.CheckedAt),
+			checkresult.And(checkresult.CheckedAtEQ(cursor.CheckedAt), checkresult.IDLT(cursor.ID)),
+		))
+	}
+	rows, err := query.
 		Order(ent.Desc(checkresult.FieldCheckedAt), ent.Desc(checkresult.FieldID)).
 		Limit(limit).
 		All(r.Context())

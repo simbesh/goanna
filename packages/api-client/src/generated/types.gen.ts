@@ -497,6 +497,14 @@ export type ListMonitorChecksData = {
     };
     query?: {
         limit?: number;
+        /**
+         * Return only checks with detected changes, before applying the limit.
+         */
+        changesOnly?: boolean;
+        /**
+         * Return checks older than this check, ordered by timestamp and ID.
+         */
+        beforeId?: number;
     };
     url: '/v1/monitors/{monitorId}/checks';
 };

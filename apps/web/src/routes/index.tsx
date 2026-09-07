@@ -133,8 +133,12 @@ function MonitorsPage() {
     await monitorsQuery.refetch()
   }, [monitorsQuery])
 
+  const [hasMoreChecks, setHasMoreChecks] = useState<Record<number, boolean>>(
+    {},
+  )
+
   const loadMonitorChecks = useCallback(
-    async (monitorId: number) => {
+    async (monitorId: number, beforeId?: number) => {
       setLoadingChecksFor(monitorId)
       setChecksErrors((current) => ({ ...current, [monitorId]: '' }))
 
@@ -142,13 +146,26 @@ function MonitorsPage() {
         const checks = await queryClient.fetchQuery(
           listMonitorChecksOptions({
             path: { monitorId },
-            query: { limit: 20 },
+            query: { limit: 6, changesOnly: true, beforeId },
           }),
         )
 
+        const page = checks.slice(0, 5)
         setChecksByMonitor((current) => ({
           ...current,
-          [monitorId]: checks,
+          [monitorId]: beforeId
+            ? [
+                ...(current[monitorId] ?? []),
+                ...page.filter(
+                  (check) =>
+                    !current[monitorId]?.some((entry) => entry.id === check.id),
+                ),
+              ]
+            : page,
+        }))
+        setHasMoreChecks((current) => ({
+          ...current,
+          [monitorId]: checks.length > 5,
         }))
       } catch (caughtError) {
         const message = getApiErrorMessage(
@@ -165,6 +182,14 @@ function MonitorsPage() {
       }
     },
     [queryClient],
+  )
+
+  const loadMoreMonitorChecks = useCallback(
+    async (monitorId: number) => {
+      const lastCheck = checksByMonitor[monitorId]?.at(-1)
+      if (lastCheck) await loadMonitorChecks(monitorId, lastCheck.id)
+    },
+    [checksByMonitor, loadMonitorChecks],
   )
 
   const toggleMonitorChecks = useCallback(
@@ -220,12 +245,13 @@ function MonitorsPage() {
         },
       )
 
-      if (!check) {
+      if (!check?.diffChanged) {
         return
       }
 
       setChecksByMonitor((current) => {
-        const existing = current[monitor.id] ?? []
+        const existing = current[monitor.id]
+        if (!existing) return current
         const deduped = existing.filter((entry) => entry.id !== check.id)
         return {
           ...current,
@@ -560,6 +586,8 @@ function MonitorsPage() {
 
       <ConfiguredMonitorsTableCard
         checksByMonitor={checksByMonitor}
+        hasMoreChecks={hasMoreChecks}
+        onLoadMoreChecks={loadMoreMonitorChecks}
         checksErrors={checksErrors}
         editingMonitorId={editingMonitorId}
         loading={loading}
@@ -602,6 +630,8 @@ function MonitorsPage() {
         {showConfiguredMonitors ? (
           <ConfiguredMonitorsCard
             checksByMonitor={checksByMonitor}
+            hasMoreChecks={hasMoreChecks}
+            onLoadMoreChecks={loadMoreMonitorChecks}
             checksErrors={checksErrors}
             editingMonitorId={editingMonitorId}
             expandedMonitorId={expandedMonitorId}

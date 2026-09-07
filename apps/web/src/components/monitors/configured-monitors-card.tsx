@@ -101,6 +101,8 @@ type ConfiguredMonitorsCardProps = {
   monitors: Array<MonitorRecord>
   expandedMonitorId: number | null
   checksByMonitor: Partial<Record<number, Array<MonitorCheckRecord>>>
+  hasMoreChecks: Record<number, boolean>
+  onLoadMoreChecks: (monitorId: number) => Promise<void>
   checksErrors: Record<number, string>
   loadingChecksFor: number | null
   triggeringMonitorId: number | null
@@ -159,6 +161,8 @@ export const ConfiguredMonitorsTableCard = memo(
     loading,
     monitors,
     checksByMonitor,
+    hasMoreChecks,
+    onLoadMoreChecks,
     checksErrors,
     loadingChecksFor,
     triggeringMonitorId,
@@ -1480,6 +1484,10 @@ export const ConfiguredMonitorsTableCard = memo(
                   <div className="overflow-y-auto pr-1">
                     <MonitorChecksList
                       checks={checksByMonitor[checksDialogMonitor.id] ?? []}
+                      hasMore={hasMoreChecks[checksDialogMonitor.id] ?? false}
+                      onLoadMore={() =>
+                        void onLoadMoreChecks(checksDialogMonitor.id)
+                      }
                       className="space-y-2"
                       error={checksErrors[checksDialogMonitor.id]}
                       loading={loadingChecksFor === checksDialogMonitor.id}
@@ -1525,6 +1533,8 @@ export const ConfiguredMonitorsCard = memo(function ConfiguredMonitorsCard({
   monitors,
   expandedMonitorId,
   checksByMonitor,
+  hasMoreChecks,
+  onLoadMoreChecks,
   checksErrors,
   loadingChecksFor,
   triggeringMonitorId,
@@ -1704,6 +1714,8 @@ export const ConfiguredMonitorsCard = memo(function ConfiguredMonitorsCard({
             {expandedMonitorId === monitor.id ? (
               <MonitorChecksList
                 checks={checksByMonitor[monitor.id] ?? []}
+                hasMore={hasMoreChecks[monitor.id] ?? false}
+                onLoadMore={() => void onLoadMoreChecks(monitor.id)}
                 className="mt-3 space-y-2 rounded-md border border-zinc-800 bg-zinc-900 p-3"
                 error={checksErrors[monitor.id]}
                 loading={loadingChecksFor === monitor.id}
@@ -1885,6 +1897,8 @@ function getMonitorRelativeClockTimestamps(
 }
 
 type MonitorChecksListProps = {
+  hasMore: boolean
+  onLoadMore: () => void
   checks: Array<MonitorCheckRecord>
   loading: boolean
   error?: string
@@ -1893,6 +1907,8 @@ type MonitorChecksListProps = {
 }
 
 function MonitorChecksList({
+  hasMore,
+  onLoadMore,
   checks,
   loading,
   error,
@@ -2064,8 +2080,22 @@ function MonitorChecksList({
         </div>
       ))}
 
+      {hasMore ? (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={loading}
+          onClick={onLoadMore}
+        >
+          {loading ? 'Loading...' : 'Load more'}
+        </Button>
+      ) : null}
+
       {!loading && displayChecks.length === 0 ? (
-        <p className="text-xs text-zinc-500">No changes in the loaded history.</p>
+        <p className="text-xs text-zinc-500">
+          No changes recorded for this monitor.
+        </p>
       ) : null}
     </div>
   )
