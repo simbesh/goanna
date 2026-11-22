@@ -286,7 +286,7 @@ paths:
             default: 20
         - in: query
           name: changesOnly
-          description: Return only checks with detected changes, before applying the limit.
+          description: Return checks with detected changes and the initial capture, before applying the limit.
           schema:
             type: boolean
             default: false

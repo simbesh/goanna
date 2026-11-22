@@ -329,6 +329,8 @@ func TestBuildSelectionDiffArrayIgnoresOrder(t *testing.T) {
 		{"object duplicate count changed", `[{"x":1},{"x":1},{"x":2}]`, `[{"x":2},{"x":2},{"x":1}]`, true},
 		{"array entries", `[[1,2],[3,4]]`, `[[3,4],[1,2]]`, false},
 		{"mixed entries", `[{"x":1},null,2]`, `[2,{"x":1},null]`, false},
+		{"nested arrays", `[{"id":1,"networks":["ETH","BASE"]}]`, `[{"networks":["BASE","ETH"],"id":1}]`, false},
+		{"nested duplicate count", `[{"x":[1,1,2]}]`, `[{"x":[1,2,2]}]`, true},
 		{"empty", `[]`, `[]`, false},
 	}
 	for _, tc := range cases {
@@ -346,5 +348,13 @@ func TestBuildSelectionDiffArrayIgnoresOrder(t *testing.T) {
 				t.Fatalf("expected unchanged summary, got %q", diff.Summary)
 			}
 		})
+	}
+}
+
+func TestNestedArrayOrderInObject(t *testing.T) {
+	previous := &selectionSnapshot{Exists: true, Type: "json", Value: `{"networks":["ETH","BASE"]}`}
+	current := &selectionSnapshot{Exists: true, Type: "json", Value: `{"networks":["BASE","ETH"]}`}
+	if diff := buildSelectionDiff(previous, current); diff.Changed {
+		t.Fatalf("reorder reported as changed: %#v", diff)
 	}
 }

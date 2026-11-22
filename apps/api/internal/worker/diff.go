@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -286,12 +285,7 @@ func diffArrayEntries(previousArray []any, currentArray []any) ([]any, []any) {
 func arrayValueCounts(values []any) map[string]int {
 	counts := make(map[string]int, len(values))
 	for _, value := range values {
-		encoded, err := json.Marshal(value)
-		if err != nil {
-			counts[fmt.Sprintf("%v", value)]++
-			continue
-		}
-		counts[string(encoded)]++
+		counts[stableJSON(value)]++
 	}
 
 	return counts
@@ -304,11 +298,7 @@ func collectArrayEntries(values []any, remaining map[string]int) []any {
 
 	entries := make([]any, 0)
 	for _, value := range values {
-		encoded, err := json.Marshal(value)
-		key := fmt.Sprintf("%v", value)
-		if err == nil {
-			key = string(encoded)
-		}
+		key := stableJSON(value)
 
 		if remaining[key] == 0 {
 			continue
@@ -321,6 +311,7 @@ func collectArrayEntries(values []any, remaining map[string]int) []any {
 		}
 	}
 
+	sort.Slice(entries, func(i, j int) bool { return stableJSON(entries[i]) < stableJSON(entries[j]) })
 	return entries
 }
 
@@ -404,7 +395,7 @@ func buildKeyedObjectArrayDiff(previousArray []any, currentArray []any) *selecti
 			removedEntries = append(removedEntries, previousMap[key])
 			continue
 		}
-		if !reflect.DeepEqual(previousMap[key], currentMap[key]) {
+		if stableJSON(previousMap[key]) != stableJSON(currentMap[key]) {
 			updated = append(updated, key)
 			updatedDetails[key] = buildObjectChangeDetails(previousMap[key], currentMap[key])
 		}
@@ -565,7 +556,7 @@ func collectObjectDiff(prefix string, previous map[string]any, current map[strin
 				collectObjectDiff(path, previousObject, currentObject, added, removed, changed, changes)
 				continue
 			}
-			if !reflect.DeepEqual(previousValue, currentValue) {
+			if stableJSON(previousValue) != stableJSON(currentValue) {
 				*changed = append(*changed, path)
 				changeEntry := map[string]any{
 					"old": previousValue,
@@ -678,7 +669,7 @@ func asObjectSlice(values []any) []map[string]any {
 }
 
 func detectObjectArrayKey(previous []map[string]any, current []map[string]any) string {
-	candidates := []string{"id", "key", "name", "slug", "uuid"}
+	candidates := []string{"id", "key", "name", "slug", "uuid", "code", "currency", "Currency", "symbol", "tokenId", "network", "Network"}
 	for _, candidate := range candidates {
 		if hasUniqueKey(candidate, previous) && hasUniqueKey(candidate, current) {
 			return candidate
@@ -725,7 +716,7 @@ func mapObjectsByKey(values []map[string]any, key string) map[string]map[string]
 }
 
 func stableJSON(value any) string {
-	encoded, err := json.Marshal(value)
+	encoded, err := json.Marshal(normalizeDiffValue(value))
 	if err != nil {
 		return fmt.Sprintf("%v", value)
 	}
@@ -819,4 +810,30 @@ func roundToDecimalPlaces(value float64, decimalPlaces int) float64 {
 	}
 
 	return rounded
+}
+
+// Arrays are multisets throughout a monitored JSON value: order is ignored,
+// but duplicate counts and primitive types remain significant.
+func normalizeDiffValue(value any) any {
+	switch typed := value.(type) {
+	case []any:
+		normalized := make([]any, len(typed))
+		for i, entry := range typed {
+			normalized[i] = normalizeDiffValue(entry)
+		}
+		sort.Slice(normalized, func(i, j int) bool {
+			left, _ := json.Marshal(normalized[i])
+			right, _ := json.Marshal(normalized[j])
+			return string(left) < string(right)
+		})
+		return normalized
+	case map[string]any:
+		normalized := make(map[string]any, len(typed))
+		for key, entry := range typed {
+			normalized[key] = normalizeDiffValue(entry)
+		}
+		return normalized
+	default:
+		return value
+	}
 }

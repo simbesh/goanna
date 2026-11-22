@@ -1,6 +1,4 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
-import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import {
   flexRender,
   getCoreRowModel,
@@ -16,7 +14,6 @@ import {
   ChevronsUpDown,
   Copy,
   Download,
-  Minimize2,
   MoreHorizontal,
   TriangleAlert,
   Upload,
@@ -37,6 +34,7 @@ import type {
   Monitor as MonitorRecord,
 } from '@goanna/api-client'
 
+import type { DetailedDiffEntry } from '@/lib/selection-diff'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -47,6 +45,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import {
+  areDiffValuesEqual,
+  collectDetailedDiffEntries,
+} from '@/lib/selection-diff'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -136,13 +138,6 @@ type ConfiguredMonitorsTableCardProps = Omit<
 type ImportPreviewRow = {
   previewId: string
   config: CreateMonitorRequest
-}
-
-type DetailedDiffEntry = {
-  path: string
-  change: 'changed' | 'added' | 'removed'
-  oldValue?: unknown
-  newValue?: unknown
 }
 
 const monitorTablePageSizeOptions = [10, 25, 50, 100] as const
@@ -1469,9 +1464,9 @@ export const ConfiguredMonitorsTableCard = memo(
               }
             }}
           >
-            <DialogContent className="sm:max-w-7xl sm:max-h-[90vh] sm:h-full">
+            <DialogContent className="flex max-h-[85vh] flex-col sm:max-w-4xl">
               <DialogHeader>
-                <DialogTitle>History</DialogTitle>
+                <DialogTitle>Change history</DialogTitle>
                 <DialogDescription>
                   {checksDialogMonitor
                     ? `${getMonitorDisplayLabel(checksDialogMonitor)} - ${checksDialogMonitor.url}`
@@ -1481,14 +1476,14 @@ export const ConfiguredMonitorsTableCard = memo(
 
               {checksDialogMonitor ? (
                 <>
-                  <div className="overflow-y-auto pr-1">
+                  <div className="min-h-0 overflow-y-auto py-4 pr-3">
                     <MonitorChecksList
                       checks={checksByMonitor[checksDialogMonitor.id] ?? []}
                       hasMore={hasMoreChecks[checksDialogMonitor.id] ?? false}
                       onLoadMore={() =>
                         void onLoadMoreChecks(checksDialogMonitor.id)
                       }
-                      className="space-y-2"
+                      className="flex flex-col gap-6"
                       error={checksErrors[checksDialogMonitor.id]}
                       loading={loadingChecksFor === checksDialogMonitor.id}
                       autoExpandLatestCheck={checksDialogAutoExpandLatest}
@@ -1906,7 +1901,7 @@ type MonitorChecksListProps = {
   autoExpandLatestCheck?: boolean
 }
 
-function MonitorChecksList({
+export function MonitorChecksList({
   hasMore,
   onLoadMore,
   checks,
@@ -1915,24 +1910,33 @@ function MonitorChecksList({
   className,
   autoExpandLatestCheck = false,
 }: MonitorChecksListProps) {
-  const [expandedCheckId, setExpandedCheckId] = useState<number | null>(null)
+  const [expandedCheckId, setExpandedCheckId] = useState<
+    number | null | undefined
+  >(undefined)
   const [copiedCheckId, setCopiedCheckId] = useState<number | null>(null)
   const hydratedChecks = useMemo(
     () => backfillCheckSelectionValues(checks),
     [checks],
   )
   const displayChecks = useMemo(
-    () => hydratedChecks.filter(getCheckDiffChanged),
+    () =>
+      hydratedChecks.filter(
+        (check) =>
+          getCheckDiffChanged(check) || getCheckDiffKind(check) === 'initial',
+      ),
     [hydratedChecks],
   )
 
+  const visibleCheckId =
+    expandedCheckId === undefined ? displayChecks.at(0)?.id : expandedCheckId
+
   useEffect(() => {
-    if (expandedCheckId === null) {
+    if (expandedCheckId == null) {
       return
     }
 
     if (!displayChecks.some((check) => check.id === expandedCheckId)) {
-      setExpandedCheckId(null)
+      setExpandedCheckId(undefined)
     }
   }, [displayChecks, expandedCheckId])
 
@@ -1959,10 +1963,6 @@ function MonitorChecksList({
     return () => window.clearTimeout(timer)
   }, [copiedCheckId])
 
-  const toggleExpandedCheck = useCallback((checkId: number) => {
-    setExpandedCheckId((current) => (current === checkId ? null : checkId))
-  }, [])
-
   const copyCheckJSON = useCallback(async (check: MonitorCheckRecord) => {
     await navigator.clipboard.writeText(formatCheckJSONForViewer(check))
     setCopiedCheckId(check.id)
@@ -1971,114 +1971,103 @@ function MonitorChecksList({
   return (
     <div className={className}>
       {loading ? (
-        <p className="text-xs text-zinc-400">Loading checks...</p>
+        <p className="text-xs text-muted-foreground">Loading checks...</p>
       ) : null}
 
-      {error ? <p className="text-xs text-red-300">{error}</p> : null}
+      {error ? <p className="text-xs text-destructive">{error}</p> : null}
 
-      {displayChecks.map((check) => (
-        <div
-          key={check.id}
-          className={cn(
-            'relative rounded border bg-zinc-950 px-2 py-1 text-xs transition-colors',
-            expandedCheckId === check.id
-              ? 'border-zinc-500'
-              : 'border-zinc-800 hover:border-zinc-600',
-          )}
-        >
-          {expandedCheckId !== check.id ? (
-            <button
-              type="button"
-              className="absolute inset-0 rounded focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500"
-              aria-label={`Expand check ${check.id} details`}
-              aria-expanded={false}
-              onClick={() => toggleExpandedCheck(check.id)}
-            />
-          ) : null}
-
-          {expandedCheckId === check.id ? (
-            <div className="absolute top-2 right-2 flex items-center gap-1">
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="size-6 border-zinc-700/80 bg-zinc-900/90 text-zinc-300 hover:border-zinc-500 hover:bg-zinc-900 hover:text-zinc-100"
-                aria-label="Copy check JSON"
-                onClick={(event) => {
-                  event.stopPropagation()
-                  void copyCheckJSON(check)
-                }}
-              >
-                <Copy className="size-3.5" />
-              </Button>
-              <button
-                type="button"
-                className="inline-flex size-6 items-center justify-center rounded border border-zinc-700/80 bg-zinc-900/90 text-zinc-300 transition-colors hover:border-zinc-500 hover:text-zinc-100"
-                aria-label="Collapse check details"
-                onClick={(event) => {
-                  event.stopPropagation()
-                  setExpandedCheckId(null)
-                }}
-              >
-                <Minimize2 className="size-3.5" />
-              </button>
-            </div>
-          ) : null}
-
-          <div className="flex items-center justify-between gap-2 pr-16">
-            <span className="font-medium uppercase text-zinc-200">
-              {check.status}
-            </span>
-            <span className="text-zinc-500">
-              {formatTimestamp(check.checkedAt)}
-            </span>
-          </div>
-          <div className="mt-1 text-zinc-400">
-            code: {check.statusCode ?? '-'} | duration:{' '}
-            {check.responseTimeMs ?? '-'}ms
-          </div>
-          {getCheckSelectionType(check) || getCheckSelectionValue(check) ? (
-            <div className="mt-1 text-zinc-400">
-              selected: {getCheckSelectionType(check) ?? '-'} | value:{' '}
-              {truncateInline(getCheckSelectionValue(check) ?? '-')}
-            </div>
-          ) : null}
-          {check.errorMessage ? (
-            <div className="mt-1 text-red-300">{check.errorMessage}</div>
-          ) : null}
-          <CheckDiffDetails check={check} />
-
-          {expandedCheckId === check.id ? (
-            <div className="mt-2">
-              <SelectionValueDiffView
-                check={check}
-                previousCheck={findPreviousComparableCheck(
-                  hydratedChecks,
-                  hydratedChecks.indexOf(check),
+      <ol className="m-0 list-none p-0">
+        {displayChecks.map((check, index) => {
+          const expanded = visibleCheckId === check.id
+          const initial = getCheckDiffKind(check) === 'initial'
+          return (
+            <li key={check.id} className="relative pl-7 pb-8 last:pb-0">
+              {index < displayChecks.length - 1 ? (
+                <span
+                  aria-hidden="true"
+                  className="absolute top-5 bottom-0 left-1.5 w-px bg-border"
+                />
+              ) : null}
+              <span
+                aria-hidden="true"
+                className={cn(
+                  'absolute top-2 left-0 size-3 rounded-full border-2 border-background',
+                  initial ? 'bg-muted-foreground' : 'bg-primary',
                 )}
               />
-              <div className="mb-1 text-right text-[11px] text-zinc-500">
-                {copiedCheckId === check.id ? 'Copied' : '\u00a0'}
-              </div>
-              <div className="overflow-hidden rounded border border-zinc-800">
-                <SyntaxHighlighter
-                  language="json"
-                  style={oneDark}
-                  customStyle={{
-                    margin: 0,
-                    borderRadius: 0,
-                    maxHeight: '16rem',
-                    fontSize: '0.75rem',
-                  }}
-                  wrapLongLines
+              <button
+                type="button"
+                className="flex w-full items-start justify-between gap-4 rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-expanded={expanded}
+                aria-controls={`check-${check.id}-details`}
+                onClick={() => setExpandedCheckId(expanded ? null : check.id)}
+              >
+                <div className="flex min-w-0 flex-col gap-1.5">
+                  <time
+                    dateTime={check.checkedAt}
+                    className="text-xs tabular-nums text-muted-foreground"
+                  >
+                    {formatTimestamp(check.checkedAt)}
+                  </time>
+                  <span className="text-sm font-medium text-foreground">
+                    {initial
+                      ? 'Initial capture'
+                      : getCheckDiffSummary(check) || 'Value changed'}
+                  </span>
+                </div>
+                <ChevronDown
+                  aria-hidden="true"
+                  className={cn(
+                    'mt-1 size-4 shrink-0 text-muted-foreground transition-transform',
+                    expanded && 'rotate-180',
+                  )}
+                />
+              </button>
+              {expanded ? (
+                <div
+                  id={`check-${check.id}-details`}
+                  className="mt-4 flex min-w-0 flex-col gap-4"
                 >
-                  {formatCheckJSONForViewer(check)}
-                </SyntaxHighlighter>
-              </div>
-            </div>
-          ) : null}
-        </div>
-      ))}
+                  <SelectionValueDiffView
+                    check={check}
+                    previousCheck={findPreviousComparableCheck(
+                      hydratedChecks,
+                      hydratedChecks.indexOf(check),
+                    )}
+                  />
+                  <details className="text-xs text-muted-foreground">
+                    <summary className="w-fit cursor-pointer py-1 outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                      Check details
+                    </summary>
+                    <div className="mt-3 flex items-center justify-between gap-3">
+                      <span>
+                        HTTP {check.statusCode ?? '—'} ·{' '}
+                        {check.responseTimeMs ?? '—'} ms ·{' '}
+                        {getCheckSelectionType(check) ?? check.status}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => void copyCheckJSON(check)}
+                      >
+                        <Copy data-icon="inline-start" />
+                        {copiedCheckId === check.id ? 'Copied' : 'Copy JSON'}
+                      </Button>
+                    </div>
+                    {check.errorMessage ? (
+                      <p className="text-destructive">{check.errorMessage}</p>
+                    ) : null}
+                    <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-words font-mono text-xs leading-relaxed">
+                      {formatCheckJSONForViewer(check)}
+                    </pre>
+                  </details>
+                </div>
+              ) : null}
+            </li>
+          )
+        })}
+      </ol>
 
       {hasMore ? (
         <Button
@@ -2093,7 +2082,7 @@ function MonitorChecksList({
       ) : null}
 
       {!loading && displayChecks.length === 0 ? (
-        <p className="text-xs text-zinc-500">
+        <p className="text-xs text-muted-foreground">
           No changes recorded for this monitor.
         </p>
       ) : null}
@@ -2216,35 +2205,6 @@ function matchesMonitorQuery(monitor: MonitorRecord, query: string): boolean {
   return searchValue.includes(normalizedQuery)
 }
 
-function CheckDiffDetails({ check }: { check: MonitorCheckRecord }) {
-  const changed = getCheckDiffChanged(check)
-  if (!changed) {
-    return null
-  }
-
-  const kind = getCheckDiffKind(check) ?? 'unknown'
-  const summary = getCheckDiffSummary(check)
-  const details = parseDiffDetails(getCheckDiffDetails(check))
-  const detailLines = buildDiffDetailLines(kind, details)
-
-  return (
-    <div className="mt-2 rounded border border-amber-700/50 bg-amber-950/20 px-2 py-1 text-zinc-300">
-      <div className="flex items-center justify-between gap-2">
-        <span className="font-medium text-amber-300">Diff: {kind}</span>
-        <span className="text-zinc-500">changed</span>
-      </div>
-
-      {summary ? <p className="mt-1 text-zinc-200">{summary}</p> : null}
-
-      {detailLines.map((line) => (
-        <p key={line} className="mt-1 break-all text-zinc-400">
-          {line}
-        </p>
-      ))}
-    </div>
-  )
-}
-
 function SelectionValueDiffView({
   check,
   previousCheck,
@@ -2257,182 +2217,128 @@ function SelectionValueDiffView({
     [check, previousCheck],
   )
 
+  if (getCheckDiffKind(check) === 'initial' || previousCheck === null) {
+    const value = getCheckSelectionValue(check)
+    return (
+      <div className="flex flex-col gap-2">
+        <span className="text-xs text-muted-foreground">Captured value</span>
+        {value === null ? (
+          <p className="text-sm text-muted-foreground">
+            No captured value available.
+          </p>
+        ) : (
+          <pre
+            aria-label="Captured value"
+            className="max-h-80 overflow-auto whitespace-pre-wrap break-words font-mono text-sm leading-relaxed text-foreground"
+          >
+            {formatDiffValue(parseSelectionValueForDiff(check))}
+          </pre>
+        )}
+        {getCheckDiffKind(check) !== 'initial' ? (
+          <p className="text-xs text-muted-foreground">
+            Load earlier checks to compare with the previous value.
+          </p>
+        ) : null}
+      </div>
+    )
+  }
+
   if (diffEntries.length === 0) {
-    return null
+    return (
+      <p className="text-sm text-muted-foreground">
+        The values match when array order is ignored.
+      </p>
+    )
   }
 
   return (
-    <div className="mb-2 rounded border border-emerald-700/50 bg-emerald-950/10 px-2 py-2 text-zinc-200">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <span className="font-medium text-emerald-300">Changed values</span>
-        <span className="text-[11px] text-zinc-500">
-          {diffEntries.length} {diffEntries.length === 1 ? 'change' : 'changes'}
-        </span>
-      </div>
-
-      <div className="space-y-2">
-        {diffEntries.map((entry) => (
-          <div
-            key={`${entry.change}:${entry.path}`}
-            className="rounded border border-zinc-800/80 bg-zinc-950/70 px-2 py-1.5"
-          >
-            <div className="flex items-center justify-between gap-2">
-              <span className="font-mono text-[11px] text-emerald-200">
-                {entry.path}
-              </span>
-              <span className="text-[11px] uppercase tracking-wide text-zinc-500">
-                {entry.change}
-              </span>
-            </div>
-
-            <div className="mt-1 grid gap-2 md:grid-cols-2">
-              <DiffValuePanel label="Old" value={entry.oldValue} tone="old" />
-              <DiffValuePanel label="New" value={entry.newValue} tone="new" />
-            </div>
-          </div>
-        ))}
-      </div>
+    <div className="min-w-0">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-24">Change</TableHead>
+            <TableHead>Value</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {diffEntries.slice(0, 50).map((entry) => (
+            <TableRow key={`${entry.change}:${entry.path}`}>
+              <TableCell className="align-top py-3">
+                <Badge
+                  variant={entry.change === 'removed' ? 'outline' : 'secondary'}
+                >
+                  {entry.change === 'added'
+                    ? 'Added'
+                    : entry.change === 'removed'
+                      ? 'Removed'
+                      : 'Changed'}
+                </Badge>
+              </TableCell>
+              <TableCell className="whitespace-normal py-3">
+                {(entry.path !== 'value' && !entry.path.startsWith('value[')) ||
+                entry.path.includes('].') ||
+                entry.path.includes('=') ? (
+                  <p className="mb-2 break-all font-mono text-xs text-muted-foreground">
+                    {entry.path}
+                  </p>
+                ) : null}
+                <div className="flex flex-col gap-2">
+                  {entry.change !== 'added' ? (
+                    <DiffValueLine
+                      label="Before"
+                      value={entry.oldValue}
+                      removed
+                    />
+                  ) : null}
+                  {entry.change !== 'removed' ? (
+                    <DiffValueLine
+                      label={entry.change === 'added' ? 'Added' : 'After'}
+                      value={entry.newValue}
+                    />
+                  ) : null}
+                </div>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+      {diffEntries.length > 50 ? (
+        <p className="mt-2 text-xs text-muted-foreground">
+          Showing the first 50 changes.
+        </p>
+      ) : null}
     </div>
   )
 }
 
-function DiffValuePanel({
+function DiffValueLine({
   label,
   value,
-  tone,
+  removed = false,
 }: {
   label: string
   value: unknown
-  tone: 'old' | 'new'
+  removed?: boolean
 }) {
   return (
-    <div
-      className={cn(
-        'rounded border px-2 py-1',
-        tone === 'old'
-          ? 'border-red-900/70 bg-red-950/20'
-          : 'border-emerald-900/70 bg-emerald-950/20',
-      )}
-    >
-      <div className="text-[11px] uppercase tracking-wide text-zinc-500">
-        {label}
-      </div>
-      <pre className="mt-1 overflow-x-auto whitespace-pre-wrap break-words font-mono text-[11px] text-zinc-200">
+    <div className="flex items-start gap-3">
+      <span className="sr-only">{label}</span>
+      <span
+        aria-hidden="true"
+        className="w-3 shrink-0 font-mono text-muted-foreground"
+      >
+        {removed ? '−' : '+'}
+      </span>
+      <pre
+        className={cn(
+          'min-w-0 max-h-64 overflow-auto whitespace-pre-wrap break-words font-mono text-xs leading-relaxed',
+          removed ? 'text-muted-foreground' : 'text-foreground',
+        )}
+      >
         {formatDiffValue(value)}
       </pre>
     </div>
   )
-}
-
-function buildDiffDetailLines(
-  kind: string,
-  details: Record<string, unknown> | null,
-): Array<string> {
-  if (!details) {
-    return []
-  }
-
-  switch (kind) {
-    case 'text':
-    case 'dateTime':
-    case 'typeChanged':
-    case 'boolean':
-    case 'null': {
-      const oldValue = stringifyUnknown(details.old)
-      const newValue = stringifyUnknown(details.new)
-      return [
-        `Old: ${truncateInline(oldValue)}`,
-        `New: ${truncateInline(newValue)}`,
-      ]
-    }
-    case 'number': {
-      const lines = [
-        `Old: ${stringifyUnknown(details.old)}`,
-        `New: ${stringifyUnknown(details.new)}`,
-        `Delta: ${stringifyUnknown(details.delta)}`,
-      ]
-      if (typeof details.percent === 'number') {
-        lines.push(`Percent: ${details.percent.toFixed(2)}%`)
-      }
-      return lines
-    }
-    case 'arrayReorder': {
-      return [
-        `Order changed (${stringifyUnknown(details.oldCount)} -> ${stringifyUnknown(details.newCount)} items)`,
-      ]
-    }
-    case 'array': {
-      const added = formatPrimitiveCountMap(details.added)
-      const removed = formatPrimitiveCountMap(details.removed)
-      const lines = []
-      if (added) {
-        lines.push(`Added: ${truncateInline(added)}`)
-      }
-      if (removed) {
-        lines.push(`Removed: ${truncateInline(removed)}`)
-      }
-      return lines
-    }
-    case 'arrayObject': {
-      const lines = []
-      const keyField =
-        typeof details.keyField === 'string' ? details.keyField : 'key'
-      const added = asStringArray(details.added)
-      const removed = asStringArray(details.removed)
-      const updated = asStringArray(details.updated)
-      if (added.length > 0) {
-        lines.push(`Added by ${keyField}: ${truncateInline(added.join(', '))}`)
-      }
-      if (removed.length > 0) {
-        lines.push(
-          `Removed by ${keyField}: ${truncateInline(removed.join(', '))}`,
-        )
-      }
-      if (updated.length > 0) {
-        lines.push(
-          `Updated by ${keyField}: ${truncateInline(updated.join(', '))}`,
-        )
-      }
-      return lines
-    }
-    case 'object': {
-      const lines = []
-      const added = asStringArray(details.added)
-      const removed = asStringArray(details.removed)
-      const changed = asStringArray(details.changed)
-      if (added.length > 0) {
-        lines.push(`Added fields: ${truncateInline(added.join(', '))}`)
-      }
-      if (removed.length > 0) {
-        lines.push(`Removed fields: ${truncateInline(removed.join(', '))}`)
-      }
-      if (changed.length > 0) {
-        lines.push(`Changed fields: ${truncateInline(changed.join(', '))}`)
-      }
-      return lines
-    }
-    default:
-      return []
-  }
-}
-
-function formatPrimitiveCountMap(value: unknown): string {
-  if (!value || typeof value !== 'object') {
-    return ''
-  }
-
-  const entries = Object.entries(value as Record<string, unknown>)
-  if (entries.length === 0) {
-    return ''
-  }
-
-  return entries
-    .map(([raw, count]) => {
-      const countValue = typeof count === 'number' ? count : 1
-      const decoded = decodePrimitiveValue(raw)
-      return `${decoded} (x${countValue})`
-    })
-    .join(', ')
 }
 
 function buildSelectionValueDiffEntries(
@@ -2443,18 +2349,14 @@ function buildSelectionValueDiffEntries(
     return []
   }
 
-  const previousValue = parseSelectionValueForDiff(
-    getCheckSelectionValue(previousCheck),
-  )
-  const currentValue = parseSelectionValueForDiff(
-    getCheckSelectionValue(currentCheck),
-  )
+  const previousValue = parseSelectionValueForDiff(previousCheck)
+  const currentValue = parseSelectionValueForDiff(currentCheck)
   const entries: Array<DetailedDiffEntry> = []
 
   collectDetailedDiffEntries('value', previousValue, currentValue, entries)
 
   if (entries.length > 0) {
-    return entries.slice(0, 50)
+    return entries
   }
 
   if (areDiffValuesEqual(previousValue, currentValue)) {
@@ -2495,277 +2397,11 @@ function hasComparableSelectionValue(check: MonitorCheckRecord): boolean {
   )
 }
 
-function parseSelectionValueForDiff(value: string | null): unknown {
+function parseSelectionValueForDiff(check: MonitorCheckRecord): unknown {
+  const value = getCheckSelectionValue(check)
+  if (getCheckSelectionType(check) === 'string') return value
   const parsed = tryParseJSONString(value)
   return parsed.ok ? parsed.value : value
-}
-
-function collectDetailedDiffEntries(
-  path: string,
-  previousValue: unknown,
-  currentValue: unknown,
-  entries: Array<DetailedDiffEntry>,
-): void {
-  if (areDiffValuesEqual(previousValue, currentValue)) {
-    return
-  }
-
-  if (Array.isArray(previousValue) && Array.isArray(currentValue)) {
-    if (
-      collectKeyedArrayDiffEntries(path, previousValue, currentValue, entries)
-    ) {
-      return
-    }
-
-    const maxLength = Math.max(previousValue.length, currentValue.length)
-    for (let index = 0; index < maxLength; index += 1) {
-      const nextPath = `${path}[${index}]`
-      const previousExists = index < previousValue.length
-      const currentExists = index < currentValue.length
-
-      if (!previousExists && currentExists) {
-        entries.push({
-          path: nextPath,
-          change: 'added',
-          newValue: currentValue[index],
-        })
-        continue
-      }
-
-      if (previousExists && !currentExists) {
-        entries.push({
-          path: nextPath,
-          change: 'removed',
-          oldValue: previousValue[index],
-        })
-        continue
-      }
-
-      collectDetailedDiffEntries(
-        nextPath,
-        previousValue[index],
-        currentValue[index],
-        entries,
-      )
-    }
-    return
-  }
-
-  if (isPlainObject(previousValue) && isPlainObject(currentValue)) {
-    const keys = new Set([
-      ...Object.keys(previousValue),
-      ...Object.keys(currentValue),
-    ])
-
-    for (const key of [...keys].sort()) {
-      const nextPath = path === 'value' ? key : `${path}.${key}`
-      const previousHasKey = Object.hasOwn(previousValue, key)
-      const currentHasKey = Object.hasOwn(currentValue, key)
-
-      if (!previousHasKey && currentHasKey) {
-        entries.push({
-          path: nextPath,
-          change: 'added',
-          newValue: currentValue[key],
-        })
-        continue
-      }
-
-      if (previousHasKey && !currentHasKey) {
-        entries.push({
-          path: nextPath,
-          change: 'removed',
-          oldValue: previousValue[key],
-        })
-        continue
-      }
-
-      collectDetailedDiffEntries(
-        nextPath,
-        previousValue[key],
-        currentValue[key],
-        entries,
-      )
-    }
-    return
-  }
-
-  entries.push({
-    path,
-    change: 'changed',
-    oldValue: previousValue,
-    newValue: currentValue,
-  })
-}
-
-function collectKeyedArrayDiffEntries(
-  path: string,
-  previousValue: Array<unknown>,
-  currentValue: Array<unknown>,
-  entries: Array<DetailedDiffEntry>,
-): boolean {
-  const previousObjects = asObjectArray(previousValue)
-  const currentObjects = asObjectArray(currentValue)
-  if (!previousObjects || !currentObjects) {
-    return false
-  }
-
-  const keyField = detectObjectArrayKey(previousObjects, currentObjects)
-  if (!keyField) {
-    return false
-  }
-
-  const previousMap = mapObjectArrayByKey(previousObjects, keyField)
-  const currentMap = mapObjectArrayByKey(currentObjects, keyField)
-  if (!previousMap || !currentMap) {
-    return false
-  }
-
-  const keys = new Set([...previousMap.keys(), ...currentMap.keys()])
-  for (const key of [...keys].sort()) {
-    const previousEntry = previousMap.get(key)
-    const currentEntry = currentMap.get(key)
-    const nextPath = `${path}[${keyField}=${key}]`
-
-    if (!previousEntry && currentEntry) {
-      entries.push({
-        path: nextPath,
-        change: 'added',
-        newValue: currentEntry,
-      })
-      continue
-    }
-
-    if (previousEntry && !currentEntry) {
-      entries.push({
-        path: nextPath,
-        change: 'removed',
-        oldValue: previousEntry,
-      })
-      continue
-    }
-
-    collectDetailedDiffEntries(nextPath, previousEntry, currentEntry, entries)
-  }
-
-  return true
-}
-
-function asObjectArray(
-  value: Array<unknown>,
-): Array<Record<string, unknown>> | null {
-  const objects: Array<Record<string, unknown>> = []
-
-  for (const entry of value) {
-    if (!isPlainObject(entry)) {
-      return null
-    }
-    objects.push(entry)
-  }
-
-  return objects
-}
-
-function detectObjectArrayKey(
-  previous: Array<Record<string, unknown>>,
-  current: Array<Record<string, unknown>>,
-): string {
-  const candidates = [
-    'id',
-    'key',
-    'name',
-    'slug',
-    'uuid',
-    'code',
-    'currency',
-    'Currency',
-  ]
-
-  for (const candidate of candidates) {
-    if (
-      hasUniquePrimitiveKey(candidate, previous) &&
-      hasUniquePrimitiveKey(candidate, current)
-    ) {
-      return candidate
-    }
-  }
-
-  return ''
-}
-
-function hasUniquePrimitiveKey(
-  key: string,
-  values: Array<Record<string, unknown>>,
-): boolean {
-  const seen = new Set<string>()
-
-  for (const item of values) {
-    if (!Object.hasOwn(item, key)) {
-      return false
-    }
-
-    const value = item[key]
-    if (value === null || Array.isArray(value) || isPlainObject(value)) {
-      return false
-    }
-
-    const encoded = stableStringify(value)
-    if (seen.has(encoded)) {
-      return false
-    }
-    seen.add(encoded)
-  }
-
-  return true
-}
-
-function mapObjectArrayByKey(
-  values: Array<Record<string, unknown>>,
-  key: string,
-): Map<string, Record<string, unknown>> | null {
-  const mapped = new Map<string, Record<string, unknown>>()
-
-  for (const item of values) {
-    if (!Object.hasOwn(item, key)) {
-      return null
-    }
-
-    const encoded = stableStringify(item[key])
-    if (mapped.has(encoded)) {
-      return null
-    }
-
-    mapped.set(encoded, item)
-  }
-
-  return mapped
-}
-
-function areDiffValuesEqual(left: unknown, right: unknown): boolean {
-  return stableStringify(left) === stableStringify(right)
-}
-
-function stableStringify(value: unknown): string {
-  if (isPlainObject(value)) {
-    const sortedKeys = Object.keys(value).sort()
-    const normalized: Record<string, unknown> = {}
-    for (const key of sortedKeys) {
-      normalized[key] = JSON.parse(stableStringify(value[key])) as unknown
-    }
-    return JSON.stringify(normalized)
-  }
-
-  if (Array.isArray(value)) {
-    return JSON.stringify(
-      value.map((entry) => JSON.parse(stableStringify(entry)) as unknown),
-    )
-  }
-
-  return JSON.stringify(value)
-}
-
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return Boolean(value) && !Array.isArray(value) && typeof value === 'object'
 }
 
 function formatDiffValue(value: unknown): string {
@@ -2782,72 +2418,6 @@ function formatDiffValue(value: unknown): string {
   } catch {
     return String(value)
   }
-}
-
-function decodePrimitiveValue(raw: string): string {
-  try {
-    const parsed = JSON.parse(raw) as unknown
-    if (typeof parsed === 'string') {
-      return parsed
-    }
-
-    return stringifyUnknown(parsed)
-  } catch {
-    return raw
-  }
-}
-
-function parseDiffDetails(
-  raw: string | null | undefined,
-): Record<string, unknown> | null {
-  if (!raw || raw.trim() === '') {
-    return null
-  }
-
-  try {
-    const parsed = JSON.parse(raw) as unknown
-    if (!parsed || Array.isArray(parsed) || typeof parsed !== 'object') {
-      return null
-    }
-
-    return parsed as Record<string, unknown>
-  } catch {
-    return null
-  }
-}
-
-function asStringArray(value: unknown): Array<string> {
-  if (!Array.isArray(value)) {
-    return []
-  }
-
-  return value.filter((entry): entry is string => typeof entry === 'string')
-}
-
-function stringifyUnknown(value: unknown): string {
-  if (typeof value === 'string') {
-    return value
-  }
-  if (typeof value === 'number' || typeof value === 'boolean') {
-    return String(value)
-  }
-  if (value === null) {
-    return 'null'
-  }
-
-  try {
-    return JSON.stringify(value)
-  } catch {
-    return String(value)
-  }
-}
-
-function truncateInline(value: string): string {
-  if (value.length <= 160) {
-    return value
-  }
-
-  return `${value.slice(0, 160)}...`
 }
 
 function getMonitorDisplayLabel(monitor: MonitorRecord): string {

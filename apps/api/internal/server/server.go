@@ -839,7 +839,7 @@ func (s *Server) handleListMonitorChecks(w http.ResponseWriter, r *http.Request)
 			return
 		}
 		if changesOnly {
-			query.Where(checkresult.DiffChangedEQ(true))
+			query.Where(checkresult.Or(checkresult.DiffChangedEQ(true), checkresult.DiffKindEQ("initial")))
 		}
 	}
 	if value := strings.TrimSpace(r.URL.Query().Get("beforeId")); value != "" {

@@ -245,7 +245,7 @@ function MonitorsPage() {
         },
       )
 
-      if (!check?.diffChanged) {
+      if (!check || (!check.diffChanged && check.diffKind !== 'initial')) {
         return
       }
 

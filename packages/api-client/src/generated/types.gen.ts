@@ -498,7 +498,7 @@ export type ListMonitorChecksData = {
     query?: {
         limit?: number;
         /**
-         * Return only checks with detected changes, before applying the limit.
+         * Return checks with detected changes and the initial capture, before applying the limit.
          */
         changesOnly?: boolean;
         /**
