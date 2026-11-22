@@ -11,7 +11,7 @@ import { useState } from 'react'
 import { ThemeProvider } from 'tanstack-theme-kit'
 import { Toaster } from 'sileo'
 
-import { BellRing, Radar } from 'lucide-react'
+import { BellRing } from 'lucide-react'
 import appCss from '../styles.css?url'
 
 import { RuntimeSettingsRequiredDialog } from '@/components/runtime-settings-required-dialog'

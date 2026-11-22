@@ -1,5 +1,6 @@
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
-import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
+import SyntaxHighlighter from 'react-syntax-highlighter/dist/esm/prism-light'
+import json from 'react-syntax-highlighter/dist/esm/languages/prism/json'
+import oneDark from 'react-syntax-highlighter/dist/esm/styles/prism/one-dark'
 import {
   memo,
   useCallback,
@@ -56,6 +57,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { getApiErrorMessage } from '@/lib/api'
 import { getCronDescription } from '@/lib/cron'
 import { formatPreviewRaw } from '@/lib/json-preview'
+
+SyntaxHighlighter.registerLanguage('json', json)
 
 type FormState = {
   label: string
@@ -602,11 +605,7 @@ export function CreateEditMonitorCard({
             ) : null}
           </div>
 
-          <Accordion
-            type="single"
-            collapsible
-            className="rounded-md border border-zinc-800 px-3"
-          >
+          <Accordion className="rounded-md border border-zinc-800 px-3">
             <AccordionItem value="more-options" className="border-none">
               <AccordionTrigger className="py-2 text-sm text-zinc-300 hover:no-underline">
                 More options
@@ -896,11 +895,7 @@ const TestResponsePanel = memo(function TestResponsePanel({
         )}
       </div>
 
-      <Accordion
-        type="single"
-        collapsible
-        className="mt-2 border-zinc-800 bg-zinc-950"
-      >
+      <Accordion className="mt-2 border-zinc-800 bg-zinc-950">
         <AccordionItem
           value="response-details"
           className="border-zinc-800 data-open:bg-zinc-900/40"
@@ -1032,7 +1027,7 @@ function mapMonitorToForm(monitor: MonitorRecord): FormState {
     expectedResponse: monitor.expectedResponse ?? '',
     cron: monitor.cron,
     enabled: monitor.enabled,
-    pauseOnNextChange: monitor.pauseOnNextChange,
+    pauseOnNextChange: monitor.pauseOnNextChange ?? false,
     triggerOnCreate: true,
   }
 }

@@ -7,6 +7,30 @@ import tailwindcss from '@tailwindcss/vite'
 import { nitro } from 'nitro/vite'
 
 const config = defineConfig({
+  ssr: {
+    // Tree-shake Start re-exports and resolve icons with Vite's production
+    // conditions before Nitro bundles the server.
+    noExternal: ['@tanstack/router-core', '@hugeicons/core-free-icons'],
+  },
+  environments: {
+    client: {
+      build: {
+        rollupOptions: {
+          output: {
+            manualChunks(id) {
+              if (
+                id.includes('/node_modules/react/') ||
+                id.includes('/node_modules/react-dom/') ||
+                id.includes('/node_modules/scheduler/')
+              )
+                return 'react'
+              if (id.includes('/node_modules/@base-ui/')) return 'base-ui'
+            },
+          },
+        },
+      },
+    },
+  },
   plugins: [
     devtools({
       eventBusConfig: {

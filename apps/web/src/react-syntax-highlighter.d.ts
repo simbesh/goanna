@@ -1,4 +1,4 @@
-declare module 'react-syntax-highlighter' {
+declare module 'react-syntax-highlighter/dist/esm/prism-light' {
   import type { CSSProperties, ComponentType } from 'react'
 
   type SyntaxHighlighterProps = {
@@ -9,9 +9,18 @@ declare module 'react-syntax-highlighter' {
     children?: string
   }
 
-  export const Prism: ComponentType<SyntaxHighlighterProps>
+  const SyntaxHighlighter: ComponentType<SyntaxHighlighterProps> & {
+    registerLanguage: (name: string, language: unknown) => void
+  }
+  export default SyntaxHighlighter
 }
 
-declare module 'react-syntax-highlighter/dist/esm/styles/prism' {
-  export const oneDark: Record<string, unknown>
+declare module 'react-syntax-highlighter/dist/esm/styles/prism/one-dark' {
+  const oneDark: Record<string, unknown>
+  export default oneDark
+}
+
+declare module 'react-syntax-highlighter/dist/esm/languages/prism/json' {
+  const json: unknown
+  export default json
 }
